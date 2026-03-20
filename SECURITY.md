@@ -12,6 +12,7 @@ The `greenops-cli` binary (`dist/index.cjs`) is completely stateless.
 The GitHub Action (`action.yml`) provides an **opt-in telemetry step** to push footprint metrics to the GreenOps Dashboard via a transparent `curl` command.
 - This step lives entirely in the shell wrapper, keeping the CLI binary isolated.
 - It executes **only if an `api-key` is provided** as an Action input.
+- The API key is passed via an `env:` block (`GREENOPS_API_KEY: ${{ inputs.api-key }}`), never interpolated directly into a shell command. This activates GitHub's automatic secret masking so the key never appears in workflow logs.
 - If no key is provided, the Action makes no outbound calls. The security posture remains zero-network.
 
 **Vulnerability Reporting:**

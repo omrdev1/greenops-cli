@@ -12,20 +12,19 @@ const { positionals, values } = parseArgs({
   options: {
     format: { type: 'string', default: 'markdown' },
     coverage: { type: 'boolean', default: false },
-    json: { type: 'boolean', default: false },
     help: { type: 'boolean', default: false },
     'show-upgrade-prompt': { type: 'string', default: 'true' }
   }
 });
 
 if (values.help) {
-  console.log(`GreenOps CLI\nUsage: greenops-cli diff <plan.json> [--format markdown|table]\n       greenops-cli --coverage [--json]`);
+  console.log(`GreenOps CLI\nUsage: greenops-cli diff <plan.json> [--format markdown|table|json]\n       greenops-cli --coverage [--format json]`);
   process.exit(0);
 }
 
 if (values.coverage) {
   const rawFs = Object.assign({}, factorsData);
-  if (values.json) {
+  if (values.format === 'json') {
     console.log(JSON.stringify({ regions: Object.keys(rawFs.regions), instances: Object.keys(rawFs.instances) }, null, 2));
   } else {
     console.log(`Supported Regions: ${Object.keys(rawFs.regions).join(', ')}`);
