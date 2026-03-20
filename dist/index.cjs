@@ -709,7 +709,7 @@ function formatGrams(grams) {
 
 // formatters/markdown.ts
 function formatMarkdown(result2, options = {}) {
-  const METHODOLOGY_URL = options.repositoryUrl || "https://github.com/greenops-cli/greenops-cli/blob/main/README.md";
+  const METHODOLOGY_URL = options.repositoryUrl || "https://github.com/omrdev1/greenops-cli/blob/main/METHODOLOGY.md";
   const recsCount = result2.resources.filter((r) => r.recommendation).length;
   let out = `## \u{1F331} GreenOps Infrastructure Impact
 
@@ -746,7 +746,7 @@ function formatMarkdown(result2, options = {}) {
     out += `<details><summary>\u26A0\uFE0F <b>${result2.skipped.length} Skipped Resources</b></summary>
 
 `;
-    out += `The following resources were skipped from calculation (usually due to runtime abstractions). This means the actual footprint footprint might be higher.
+    out += `The following resources were skipped from calculation (usually due to runtime abstractions). The actual footprint may be higher.
 
 `;
     out += `| Resource | Reason |
@@ -882,12 +882,12 @@ var command = positionals[0];
 var planFile = positionals[1];
 if (command !== "diff" || !planFile) {
   console.error("Error: Missing 'diff' command or plan file parameter.");
-  process.exit(0);
+  process.exit(1);
 }
 var extracted = extractResourceInputs(planFile);
 if (extracted.error) {
   console.error(`Extraction Error: ${extracted.error}`);
-  process.exit(0);
+  process.exit(1);
 }
 var result = analysePlan(extracted.resources, extracted.skipped, planFile);
 var showUpgradePrompt = values["show-upgrade-prompt"] === "true";

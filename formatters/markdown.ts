@@ -7,7 +7,7 @@ export interface FormatterOptions {
 }
 
 export function formatMarkdown(result: PlanAnalysisResult, options: FormatterOptions = {}): string {
-  const METHODOLOGY_URL = options.repositoryUrl || 'https://github.com/greenops-cli/greenops-cli/blob/main/README.md';
+  const METHODOLOGY_URL = options.repositoryUrl || 'https://github.com/omrdev1/greenops-cli/blob/main/METHODOLOGY.md';
   const recsCount = result.resources.filter(r => r.recommendation).length;
 
   let out = `## 🌱 GreenOps Infrastructure Impact\n\n`;
@@ -33,7 +33,7 @@ export function formatMarkdown(result: PlanAnalysisResult, options: FormatterOpt
 
   if (result.skipped.length > 0) {
     out += `<details><summary>⚠️ <b>${result.skipped.length} Skipped Resources</b></summary>\n\n`;
-    out += `The following resources were skipped from calculation (usually due to runtime abstractions). This means the actual footprint footprint might be higher.\n\n`;
+    out += `The following resources were skipped from calculation (usually due to runtime abstractions). The actual footprint may be higher.\n\n`;
     out += `| Resource | Reason |\n|---|---|\n`;
     for (const s of result.skipped) {
       out += `| \`${s.resourceId}\` | \`${s.reason}\` |\n`;

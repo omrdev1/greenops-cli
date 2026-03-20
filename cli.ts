@@ -39,14 +39,14 @@ const planFile = positionals[1];
 
 if (command !== 'diff' || !planFile) {
   console.error("Error: Missing 'diff' command or plan file parameter.");
-  process.exit(0);
+  process.exit(1);
 }
 
 const extracted = extractResourceInputs(planFile);
 
 if (extracted.error) {
   console.error(`Extraction Error: ${extracted.error}`);
-  process.exit(0);
+  process.exit(1);
 }
 
 const result = analysePlan(extracted.resources, extracted.skipped, planFile);
