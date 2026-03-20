@@ -49,16 +49,18 @@ runs:
     - name: Run GreenOps CLI (JSON) & Upload Telemetry
       if: inputs.api-key != ''
       shell: bash
+      env:
+        GREENOPS_API_KEY: ${{ inputs.api-key }}
       run: |
         node ${{ github.action_path }}/dist/index.cjs diff ${{ inputs.plan-file }} --format json > result.json
-        
+
         jq --arg repo "$GITHUB_REPOSITORY" \
            --arg pr "${{ github.event.pull_request.number }}" \
            --arg sha "$GITHUB_SHA" \
            --arg ref "$GITHUB_REF" \
            '{ repository: $repo, pull_request_number: ($pr | tonumber), commit_sha: $sha, ref: $ref, analysis: . }' result.json > upload.json
-           
+
         curl -f -X POST https://api.greenops-cli.dev/ingest \
-          -H "Authorization: Bearer ${{ inputs.api-key }}" \
+          -H "Authorization: Bearer $GREENOPS_API_KEY" \
           -H "Content-Type: application/json" \
           -d @upload.json || true
