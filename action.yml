@@ -1,5 +1,8 @@
 name: "GreenOps PR Analysis"
 description: "Analyses a Terraform plan for carbon & cost impact and posts a PR comment"
+branding:
+  icon: activity
+  color: green
 inputs:
   plan-file:
     description: "Path to terraform plan json"
