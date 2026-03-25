@@ -140,6 +140,8 @@ function getCleanerRegion(
   if (regions.length === 0) return null;
 
   const [cleanestRegionId, cleanestRegion] = regions[0];
+  // If current region is unknown, treat intensity as Infinity so no region can appear "cleaner" — this
+  // prevents recommendations when we can't establish a valid baseline for comparison.
   const currentIntensity = ledger.regions[currentRegion]?.grid_intensity_gco2e_per_kwh ?? Infinity;
 
   // Only recommend if the cleaner region is meaningfully better (>10% reduction)
@@ -316,8 +318,10 @@ export function generateRecommendation(
       const costDelta = regionEstimate.totalCostUsdPerMonth - baseline.totalCostUsdPerMonth;
 
       // Region shifts may increase cost — include if carbon reduction is significant (>15%)
-      const co2ReductionPct =
-        Math.abs(co2Delta) / baseline.totalCo2eGramsPerMonth;
+      // Guard against division by zero: if baseline carbon is 0, no meaningful reduction to compare.
+      const co2ReductionPct = baseline.totalCo2eGramsPerMonth > 0
+        ? Math.abs(co2Delta) / baseline.totalCo2eGramsPerMonth
+        : 0;
 
       if (co2Delta < 0 && co2ReductionPct > 0.15) {
         const regionName = ledger.regions[cleanerRegion]?.location ?? cleanerRegion;
