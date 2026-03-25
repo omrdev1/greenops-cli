@@ -2,9 +2,13 @@ node_modules/
 dist-raw/
 coverage/
 
+# Claude Code worktrees (managed by git internally, never committed)
+.claude/worktrees/
+
 # Ad-hoc & Demo Files
 demo.json
 linkedin.md
+launch_*.md
 research.*.md
 *.log
 
