@@ -1,5 +1,6 @@
 import { parseArgs } from 'node:util';
-import factorsData from './factors.json' with { type: 'json' };
+import factorsData from './factors.json';
+import pkg from './package.json';
 import { extractResourceInputs } from './extractor.js';
 import { analysePlan } from './engine.js';
 import { formatMarkdown } from './formatters/markdown.js';
@@ -13,12 +14,18 @@ const { positionals, values } = parseArgs({
     format: { type: 'string', default: 'markdown' },
     coverage: { type: 'boolean', default: false },
     help: { type: 'boolean', default: false },
+    version: { type: 'boolean', default: false },
     'show-upgrade-prompt': { type: 'string', default: 'true' }
   }
 });
 
+if (values.version) {
+  console.log(pkg.version);
+  process.exit(0);
+}
+
 if (values.help) {
-  console.log(`GreenOps CLI\nUsage: greenops-cli diff <plan.json> [--format markdown|table|json]\n       greenops-cli --coverage [--format json]`);
+  console.log(`GreenOps CLI v${pkg.version}\nUsage: greenops-cli diff <plan.json> [--format markdown|table|json]\n       greenops-cli --coverage [--format json]\n       greenops-cli --version`);
   process.exit(0);
 }
 

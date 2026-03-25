@@ -1,9 +1,26 @@
 import { readFileSync } from 'node:fs';
 import type { ResourceInput, PlanAnalysisResult } from './types.js';
 
+// ---------------------------------------------------------------------------
+// Internal types for Terraform plan shape
+// ---------------------------------------------------------------------------
+
+interface TerraformResourceChange {
+  address: string;
+  type: string;
+  change?: {
+    actions?: string[];
+    after?: Record<string, unknown>;
+    after_unknown?: Record<string, unknown>;
+    before?: Record<string, unknown>;
+  };
+}
+
 export interface ExtractorResult {
   resources: ResourceInput[];
   skipped: PlanAnalysisResult['skipped'];
+  /** Resource types present in the plan but not supported for carbon analysis */
+  unsupportedTypes: string[];
   error?: string;
 }
 
@@ -11,7 +28,7 @@ export interface ExtractorResult {
  * Checks if a specific attribute on a Terraform resource change is 'known after apply'
  * or completely absent (which means unresolvable before apply).
  */
-function isKnownAfterApply(change: any, fieldPath: string): boolean {
+function isKnownAfterApply(change: TerraformResourceChange['change'], fieldPath: string): boolean {
   if (!change) return true;
   // If explicitly flagged as unknown by Terraform
   if (change.after_unknown?.[fieldPath] === true) return true;
@@ -29,26 +46,33 @@ function isKnownAfterApply(change: any, fieldPath: string): boolean {
  * 
  * If all fail, we will emit known_after_apply to skip.
  */
-function resolveRegion(change: any): string | null {
+function resolveRegion(change: TerraformResourceChange['change']): string | null {
   if (change?.after?.arn && typeof change.after.arn === 'string') {
     const parts = change.after.arn.split(':');
     if (parts.length >= 4 && parts[3]) return parts[3];
   }
   
   if (change?.after?.availability_zone && typeof change.after.availability_zone === 'string') {
-    // Strip the last char representing the logic zone (e.g. us-east-1a -> us-east-1)
-    return change.after.availability_zone.slice(0, -1);
+    // Extract region from AZ using regex to handle Local Zones (e.g. us-east-1-bos-1a)
+    // and standard AZs (e.g. us-east-1a) correctly.
+    const azMatch = (change.after.availability_zone as string).match(/^([a-z]{2}-[a-z]+-\d+)/);
+    if (azMatch) return azMatch[1];
   }
   
   if (change?.after?.region && typeof change.after.region === 'string') {
-    return change.after.region;
+    return change.after.region as string;
+  }
+
+  // Fallback: check 'before' state for update actions where region persists unchanged
+  if (change?.before?.region && typeof change.before.region === 'string') {
+    return change.before.region as string;
   }
   
   return null;
 }
 
 export function extractResourceInputs(planFilePath: string): ExtractorResult {
-  const result: ExtractorResult = { resources: [], skipped: [] };
+  const result: ExtractorResult = { resources: [], skipped: [], unsupportedTypes: [] };
   
   let raw: string;
   try {
@@ -72,7 +96,8 @@ export function extractResourceInputs(planFilePath: string): ExtractorResult {
   }
 
   const typedPlan = plan as { resource_changes: unknown[] };
-  for (const res of typedPlan.resource_changes) {
+  for (const rawRes of typedPlan.resource_changes) {
+    const res = rawRes as TerraformResourceChange;
     const actions = res.change?.actions;
     
     // Only process resources where change.actions includes "create" or "update"
@@ -82,8 +107,15 @@ export function extractResourceInputs(planFilePath: string): ExtractorResult {
       continue; 
     }
 
-    // Silently ignore strictly unsupported resource types 
-    if (res.type !== 'aws_instance' && res.type !== 'aws_db_instance') {
+    // Track compute-relevant resource types that we can't yet analyse.
+    // This lets formatters surface a coverage disclaimer.
+    const SUPPORTED_TYPES = ['aws_instance', 'aws_db_instance'];
+    const COMPUTE_RELEVANT_TYPES = ['aws_launch_template', 'aws_autoscaling_group', 'aws_ecs_service', 'aws_eks_node_group', 'aws_lambda_function'];
+
+    if (!SUPPORTED_TYPES.includes(res.type)) {
+      if (COMPUTE_RELEVANT_TYPES.includes(res.type) && !result.unsupportedTypes.includes(res.type)) {
+        result.unsupportedTypes.push(res.type);
+      }
       continue; 
     }
 
@@ -96,8 +128,8 @@ export function extractResourceInputs(planFilePath: string): ExtractorResult {
       continue;
     }
 
-    let instanceType = res.change.after[typeField];
-    if (typeof instanceType !== 'string') {
+    let instanceType: string = res.change!.after![typeField] as string;
+    if (typeof res.change!.after![typeField] !== 'string') {
       result.skipped.push({ resourceId: res.address, reason: 'known_after_apply' });
       continue;
     }
@@ -107,6 +139,11 @@ export function extractResourceInputs(planFilePath: string): ExtractorResult {
     // so the mathematical formulas handle consistently flat datasets mapped identically to factors.json.
     if (isDb && instanceType.startsWith('db.')) {
       instanceType = instanceType.replace(/^db\./, '');
+      // Guard: db.serverless (Aurora Serverless) produces invalid types after stripping
+      if (!instanceType.includes('.')) {
+        result.skipped.push({ resourceId: res.address, reason: 'unsupported_instance' });
+        continue;
+      }
     }
 
     const region = resolveRegion(res.change);

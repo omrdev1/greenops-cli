@@ -4,7 +4,7 @@
 // cli.ts
 var import_node_util = require("node:util");
 
-// factors.json with { type: 'json' }
+// factors.json
 var factors_default = {
   metadata: {
     ledger_version: "1.1.0",
@@ -197,6 +197,33 @@ var factors_default = {
   }
 };
 
+// package.json
+var package_default = {
+  name: "greenops-cli",
+  version: "0.2.1",
+  description: "Analyzes Terraform plans for carbon and cost impact.",
+  main: "dist/index.cjs",
+  bin: {
+    "greenops-cli": "dist/index.cjs"
+  },
+  type: "module",
+  engines: {
+    node: ">=20"
+  },
+  scripts: {
+    test: "tsx --test './*.test.ts' './formatters/*.test.ts'",
+    typecheck: "tsc --noEmit",
+    build: 'esbuild cli.ts --bundle --platform=node --target=node20 --outfile=dist/index.cjs --format=cjs --banner:js="#!/usr/bin/env node"',
+    prepack: "npm run build"
+  },
+  devDependencies: {
+    "@types/node": "^20.0.0",
+    esbuild: "^0.20.0",
+    typescript: "^5.0.0",
+    tsx: "^4.0.0"
+  }
+};
+
 // extractor.ts
 var import_node_fs = require("node:fs");
 function isKnownAfterApply(change, fieldPath) {
@@ -215,15 +242,20 @@ function resolveRegion(change) {
       return parts[3];
   }
   if (change?.after?.availability_zone && typeof change.after.availability_zone === "string") {
-    return change.after.availability_zone.slice(0, -1);
+    const azMatch = change.after.availability_zone.match(/^([a-z]{2}-[a-z]+-\d+)/);
+    if (azMatch)
+      return azMatch[1];
   }
   if (change?.after?.region && typeof change.after.region === "string") {
     return change.after.region;
   }
+  if (change?.before?.region && typeof change.before.region === "string") {
+    return change.before.region;
+  }
   return null;
 }
 function extractResourceInputs(planFilePath) {
-  const result2 = { resources: [], skipped: [] };
+  const result2 = { resources: [], skipped: [], unsupportedTypes: [] };
   let raw;
   try {
     raw = (0, import_node_fs.readFileSync)(planFilePath, "utf8");
@@ -243,12 +275,18 @@ function extractResourceInputs(planFilePath) {
     return result2;
   }
   const typedPlan = plan;
-  for (const res of typedPlan.resource_changes) {
+  for (const rawRes of typedPlan.resource_changes) {
+    const res = rawRes;
     const actions = res.change?.actions;
     if (!Array.isArray(actions) || !actions.includes("create") && !actions.includes("update")) {
       continue;
     }
-    if (res.type !== "aws_instance" && res.type !== "aws_db_instance") {
+    const SUPPORTED_TYPES = ["aws_instance", "aws_db_instance"];
+    const COMPUTE_RELEVANT_TYPES = ["aws_launch_template", "aws_autoscaling_group", "aws_ecs_service", "aws_eks_node_group", "aws_lambda_function"];
+    if (!SUPPORTED_TYPES.includes(res.type)) {
+      if (COMPUTE_RELEVANT_TYPES.includes(res.type) && !result2.unsupportedTypes.includes(res.type)) {
+        result2.unsupportedTypes.push(res.type);
+      }
       continue;
     }
     const isDb = res.type === "aws_db_instance";
@@ -258,12 +296,16 @@ function extractResourceInputs(planFilePath) {
       continue;
     }
     let instanceType = res.change.after[typeField];
-    if (typeof instanceType !== "string") {
+    if (typeof res.change.after[typeField] !== "string") {
       result2.skipped.push({ resourceId: res.address, reason: "known_after_apply" });
       continue;
     }
     if (isDb && instanceType.startsWith("db.")) {
       instanceType = instanceType.replace(/^db\./, "");
+      if (!instanceType.includes(".")) {
+        result2.skipped.push({ resourceId: res.address, reason: "unsupported_instance" });
+        continue;
+      }
     }
     const region = resolveRegion(res.change);
     if (!region) {
@@ -280,203 +322,16 @@ function extractResourceInputs(planFilePath) {
   return result2;
 }
 
-// factors.json
-var factors_default2 = {
-  metadata: {
-    ledger_version: "1.1.0",
-    updated_at: "2026-03-25T00:00:00Z",
-    sources: {
-      grid: "electricity-maps-2024-avg",
-      hardware: "cloud-carbon-footprint-v3",
-      pricing: "aws-public-pricing-api"
-    },
-    assumptions: {
-      default_utilization: {
-        value: 0.5,
-        citation: "Cloud Carbon Footprint (CCF) standard assumed average utilization for general-purpose compute where no telemetry is available.",
-        url: "https://www.cloudcarbonfootprint.org/docs/methodology/#utilization"
-      }
-    }
-  },
-  regions: {
-    "us-east-1": {
-      location: "US East (N. Virginia)",
-      grid_intensity_gco2e_per_kwh: 384.5,
-      pue: 1.13
-    },
-    "us-west-2": {
-      location: "US West (Oregon)",
-      grid_intensity_gco2e_per_kwh: 240.1,
-      pue: 1.13
-    },
-    "eu-west-1": {
-      location: "Europe (Ireland)",
-      grid_intensity_gco2e_per_kwh: 334,
-      pue: 1.13
-    },
-    "eu-central-1": {
-      location: "Europe (Frankfurt)",
-      grid_intensity_gco2e_per_kwh: 420.5,
-      pue: 1.13
-    },
-    "ap-southeast-2": {
-      location: "Asia Pacific (Sydney)",
-      grid_intensity_gco2e_per_kwh: 650,
-      pue: 1.13
-    }
-  },
-  instances: {
-    "t3.medium": {
-      architecture: "x86_64",
-      vcpus: 2,
-      memory_gb: 4,
-      power_watts: { idle: 3.4, max: 10.2 }
-    },
-    "t3.large": {
-      architecture: "x86_64",
-      vcpus: 2,
-      memory_gb: 8,
-      power_watts: { idle: 6.8, max: 20.4 }
-    },
-    "m5.large": {
-      architecture: "x86_64",
-      vcpus: 2,
-      memory_gb: 8,
-      power_watts: { idle: 6.8, max: 20.4 }
-    },
-    "m5.xlarge": {
-      architecture: "x86_64",
-      vcpus: 4,
-      memory_gb: 16,
-      power_watts: { idle: 13.6, max: 40.8 }
-    },
-    "c5.large": {
-      architecture: "x86_64",
-      vcpus: 2,
-      memory_gb: 4,
-      power_watts: { idle: 6.5, max: 22 }
-    },
-    "c5.xlarge": {
-      architecture: "x86_64",
-      vcpus: 4,
-      memory_gb: 8,
-      power_watts: { idle: 13, max: 44 }
-    },
-    "t4g.medium": {
-      architecture: "arm64",
-      vcpus: 2,
-      memory_gb: 4,
-      power_watts: { idle: 2.2, max: 6.8 }
-    },
-    "t4g.large": {
-      architecture: "arm64",
-      vcpus: 2,
-      memory_gb: 8,
-      power_watts: { idle: 4.4, max: 13.6 }
-    },
-    "m6g.large": {
-      architecture: "arm64",
-      vcpus: 2,
-      memory_gb: 8,
-      power_watts: { idle: 4.1, max: 13.2 }
-    },
-    "m6g.xlarge": {
-      architecture: "arm64",
-      vcpus: 4,
-      memory_gb: 16,
-      power_watts: { idle: 8.2, max: 26.4 }
-    },
-    "c6g.large": {
-      architecture: "arm64",
-      vcpus: 2,
-      memory_gb: 4,
-      power_watts: { idle: 3.9, max: 14.5 }
-    },
-    "c6g.xlarge": {
-      architecture: "arm64",
-      vcpus: 4,
-      memory_gb: 8,
-      power_watts: { idle: 7.8, max: 29 }
-    }
-  },
-  pricing_usd_per_hour: {
-    "us-east-1": {
-      "t3.medium": 0.0416,
-      "t3.large": 0.0832,
-      "m5.large": 0.096,
-      "m5.xlarge": 0.192,
-      "c5.large": 0.085,
-      "c5.xlarge": 0.17,
-      "t4g.medium": 0.0336,
-      "t4g.large": 0.0672,
-      "m6g.large": 0.077,
-      "m6g.xlarge": 0.154,
-      "c6g.large": 0.068,
-      "c6g.xlarge": 0.136
-    },
-    "us-west-2": {
-      "t3.medium": 0.0416,
-      "t3.large": 0.0832,
-      "m5.large": 0.096,
-      "m5.xlarge": 0.192,
-      "c5.large": 0.085,
-      "c5.xlarge": 0.17,
-      "t4g.medium": 0.0336,
-      "t4g.large": 0.0672,
-      "m6g.large": 0.077,
-      "m6g.xlarge": 0.154,
-      "c6g.large": 0.068,
-      "c6g.xlarge": 0.136
-    },
-    "eu-west-1": {
-      "t3.medium": 0.0456,
-      "t3.large": 0.0912,
-      "m5.large": 0.107,
-      "m5.xlarge": 0.214,
-      "c5.large": 0.096,
-      "c5.xlarge": 0.192,
-      "t4g.medium": 0.0376,
-      "t4g.large": 0.0752,
-      "m6g.large": 0.086,
-      "m6g.xlarge": 0.172,
-      "c6g.large": 0.076,
-      "c6g.xlarge": 0.152
-    },
-    "eu-central-1": {
-      "t3.medium": 0.0496,
-      "t3.large": 0.0992,
-      "m5.large": 0.115,
-      "m5.xlarge": 0.23,
-      "c5.large": 0.102,
-      "c5.xlarge": 0.204,
-      "t4g.medium": 0.0416,
-      "t4g.large": 0.0832,
-      "m6g.large": 0.092,
-      "m6g.xlarge": 0.184,
-      "c6g.large": 0.082,
-      "c6g.xlarge": 0.164
-    },
-    "ap-southeast-2": {
-      "t3.medium": 0.0544,
-      "t3.large": 0.1088,
-      "m5.large": 0.134,
-      "m5.xlarge": 0.268,
-      "c5.large": 0.118,
-      "c5.xlarge": 0.236,
-      "t4g.medium": 0.0452,
-      "t4g.large": 0.0904,
-      "m6g.large": 0.107,
-      "m6g.xlarge": 0.214,
-      "c6g.large": 0.094,
-      "c6g.xlarge": 0.188
-    }
-  }
-};
-
 // engine.ts
 var HOURS_PER_MONTH = 730;
 var GRAMS_PER_KWH_TO_KWH_FACTOR = 1e3;
 function resolveUtilization(input, ledger) {
+  if (input.avgUtilization !== void 0 && (input.avgUtilization < 0 || input.avgUtilization > 1)) {
+    throw new RangeError(`avgUtilization must be between 0 and 1, got ${input.avgUtilization}`);
+  }
+  if (input.hoursPerMonth !== void 0 && input.hoursPerMonth <= 0) {
+    throw new RangeError(`hoursPerMonth must be positive, got ${input.hoursPerMonth}`);
+  }
   return input.avgUtilization ?? ledger.metadata.assumptions.default_utilization.value;
 }
 function linearInterpolationWatts(idle, max, utilization) {
@@ -489,7 +344,12 @@ function wattsToCarbon(watts, hours, pue, gridIntensityGco2ePerKwh) {
 var ARM_UPGRADE_MAP = {
   m5: "m6g",
   c5: "c6g",
-  t3: "t4g"
+  t3: "t4g",
+  // Extended families — entries are safe no-ops if targets aren't in factors.json
+  r5: "r6g",
+  m5a: "m6g",
+  c5a: "c6g",
+  r5a: "r6g"
 };
 function getArmAlternative(instanceType, ledger) {
   const [family, size] = instanceType.split(".");
@@ -515,7 +375,7 @@ function getCleanerRegion(currentRegion, instanceType, ledger) {
     return null;
   return cleanestRegionId;
 }
-function calculateBaseline(input, ledger = factors_default2) {
+function calculateBaseline(input, ledger = factors_default) {
   const hours = input.hoursPerMonth ?? HOURS_PER_MONTH;
   const utilization = resolveUtilization(input, ledger);
   const regionData = ledger.regions[input.region];
@@ -524,6 +384,7 @@ function calculateBaseline(input, ledger = factors_default2) {
       totalCo2eGramsPerMonth: 0,
       totalCostUsdPerMonth: 0,
       confidence: "LOW_ASSUMED_DEFAULT",
+      scope: "SCOPE_2_OPERATIONAL",
       unsupportedReason: `Region "${input.region}" is not present in the open methodology ledger v${ledger.metadata.ledger_version}.`,
       assumptionsApplied: {
         utilizationApplied: utilization,
@@ -538,6 +399,7 @@ function calculateBaseline(input, ledger = factors_default2) {
       totalCo2eGramsPerMonth: 0,
       totalCostUsdPerMonth: 0,
       confidence: "LOW_ASSUMED_DEFAULT",
+      scope: "SCOPE_2_OPERATIONAL",
       unsupportedReason: `Instance type "${input.instanceType}" is not present in the open methodology ledger v${ledger.metadata.ledger_version}.`,
       assumptionsApplied: {
         utilizationApplied: utilization,
@@ -552,6 +414,7 @@ function calculateBaseline(input, ledger = factors_default2) {
       totalCo2eGramsPerMonth: 0,
       totalCostUsdPerMonth: 0,
       confidence: "LOW_ASSUMED_DEFAULT",
+      scope: "SCOPE_2_OPERATIONAL",
       unsupportedReason: `No pricing data for "${input.instanceType}" in "${input.region}" in the open methodology ledger v${ledger.metadata.ledger_version}.`,
       assumptionsApplied: {
         utilizationApplied: utilization,
@@ -578,6 +441,7 @@ function calculateBaseline(input, ledger = factors_default2) {
     totalCo2eGramsPerMonth,
     totalCostUsdPerMonth,
     confidence,
+    scope: "SCOPE_2_OPERATIONAL",
     assumptionsApplied: {
       utilizationApplied: utilization,
       gridIntensityApplied: regionData.grid_intensity_gco2e_per_kwh,
@@ -585,7 +449,7 @@ function calculateBaseline(input, ledger = factors_default2) {
     }
   };
 }
-function generateRecommendation(input, baseline, ledger = factors_default2) {
+function generateRecommendation(input, baseline, ledger = factors_default) {
   if (baseline.confidence === "LOW_ASSUMED_DEFAULT")
     return null;
   const candidates = [];
@@ -632,15 +496,15 @@ function generateRecommendation(input, baseline, ledger = factors_default2) {
   }
   if (candidates.length === 0)
     return null;
-  const scored = candidates.map((rec) => ({
-    rec,
-    score: Math.abs(rec.co2eDeltaGramsPerMonth) * 0.6 + Math.abs(rec.costDeltaUsdPerMonth) * 100 * 0.4
-    // normalise cost to similar scale
-  }));
+  const scored = candidates.map((rec) => {
+    const co2Pct = baseline.totalCo2eGramsPerMonth > 0 ? Math.abs(rec.co2eDeltaGramsPerMonth) / baseline.totalCo2eGramsPerMonth : 0;
+    const costPct = baseline.totalCostUsdPerMonth > 0 ? Math.abs(rec.costDeltaUsdPerMonth) / baseline.totalCostUsdPerMonth : 0;
+    return { rec, score: co2Pct * 0.6 + costPct * 0.4 };
+  });
   scored.sort((a, b) => b.score - a.score);
   return scored[0].rec;
 }
-function analysePlan(resources, skipped, planFile2, ledger = factors_default2) {
+function analysePlan(resources, skipped, planFile2, ledger = factors_default) {
   const analysedResources = resources.map((input) => {
     const baseline = calculateBaseline(input, ledger);
     const recommendation = generateRecommendation(input, baseline, ledger);
@@ -679,12 +543,12 @@ function analysePlan(resources, skipped, planFile2, ledger = factors_default2) {
 
 // formatters/util.ts
 function formatDelta(grams) {
-  const sign = grams <= 0 ? "-" : "+";
+  const sign = grams < 0 ? "-" : "+";
   const kg = Math.abs(grams) / 1e3;
   return `${sign}${kg.toFixed(2)}kg`;
 }
 function formatCostDelta(usd) {
-  const sign = usd <= 0 ? "-" : "+";
+  const sign = usd < 0 ? "-" : "+";
   return `${sign}$${Math.abs(usd).toFixed(2)}`;
 }
 function formatGrams(grams) {
@@ -701,7 +565,7 @@ function formatMarkdown(result2, options = {}) {
   out += `> **Total Current Footprint:** ${formatGrams(result2.totals.currentCo2eGramsPerMonth)} CO2e/month | **$${result2.totals.currentCostUsdPerMonth.toFixed(2)}**/month
 `;
   if (recsCount > 0) {
-    const pct = (result2.totals.potentialCo2eSavingGramsPerMonth / result2.totals.currentCo2eGramsPerMonth * 100).toFixed(1);
+    const pct = result2.totals.currentCo2eGramsPerMonth > 0 ? (result2.totals.potentialCo2eSavingGramsPerMonth / result2.totals.currentCo2eGramsPerMonth * 100).toFixed(1) : "0.0";
     out += `> **Potential Savings:** -${formatGrams(result2.totals.potentialCo2eSavingGramsPerMonth)} CO2e/month (${pct}%) | -$${result2.totals.potentialCostSavingUsdPerMonth.toFixed(2)}/month
 `;
     out += `> \u{1F4A1} Found **${recsCount}** optimization ${recsCount === 1 ? "recommendation" : "recommendations"}.
@@ -769,8 +633,13 @@ function formatMarkdown(result2, options = {}) {
   }
   out += `---
 `;
-  out += `*Emissions calculated using the Open GreenOps Methodology Ledger (v${result2.ledgerVersion}). Math is MIT-licensed and auditable. Analysed at ${result2.analysedAt}. [Learn more](${METHODOLOGY_URL}).*
+  out += `*Emissions calculated using the Open GreenOps Methodology Ledger (v${result2.ledgerVersion}). Scope 2 operational emissions only \u2014 embodied carbon and water are not tracked. Math is MIT-licensed and auditable. Analysed at ${result2.analysedAt}. [Learn more](${METHODOLOGY_URL}).*
 `;
+  if (result2.skipped.length > 0) {
+    out += `
+> \u26A0\uFE0F **Coverage note:** This analysis covers \`aws_instance\` and \`aws_db_instance\` resources only. Compute managed via launch templates, ASGs, ECS, EKS, or Lambda is not yet supported and may not be reflected above.
+`;
+  }
   if (options.showUpgradePrompt) {
     out += `
 > \u{1F3E2} **Managing green-ops across dozens of repositories?** [Upgrade to GreenOps Dashboard](https://greenops-cli.dev/upgrade) to aggregate CI/CD carbon data natively.
@@ -784,7 +653,7 @@ function truncate(str, len) {
   const visible = str.replace(/\x1b\[[0-9;]*m/g, "");
   if (visible.length > len)
     return visible.substring(0, len - 3) + "...";
-  return str + " ".repeat(len - visible.length);
+  return visible + " ".repeat(len - visible.length);
 }
 function formatTable(result2) {
   let out = `
@@ -847,13 +716,19 @@ var { positionals, values } = (0, import_node_util.parseArgs)({
     format: { type: "string", default: "markdown" },
     coverage: { type: "boolean", default: false },
     help: { type: "boolean", default: false },
+    version: { type: "boolean", default: false },
     "show-upgrade-prompt": { type: "string", default: "true" }
   }
 });
+if (values.version) {
+  console.log(package_default.version);
+  process.exit(0);
+}
 if (values.help) {
-  console.log(`GreenOps CLI
+  console.log(`GreenOps CLI v${package_default.version}
 Usage: greenops-cli diff <plan.json> [--format markdown|table|json]
-       greenops-cli --coverage [--format json]`);
+       greenops-cli --coverage [--format json]
+       greenops-cli --version`);
   process.exit(0);
 }
 if (values.coverage) {

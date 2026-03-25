@@ -53,6 +53,12 @@ const GRAMS_PER_KWH_TO_KWH_FACTOR = 1000; // grid intensity is in gCO2e/kWh
  * Precedence: explicit input → ledger metadata default.
  */
 function resolveUtilization(input: ResourceInput, ledger: Ledger): number {
+  if (input.avgUtilization !== undefined && (input.avgUtilization < 0 || input.avgUtilization > 1)) {
+    throw new RangeError(`avgUtilization must be between 0 and 1, got ${input.avgUtilization}`);
+  }
+  if (input.hoursPerMonth !== undefined && input.hoursPerMonth <= 0) {
+    throw new RangeError(`hoursPerMonth must be positive, got ${input.hoursPerMonth}`);
+  }
   return input.avgUtilization ?? ledger.metadata.assumptions.default_utilization.value;
 }
 
@@ -63,6 +69,11 @@ function resolveUtilization(input: ResourceInput, ledger: Ledger): number {
  * This is the standard CCF model for general-purpose compute.
  * It assumes power scales linearly between idle and max TDP
  * as CPU utilization increases from 0% to 100%.
+ *
+ * NOTE (CPU-only): This model uses only CPU TDP bounds. Memory power draw
+ * is a known omission — GreenPixie and some CCF extensions include a separate
+ * memory power component. Our factors.json stores memory_gb per instance for
+ * future expansion, but it is NOT used in the current calculation.
  */
 function linearInterpolationWatts(
   idle: number,
@@ -98,6 +109,11 @@ const ARM_UPGRADE_MAP: Record<string, string> = {
   m5: 'm6g',
   c5: 'c6g',
   t3: 't4g',
+  // Extended families — entries are safe no-ops if targets aren't in factors.json
+  r5: 'r6g',
+  m5a: 'm6g',
+  c5a: 'c6g',
+  r5a: 'r6g',
 };
 
 /**
@@ -177,6 +193,7 @@ export function calculateBaseline(
       totalCo2eGramsPerMonth: 0,
       totalCostUsdPerMonth: 0,
       confidence: 'LOW_ASSUMED_DEFAULT',
+      scope: 'SCOPE_2_OPERATIONAL',
       unsupportedReason: `Region "${input.region}" is not present in the open methodology ledger v${ledger.metadata.ledger_version}.`,
       assumptionsApplied: {
         utilizationApplied: utilization,
@@ -193,6 +210,7 @@ export function calculateBaseline(
       totalCo2eGramsPerMonth: 0,
       totalCostUsdPerMonth: 0,
       confidence: 'LOW_ASSUMED_DEFAULT',
+      scope: 'SCOPE_2_OPERATIONAL',
       unsupportedReason: `Instance type "${input.instanceType}" is not present in the open methodology ledger v${ledger.metadata.ledger_version}.`,
       assumptionsApplied: {
         utilizationApplied: utilization,
@@ -209,6 +227,7 @@ export function calculateBaseline(
       totalCo2eGramsPerMonth: 0,
       totalCostUsdPerMonth: 0,
       confidence: 'LOW_ASSUMED_DEFAULT',
+      scope: 'SCOPE_2_OPERATIONAL',
       unsupportedReason: `No pricing data for "${input.instanceType}" in "${input.region}" in the open methodology ledger v${ledger.metadata.ledger_version}.`,
       assumptionsApplied: {
         utilizationApplied: utilization,
@@ -253,6 +272,7 @@ export function calculateBaseline(
     totalCo2eGramsPerMonth,
     totalCostUsdPerMonth,
     confidence,
+    scope: 'SCOPE_2_OPERATIONAL',
     assumptionsApplied: {
       utilizationApplied: utilization,
       gridIntensityApplied: regionData.grid_intensity_gco2e_per_kwh,
@@ -344,12 +364,16 @@ export function generateRecommendation(
 
   // Return the recommendation with the greatest combined carbon + cost reduction.
   // We weight carbon reduction at 60% and cost at 40% to reflect the tool's primary mission.
-  const scored = candidates.map((rec) => ({
-    rec,
-    score:
-      Math.abs(rec.co2eDeltaGramsPerMonth) * 0.6 +
-      Math.abs(rec.costDeltaUsdPerMonth) * 100 * 0.4, // normalise cost to similar scale
-  }));
+  // Both dimensions are normalized to percentage-of-baseline so the weighting is accurate.
+  const scored = candidates.map((rec) => {
+    const co2Pct = baseline.totalCo2eGramsPerMonth > 0
+      ? Math.abs(rec.co2eDeltaGramsPerMonth) / baseline.totalCo2eGramsPerMonth
+      : 0;
+    const costPct = baseline.totalCostUsdPerMonth > 0
+      ? Math.abs(rec.costDeltaUsdPerMonth) / baseline.totalCostUsdPerMonth
+      : 0;
+    return { rec, score: co2Pct * 0.6 + costPct * 0.4 };
+  });
 
   scored.sort((a, b) => b.score - a.score);
   return scored[0].rec;

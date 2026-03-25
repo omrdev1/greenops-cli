@@ -23,6 +23,12 @@ export interface EmissionAndCostEstimate {
   
   confidence: ConfidenceLevel;
   unsupportedReason?: string;  
+
+  /** Which emission scopes this estimate covers.
+   *  Currently SCOPE_2_OPERATIONAL only — embodied emissions (Scope 3) and
+   *  water consumption are not tracked. */
+  scope: 'SCOPE_2_OPERATIONAL';
+
   assumptionsApplied: {
     utilizationApplied: number;
     gridIntensityApplied: number;

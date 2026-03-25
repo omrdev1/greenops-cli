@@ -8,10 +8,10 @@ function visibleLength(str: string): number {
 }
 
 function truncate(str: string, len: number): string {
+  // Always use visible text for consistent output — callers handle coloring at row level
   const visible = str.replace(/\x1b\[[0-9;]*m/g, '');
   if (visible.length > len) return visible.substring(0, len - 3) + '...';
-  // Pad based on visible length, not raw string length (which includes ANSI bytes)
-  return str + ' '.repeat(len - visible.length);
+  return visible + ' '.repeat(len - visible.length);
 }
 
 export function formatTable(result: PlanAnalysisResult): string {

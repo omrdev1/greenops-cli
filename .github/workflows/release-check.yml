@@ -25,6 +25,9 @@ jobs:
       - name: Validate Tests (engine + extractor)
         run: npm test
 
+      - name: Type check
+        run: npx tsc --noEmit
+
       - name: Build dist
         run: npm run build
 

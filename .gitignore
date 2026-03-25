@@ -6,7 +6,6 @@ coverage/
 .claude/worktrees/
 
 # Ad-hoc & Demo Files
-demo.json
 launch_*.md
 research.*.md
 *.log
