@@ -7,8 +7,8 @@ var import_node_util = require("node:util");
 // factors.json with { type: 'json' }
 var factors_default = {
   metadata: {
-    ledger_version: "1.0.0",
-    updated_at: "2026-03-18T00:00:00Z",
+    ledger_version: "1.1.0",
+    updated_at: "2026-03-25T00:00:00Z",
     sources: {
       grid: "electricity-maps-2024-avg",
       hardware: "cloud-carbon-footprint-v3",
@@ -54,91 +54,73 @@ var factors_default = {
       architecture: "x86_64",
       vcpus: 2,
       memory_gb: 4,
-      power_watts: {
-        idle: 3.4,
-        max: 10.2
-      }
+      power_watts: { idle: 3.4, max: 10.2 }
     },
     "t3.large": {
       architecture: "x86_64",
       vcpus: 2,
       memory_gb: 8,
-      power_watts: {
-        idle: 6.8,
-        max: 20.4
-      }
+      power_watts: { idle: 6.8, max: 20.4 }
     },
     "m5.large": {
       architecture: "x86_64",
       vcpus: 2,
       memory_gb: 8,
-      power_watts: {
-        idle: 6.8,
-        max: 20.4
-      }
+      power_watts: { idle: 6.8, max: 20.4 }
     },
     "m5.xlarge": {
       architecture: "x86_64",
       vcpus: 4,
       memory_gb: 16,
-      power_watts: {
-        idle: 13.6,
-        max: 40.8
-      }
+      power_watts: { idle: 13.6, max: 40.8 }
     },
     "c5.large": {
       architecture: "x86_64",
       vcpus: 2,
       memory_gb: 4,
-      power_watts: {
-        idle: 6.5,
-        max: 22
-      }
+      power_watts: { idle: 6.5, max: 22 }
     },
     "c5.xlarge": {
       architecture: "x86_64",
       vcpus: 4,
       memory_gb: 8,
-      power_watts: {
-        idle: 13,
-        max: 44
-      }
+      power_watts: { idle: 13, max: 44 }
+    },
+    "t4g.medium": {
+      architecture: "arm64",
+      vcpus: 2,
+      memory_gb: 4,
+      power_watts: { idle: 2.2, max: 6.8 }
+    },
+    "t4g.large": {
+      architecture: "arm64",
+      vcpus: 2,
+      memory_gb: 8,
+      power_watts: { idle: 4.4, max: 13.6 }
     },
     "m6g.large": {
       architecture: "arm64",
       vcpus: 2,
       memory_gb: 8,
-      power_watts: {
-        idle: 4.1,
-        max: 13.2
-      }
+      power_watts: { idle: 4.1, max: 13.2 }
     },
     "m6g.xlarge": {
       architecture: "arm64",
       vcpus: 4,
       memory_gb: 16,
-      power_watts: {
-        idle: 8.2,
-        max: 26.4
-      }
+      power_watts: { idle: 8.2, max: 26.4 }
     },
     "c6g.large": {
       architecture: "arm64",
       vcpus: 2,
       memory_gb: 4,
-      power_watts: {
-        idle: 3.9,
-        max: 14.5
-      }
+      power_watts: { idle: 3.9, max: 14.5 }
     },
     "c6g.xlarge": {
       architecture: "arm64",
       vcpus: 4,
       memory_gb: 8,
-      power_watts: {
-        idle: 7.8,
-        max: 29
-      }
+      power_watts: { idle: 7.8, max: 29 }
     }
   },
   pricing_usd_per_hour: {
@@ -149,6 +131,8 @@ var factors_default = {
       "m5.xlarge": 0.192,
       "c5.large": 0.085,
       "c5.xlarge": 0.17,
+      "t4g.medium": 0.0336,
+      "t4g.large": 0.0672,
       "m6g.large": 0.077,
       "m6g.xlarge": 0.154,
       "c6g.large": 0.068,
@@ -161,6 +145,8 @@ var factors_default = {
       "m5.xlarge": 0.192,
       "c5.large": 0.085,
       "c5.xlarge": 0.17,
+      "t4g.medium": 0.0336,
+      "t4g.large": 0.0672,
       "m6g.large": 0.077,
       "m6g.xlarge": 0.154,
       "c6g.large": 0.068,
@@ -173,6 +159,8 @@ var factors_default = {
       "m5.xlarge": 0.214,
       "c5.large": 0.096,
       "c5.xlarge": 0.192,
+      "t4g.medium": 0.0376,
+      "t4g.large": 0.0752,
       "m6g.large": 0.086,
       "m6g.xlarge": 0.172,
       "c6g.large": 0.076,
@@ -185,6 +173,8 @@ var factors_default = {
       "m5.xlarge": 0.23,
       "c5.large": 0.102,
       "c5.xlarge": 0.204,
+      "t4g.medium": 0.0416,
+      "t4g.large": 0.0832,
       "m6g.large": 0.092,
       "m6g.xlarge": 0.184,
       "c6g.large": 0.082,
@@ -197,6 +187,8 @@ var factors_default = {
       "m5.xlarge": 0.268,
       "c5.large": 0.118,
       "c5.xlarge": 0.236,
+      "t4g.medium": 0.0452,
+      "t4g.large": 0.0904,
       "m6g.large": 0.107,
       "m6g.xlarge": 0.214,
       "c6g.large": 0.094,
@@ -290,8 +282,8 @@ function extractResourceInputs(planFilePath) {
 // factors.json
 var factors_default2 = {
   metadata: {
-    ledger_version: "1.0.0",
-    updated_at: "2026-03-18T00:00:00Z",
+    ledger_version: "1.1.0",
+    updated_at: "2026-03-25T00:00:00Z",
     sources: {
       grid: "electricity-maps-2024-avg",
       hardware: "cloud-carbon-footprint-v3",
@@ -337,91 +329,73 @@ var factors_default2 = {
       architecture: "x86_64",
       vcpus: 2,
       memory_gb: 4,
-      power_watts: {
-        idle: 3.4,
-        max: 10.2
-      }
+      power_watts: { idle: 3.4, max: 10.2 }
     },
     "t3.large": {
       architecture: "x86_64",
       vcpus: 2,
       memory_gb: 8,
-      power_watts: {
-        idle: 6.8,
-        max: 20.4
-      }
+      power_watts: { idle: 6.8, max: 20.4 }
     },
     "m5.large": {
       architecture: "x86_64",
       vcpus: 2,
       memory_gb: 8,
-      power_watts: {
-        idle: 6.8,
-        max: 20.4
-      }
+      power_watts: { idle: 6.8, max: 20.4 }
     },
     "m5.xlarge": {
       architecture: "x86_64",
       vcpus: 4,
       memory_gb: 16,
-      power_watts: {
-        idle: 13.6,
-        max: 40.8
-      }
+      power_watts: { idle: 13.6, max: 40.8 }
     },
     "c5.large": {
       architecture: "x86_64",
       vcpus: 2,
       memory_gb: 4,
-      power_watts: {
-        idle: 6.5,
-        max: 22
-      }
+      power_watts: { idle: 6.5, max: 22 }
     },
     "c5.xlarge": {
       architecture: "x86_64",
       vcpus: 4,
       memory_gb: 8,
-      power_watts: {
-        idle: 13,
-        max: 44
-      }
+      power_watts: { idle: 13, max: 44 }
+    },
+    "t4g.medium": {
+      architecture: "arm64",
+      vcpus: 2,
+      memory_gb: 4,
+      power_watts: { idle: 2.2, max: 6.8 }
+    },
+    "t4g.large": {
+      architecture: "arm64",
+      vcpus: 2,
+      memory_gb: 8,
+      power_watts: { idle: 4.4, max: 13.6 }
     },
     "m6g.large": {
       architecture: "arm64",
       vcpus: 2,
       memory_gb: 8,
-      power_watts: {
-        idle: 4.1,
-        max: 13.2
-      }
+      power_watts: { idle: 4.1, max: 13.2 }
     },
     "m6g.xlarge": {
       architecture: "arm64",
       vcpus: 4,
       memory_gb: 16,
-      power_watts: {
-        idle: 8.2,
-        max: 26.4
-      }
+      power_watts: { idle: 8.2, max: 26.4 }
     },
     "c6g.large": {
       architecture: "arm64",
       vcpus: 2,
       memory_gb: 4,
-      power_watts: {
-        idle: 3.9,
-        max: 14.5
-      }
+      power_watts: { idle: 3.9, max: 14.5 }
     },
     "c6g.xlarge": {
       architecture: "arm64",
       vcpus: 4,
       memory_gb: 8,
-      power_watts: {
-        idle: 7.8,
-        max: 29
-      }
+      power_watts: { idle: 7.8, max: 29 }
     }
   },
   pricing_usd_per_hour: {
@@ -432,6 +406,8 @@ var factors_default2 = {
       "m5.xlarge": 0.192,
       "c5.large": 0.085,
       "c5.xlarge": 0.17,
+      "t4g.medium": 0.0336,
+      "t4g.large": 0.0672,
       "m6g.large": 0.077,
       "m6g.xlarge": 0.154,
       "c6g.large": 0.068,
@@ -444,6 +420,8 @@ var factors_default2 = {
       "m5.xlarge": 0.192,
       "c5.large": 0.085,
       "c5.xlarge": 0.17,
+      "t4g.medium": 0.0336,
+      "t4g.large": 0.0672,
       "m6g.large": 0.077,
       "m6g.xlarge": 0.154,
       "c6g.large": 0.068,
@@ -456,6 +434,8 @@ var factors_default2 = {
       "m5.xlarge": 0.214,
       "c5.large": 0.096,
       "c5.xlarge": 0.192,
+      "t4g.medium": 0.0376,
+      "t4g.large": 0.0752,
       "m6g.large": 0.086,
       "m6g.xlarge": 0.172,
       "c6g.large": 0.076,
@@ -468,6 +448,8 @@ var factors_default2 = {
       "m5.xlarge": 0.23,
       "c5.large": 0.102,
       "c5.xlarge": 0.204,
+      "t4g.medium": 0.0416,
+      "t4g.large": 0.0832,
       "m6g.large": 0.092,
       "m6g.xlarge": 0.184,
       "c6g.large": 0.082,
@@ -480,6 +462,8 @@ var factors_default2 = {
       "m5.xlarge": 0.268,
       "c5.large": 0.118,
       "c5.xlarge": 0.236,
+      "t4g.medium": 0.0452,
+      "t4g.large": 0.0904,
       "m6g.large": 0.107,
       "m6g.xlarge": 0.214,
       "c6g.large": 0.094,
@@ -505,7 +489,6 @@ var ARM_UPGRADE_MAP = {
   m5: "m6g",
   c5: "c6g",
   t3: "t4g"
-  // Note: t4g must be added to factors.json when supported
 };
 function getArmAlternative(instanceType, ledger) {
   const [family, size] = instanceType.split(".");
@@ -797,7 +780,10 @@ function formatMarkdown(result2, options = {}) {
 
 // formatters/table.ts
 function truncate(str, len) {
-  return str.length > len ? str.substring(0, len - 3) + "..." : str.padEnd(len);
+  const visible = str.replace(/\x1b\[[0-9;]*m/g, "");
+  if (visible.length > len)
+    return visible.substring(0, len - 3) + "...";
+  return str + " ".repeat(len - visible.length);
 }
 function formatTable(result2) {
   let out = `
@@ -844,7 +830,9 @@ function formatTable(result2) {
 // formatters/json.ts
 function formatJson(result2) {
   const envelope = {
-    schemaVersion: "1.0.0",
+    // schemaVersion tracks the ledger version so downstream consumers
+    // can version-gate parsing logic as the methodology evolves.
+    schemaVersion: result2.ledgerVersion,
     result: result2
   };
   return JSON.stringify(envelope);
