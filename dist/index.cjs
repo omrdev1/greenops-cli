@@ -211,7 +211,7 @@ var package_default = {
     node: ">=20"
   },
   scripts: {
-    test: "tsx --test './*.test.ts' './formatters/*.test.ts'",
+    test: "tsx --test ./*.test.ts ./formatters/*.test.ts",
     typecheck: "tsc --noEmit",
     build: 'esbuild cli.ts --bundle --platform=node --target=node20 --outfile=dist/index.cjs --format=cjs --banner:js="#!/usr/bin/env node"',
     prepack: "npm run build"
