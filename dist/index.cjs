@@ -228,21 +228,22 @@ function extractResourceInputs(planFilePath) {
   try {
     raw = (0, import_node_fs.readFileSync)(planFilePath, "utf8");
   } catch (err) {
-    result2.error = `Failed to read plan file: ${err.message}`;
+    result2.error = `Failed to read plan file: ${err instanceof Error ? err.message : String(err)}`;
     return result2;
   }
   let plan;
   try {
     plan = JSON.parse(raw);
   } catch (err) {
-    result2.error = `File is not valid JSON: ${err.message}`;
+    result2.error = `File is not valid JSON: ${err instanceof Error ? err.message : String(err)}`;
     return result2;
   }
   if (!plan || typeof plan !== "object" || !Array.isArray(plan.resource_changes)) {
     result2.error = "Invalid Terraform plan format: missing resource_changes array.";
     return result2;
   }
-  for (const res of plan.resource_changes) {
+  const typedPlan = plan;
+  for (const res of typedPlan.resource_changes) {
     const actions = res.change?.actions;
     if (!Array.isArray(actions) || !actions.includes("create") && !actions.includes("update")) {
       continue;
@@ -616,7 +617,7 @@ function generateRecommendation(input, baseline, ledger = factors_default2) {
     if (regionEstimate.confidence !== "LOW_ASSUMED_DEFAULT") {
       const co2Delta = regionEstimate.totalCo2eGramsPerMonth - baseline.totalCo2eGramsPerMonth;
       const costDelta = regionEstimate.totalCostUsdPerMonth - baseline.totalCostUsdPerMonth;
-      const co2ReductionPct = Math.abs(co2Delta) / baseline.totalCo2eGramsPerMonth;
+      const co2ReductionPct = baseline.totalCo2eGramsPerMonth > 0 ? Math.abs(co2Delta) / baseline.totalCo2eGramsPerMonth : 0;
       if (co2Delta < 0 && co2ReductionPct > 0.15) {
         const regionName = ledger.regions[cleanerRegion]?.location ?? cleanerRegion;
         const costNote = costDelta > 0 ? ` (note: cost increases by $${costDelta.toFixed(2)}/month)` : ` saving $${Math.abs(costDelta).toFixed(2)}/month`;

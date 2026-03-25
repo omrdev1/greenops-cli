@@ -53,25 +53,26 @@ export function extractResourceInputs(planFilePath: string): ExtractorResult {
   let raw: string;
   try {
     raw = readFileSync(planFilePath, 'utf8');
-  } catch (err: any) {
-    result.error = `Failed to read plan file: ${err.message}`;
+  } catch (err: unknown) {
+    result.error = `Failed to read plan file: ${err instanceof Error ? err.message : String(err)}`;
     return result;
   }
 
-  let plan: any;
+  let plan: unknown;
   try {
     plan = JSON.parse(raw);
-  } catch (err: any) {
-    result.error = `File is not valid JSON: ${err.message}`;
+  } catch (err: unknown) {
+    result.error = `File is not valid JSON: ${err instanceof Error ? err.message : String(err)}`;
     return result;
   }
 
-  if (!plan || typeof plan !== 'object' || !Array.isArray(plan.resource_changes)) {
+  if (!plan || typeof plan !== 'object' || !Array.isArray((plan as Record<string, unknown>).resource_changes)) {
     result.error = 'Invalid Terraform plan format: missing resource_changes array.';
     return result;
   }
 
-  for (const res of plan.resource_changes) {
+  const typedPlan = plan as { resource_changes: unknown[] };
+  for (const res of typedPlan.resource_changes) {
     const actions = res.change?.actions;
     
     // Only process resources where change.actions includes "create" or "update"
