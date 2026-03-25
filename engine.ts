@@ -97,7 +97,7 @@ function wattsToCarbon(
 const ARM_UPGRADE_MAP: Record<string, string> = {
   m5: 'm6g',
   c5: 'c6g',
-  t3: 't4g', // Note: t4g must be added to factors.json when supported
+  t3: 't4g',
 };
 
 /**

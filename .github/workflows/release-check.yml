@@ -12,24 +12,37 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - name: Setup Node 20
         uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'npm'
-      
+
       - name: Install dependencies
         run: npm ci
-        
+
       - name: Validate Tests (engine + extractor)
         run: npm test
-        
-      - name: Validate Prepack Build Output
+
+      - name: Build dist
         run: npm run build
-        
-      - name: Hash Diff Validation 
-        # This natively ensures the compiled bundle is precisely identical to source-tracking graphs preventing maliciously injected artifacts statically.
-        run: git diff --exit-code dist/index.cjs
-        
-      - name: CLI Coverage Run Configuration Check
+
+      - name: Verify dist matches committed artifact
+        # Rebuilds from source and checks the result matches what was committed.
+        # Prevents shipping a stale or manually-tampered bundle.
+        # On a fresh tag cut: run `npm run build` locally, commit dist/index.cjs, then tag.
+        run: |
+          if ! git diff --exit-code dist/index.cjs; then
+            echo ""
+            echo "ERROR: The committed dist/index.cjs does not match what builds from current source."
+            echo "Run 'npm run build' locally, commit the updated dist/index.cjs, then re-tag."
+            exit 1
+          fi
+          echo "dist/index.cjs matches committed artifact ✓"
+
+      - name: CLI smoke test — coverage flag
         run: node dist/index.cjs --coverage
+
+      - name: CLI smoke test — diff with demo plan
+        run: node dist/index.cjs diff demo.json --format table
