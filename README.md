@@ -14,7 +14,7 @@ Resource               | Instance   | Region    | CO2e/mo | Cost/mo | Action
 aws_instance.api       | m5.xlarge  | us-east-1 | 8.63kg  | $140.16 | → Switch to m6g.xlarge
 aws_db_instance.main   | m5.large   | us-east-1 | 4.31kg  | $70.08  | → Switch to m6g.large
 
-Emissions calculated using Open GreenOps Methodology Ledger v1.0.0 · MIT Licensed
+Emissions calculated using Open GreenOps Methodology Ledger v1.1.0 · MIT Licensed
 ```
 
 ## 🚀 Quickstart
@@ -53,7 +53,7 @@ jobs:
 
 ### JSON Output Mode
 
-The CLI supports `--format json`, which emits the raw `PlanAnalysisResult` wrapped in a `{"schemaVersion": "1.0.0"}` envelope. Use this to pipe output into external data warehouses or the GreenOps Dashboard.
+The CLI supports `--format json`, which emits the raw `PlanAnalysisResult` wrapped in a `{"schemaVersion": "1.1.0"}` envelope. Use this to pipe output into external data warehouses or the GreenOps Dashboard.
 ```bash
 node dist/index.cjs diff plan.json --format json > result.json
 ```
@@ -61,11 +61,12 @@ node dist/index.cjs diff plan.json --format json > result.json
 ## 📊 Supported Matrix
 ```text
 Regions:   us-east-1, us-west-2, eu-west-1, eu-central-1, ap-southeast-2
-Instances: t3.medium, t3.large, m5.large, m5.xlarge, c5.large, c5.xlarge,
-           m6g.large, m6g.xlarge, c6g.large, c6g.xlarge
+Instances: t3.medium, t3.large, t4g.medium, t4g.large,
+           m5.large, m5.xlarge, m6g.large, m6g.xlarge,
+           c5.large, c5.xlarge, c6g.large, c6g.xlarge
 ```
 
-Run `node dist/index.cjs --coverage` to see the full matrix, or `--coverage --json` for machine-readable output.
+Run `node dist/index.cjs --coverage` to see the full matrix, or `--coverage --format json` for machine-readable output.
 
 
 ## 🧮 How the Math Works
