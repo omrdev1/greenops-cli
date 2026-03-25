@@ -238,8 +238,12 @@ export function calculateBaseline(
   const totalCostUsdPerMonth = pricePerHour * hours;
 
   // --- Confidence ---
-  // HIGH: all values from ledger with no fallbacks applied.
-  // MEDIUM: explicit utilization supplied but outside typical range (future use).
+  // HIGH:              all values sourced from ledger, default utilization applied.
+  // MEDIUM:            caller supplied explicit avgUtilization. The estimate is still
+  //                    mathematically valid but depends on the accuracy of the supplied
+  //                    value. SaaS consumers should surface this to the end user.
+  // LOW_ASSUMED_DEFAULT: unsupported region/instance/pricing — estimate is zero and
+  //                    unreliable. See unsupportedReason for details.
   const confidence: ConfidenceLevel =
     input.avgUtilization !== undefined ? 'MEDIUM' : 'HIGH';
 

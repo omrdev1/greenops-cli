@@ -4,10 +4,10 @@ import { formatJson } from './formatters/json.js';
 import { PlanAnalysisResult } from './types.js';
 
 describe('JSON Formatter', () => {
-  it('outputs valid, compact JSON with a schemaVersion attached and no ANSI characters', () => {
+  it('outputs valid, compact JSON with schemaVersion matching ledgerVersion and no ANSI characters', () => {
     const mockResult: PlanAnalysisResult = {
       analysedAt: new Date().toISOString(),
-      ledgerVersion: '1.0.0',
+      ledgerVersion: '1.1.0',
       planFile: 'plan.json',
       resources: [],
       skipped: [],
@@ -19,9 +19,10 @@ describe('JSON Formatter', () => {
       }
     };
     const jsonStr = formatJson(mockResult);
-    
+
     const parsed = JSON.parse(jsonStr);
-    assert.equal(parsed.schemaVersion, '1.0.0');
+    // schemaVersion must always mirror the ledgerVersion from the result
+    assert.equal(parsed.schemaVersion, '1.1.0');
     assert.equal(parsed.result.totals.currentCo2eGramsPerMonth, 500);
     assert.ok(!jsonStr.includes('\\n'));
     assert.ok(!jsonStr.includes('\\x1b'));

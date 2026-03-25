@@ -44,5 +44,25 @@ jobs:
       - name: CLI smoke test — coverage flag
         run: node dist/index.cjs --coverage
 
-      - name: CLI smoke test — diff with demo plan
-        run: node dist/index.cjs diff demo.json --format table
+      - name: CLI smoke test — diff with inline fixture
+        # Uses an inline fixture so we don't depend on demo.json being present
+        # (demo.json is gitignored as an ad-hoc file)
+        run: |
+          cat > /tmp/smoke-plan.json << 'EOF'
+          {
+            "resource_changes": [
+              {
+                "address": "aws_instance.smoke_test",
+                "type": "aws_instance",
+                "change": {
+                  "actions": ["create"],
+                  "after": {
+                    "instance_type": "m5.large",
+                    "region": "us-east-1"
+                  }
+                }
+              }
+            ]
+          }
+          EOF
+          node dist/index.cjs diff /tmp/smoke-plan.json --format table

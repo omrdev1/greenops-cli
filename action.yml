@@ -24,7 +24,10 @@ runs:
       id: run-cli
       shell: bash
       run: |
-        node ${{ github.action_path }}/dist/index.cjs diff ${{ inputs.plan-file }} --format markdown --show-upgrade-prompt=${{ inputs.show-upgrade-prompt }} > greenops-output.md
+        # Quotes around paths prevent word-splitting if plan-file contains spaces
+        node "${{ github.action_path }}/dist/index.cjs" diff "${{ inputs.plan-file }}" \
+          --format markdown \
+          --show-upgrade-prompt=${{ inputs.show-upgrade-prompt }} > greenops-output.md
 
         EOF=$(dd if=/dev/urandom bs=15 count=1 status=none | base64)
         echo "comment_body<<$EOF" >> "$GITHUB_OUTPUT"
@@ -64,7 +67,9 @@ runs:
       env:
         GREENOPS_API_KEY: ${{ inputs.api-key }}
       run: |
-        node ${{ github.action_path }}/dist/index.cjs diff ${{ inputs.plan-file }} --format json > result.json
+        # Quotes around paths prevent word-splitting if plan-file contains spaces
+        node "${{ github.action_path }}/dist/index.cjs" diff "${{ inputs.plan-file }}" \
+          --format json > result.json
 
         jq --arg repo "$GITHUB_REPOSITORY" \
            --arg pr "${{ github.event.pull_request.number }}" \
