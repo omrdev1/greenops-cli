@@ -14,7 +14,7 @@ Resource               | Instance   | Region    | CO2e/mo | Cost/mo | Action
 aws_instance.api       | m5.xlarge  | us-east-1 | 8.63kg  | $140.16 | → Switch to m6g.xlarge
 aws_db_instance.main   | m5.large   | us-east-1 | 4.31kg  | $70.08  | → Switch to m6g.large
 
-Emissions calculated using Open GreenOps Methodology Ledger v1.1.0 · MIT Licensed
+Emissions calculated using Open GreenOps Methodology Ledger v1.1.0 · Scope 2 operational emissions only · MIT Licensed
 ```
 
 ## 🚀 Quickstart
@@ -66,12 +66,12 @@ Instances: t3.medium, t3.large, t4g.medium, t4g.large,
            c5.large, c5.xlarge, c6g.large, c6g.xlarge
 ```
 
-Run `node dist/index.cjs --coverage` to see the full matrix, or `--coverage --format json` for machine-readable output.
+Run `node dist/index.cjs --coverage` to see the full matrix, `--coverage --format json` for machine-readable output, or `--version` to check the installed version.
 
 
 ## 🧮 How the Math Works
 
-GreenOps uses the open Cloud Carbon Footprint (CCF) hardware coefficients and Electricity Maps grid intensity data. The methodology is MIT-licensed and fully documented in [METHODOLOGY.md](./METHODOLOGY.md) — including a worked example that produces the exact value asserted in `engine.test.ts`.
+GreenOps uses the open Cloud Carbon Footprint (CCF) hardware coefficients and Electricity Maps grid intensity data. Estimates cover **Scope 2 operational emissions only** (CPU power draw via linear interpolation). Embodied carbon (Scope 3) and water consumption are not tracked. The methodology is MIT-licensed and fully documented in [METHODOLOGY.md](./METHODOLOGY.md) — including a worked example that produces the exact value asserted in `engine.test.ts`.
 
 
 ## 🛑 What it doesn't do
@@ -80,6 +80,7 @@ GreenOps does not support:
 
 - Microsoft Azure or Google Cloud Platform (AWS only)
 - AWS Lambda or serverless compute
+- ECS, EKS, Auto Scaling Groups, or Launch Templates (compute managed behind these is not analysed — the tool will flag these as unsupported in its output)
 - Scope 3 embodied carbon (hardware manufacturing lifecycle)
 - Water consumption tracking
 - **Provider alias regions:** if your Terraform abstracts region into provider aliases, affected resources are skipped with a `known_after_apply` reason
