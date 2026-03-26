@@ -11,6 +11,7 @@ describe('JSON Formatter', () => {
       planFile: 'plan.json',
       resources: [],
       skipped: [],
+      unsupportedTypes: [],
       totals: {
         currentCo2eGramsPerMonth: 500,
         currentCostUsdPerMonth: 10,

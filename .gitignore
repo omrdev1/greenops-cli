@@ -5,6 +5,9 @@ coverage/
 # Claude Code worktrees (managed by git internally, never committed)
 .claude/worktrees/
 
+# Claude Code local settings (user-specific, never committed)
+.claude/settings.local.json
+
 # Ad-hoc & Demo Files
 launch_*.md
 research.*.md

@@ -10,6 +10,7 @@ function makeMockResult(overrides: Partial<PlanAnalysisResult> = {}): PlanAnalys
     planFile: 'plan.json',
     resources: [],
     skipped: [],
+    unsupportedTypes: [],
     totals: {
       currentCo2eGramsPerMonth: 0,
       currentCostUsdPerMonth: 0,
