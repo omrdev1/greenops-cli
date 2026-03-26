@@ -504,7 +504,7 @@ function generateRecommendation(input, baseline, ledger = factors_default) {
   scored.sort((a, b) => b.score - a.score);
   return scored[0].rec;
 }
-function analysePlan(resources, skipped, planFile2, ledger = factors_default) {
+function analysePlan(resources, skipped, planFile2, ledger = factors_default, unsupportedTypes = []) {
   const analysedResources = resources.map((input) => {
     const baseline = calculateBaseline(input, ledger);
     const recommendation = generateRecommendation(input, baseline, ledger);
@@ -537,6 +537,7 @@ function analysePlan(resources, skipped, planFile2, ledger = factors_default) {
     planFile: planFile2,
     resources: analysedResources,
     skipped,
+    unsupportedTypes,
     totals
   };
 }
@@ -635,9 +636,10 @@ function formatMarkdown(result2, options = {}) {
 `;
   out += `*Emissions calculated using the Open GreenOps Methodology Ledger (v${result2.ledgerVersion}). Scope 2 operational emissions only \u2014 embodied carbon and water are not tracked. Math is MIT-licensed and auditable. Analysed at ${result2.analysedAt}. [Learn more](${METHODOLOGY_URL}).*
 `;
-  if (result2.skipped.length > 0) {
+  if (result2.unsupportedTypes.length > 0) {
+    const typeList = result2.unsupportedTypes.map((t) => `\`${t}\``).join(", ");
     out += `
-> \u26A0\uFE0F **Coverage note:** This analysis covers \`aws_instance\` and \`aws_db_instance\` resources only. Compute managed via launch templates, ASGs, ECS, EKS, or Lambda is not yet supported and may not be reflected above.
+> \u26A0\uFE0F **Coverage note:** This analysis covers \`aws_instance\` and \`aws_db_instance\` resources only. The following compute-relevant types were detected but are not yet supported: ${typeList}. Their footprint is not reflected above.
 `;
   }
   if (options.showUpgradePrompt) {
@@ -752,7 +754,7 @@ if (extracted.error) {
   console.error(`Extraction Error: ${extracted.error}`);
   process.exit(1);
 }
-var result = analysePlan(extracted.resources, extracted.skipped, planFile);
+var result = analysePlan(extracted.resources, extracted.skipped, planFile, void 0, extracted.unsupportedTypes);
 var showUpgradePrompt = values["show-upgrade-prompt"] === "true";
 if (values.format === "table") {
   console.log(formatTable(result));

@@ -61,8 +61,9 @@ export function formatMarkdown(result: PlanAnalysisResult, options: FormatterOpt
   out += `---\n`;
   out += `*Emissions calculated using the Open GreenOps Methodology Ledger (v${result.ledgerVersion}). Scope 2 operational emissions only — embodied carbon and water are not tracked. Math is MIT-licensed and auditable. Analysed at ${result.analysedAt}. [Learn more](${METHODOLOGY_URL}).*\n`;
 
-  if (result.skipped.length > 0) {
-    out += `\n> ⚠️ **Coverage note:** This analysis covers \`aws_instance\` and \`aws_db_instance\` resources only. Compute managed via launch templates, ASGs, ECS, EKS, or Lambda is not yet supported and may not be reflected above.\n`;
+  if (result.unsupportedTypes.length > 0) {
+    const typeList = result.unsupportedTypes.map(t => `\`${t}\``).join(', ');
+    out += `\n> ⚠️ **Coverage note:** This analysis covers \`aws_instance\` and \`aws_db_instance\` resources only. The following compute-relevant types were detected but are not yet supported: ${typeList}. Their footprint is not reflected above.\n`;
   }
 
   if (options.showUpgradePrompt) {

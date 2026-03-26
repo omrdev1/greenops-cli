@@ -27,7 +27,7 @@ runs:
         # Quotes around paths prevent word-splitting if plan-file contains spaces
         node "${{ github.action_path }}/dist/index.cjs" diff "${{ inputs.plan-file }}" \
           --format markdown \
-          --show-upgrade-prompt=${{ inputs.show-upgrade-prompt }} > greenops-output.md
+          --show-upgrade-prompt="${{ inputs.show-upgrade-prompt }}" > greenops-output.md
 
         EOF=$(dd if=/dev/urandom bs=15 count=1 status=none | base64)
         echo "comment_body<<$EOF" >> "$GITHUB_OUTPUT"

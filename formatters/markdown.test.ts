@@ -10,6 +10,7 @@ function makeMockResult(overrides: Partial<PlanAnalysisResult> = {}): PlanAnalys
     planFile: 'plan.json',
     resources: [],
     skipped: [],
+    unsupportedTypes: [],
     totals: {
       currentCo2eGramsPerMonth: 0,
       currentCostUsdPerMonth: 0,
@@ -107,11 +108,21 @@ describe('formatMarkdown', () => {
     assert.ok(md.includes('Scope 2 operational emissions only'), 'Should include scope disclaimer');
   });
 
-  it('shows coverage note when resources are skipped', () => {
+  it('shows coverage note when unsupported compute types are present', () => {
     const result = makeMockResult({
-      skipped: [{ resourceId: 'aws_instance.unknown', reason: 'known_after_apply' }],
+      unsupportedTypes: ['aws_ecs_service', 'aws_lambda_function'],
     });
     const md = formatMarkdown(result);
-    assert.ok(md.includes('Coverage note'), 'Should include coverage note for skipped resources');
+    assert.ok(md.includes('Coverage note'), 'Should include coverage note for unsupported compute types');
+    assert.ok(md.includes('aws_ecs_service'), 'Should list the unsupported type');
+  });
+
+  it('does not show coverage note when only known_after_apply resources are skipped', () => {
+    const result = makeMockResult({
+      skipped: [{ resourceId: 'aws_instance.unknown', reason: 'known_after_apply' }],
+      unsupportedTypes: [],
+    });
+    const md = formatMarkdown(result);
+    assert.ok(!md.includes('Coverage note'), 'Should NOT show coverage note when skipped is only known_after_apply');
   });
 });

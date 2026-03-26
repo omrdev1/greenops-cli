@@ -392,7 +392,8 @@ export function analysePlan(
   resources: ResourceInput[],
   skipped: PlanAnalysisResult['skipped'],
   planFile: string,
-  ledger: Ledger = factorsData as Ledger
+  ledger: Ledger = factorsData as Ledger,
+  unsupportedTypes: string[] = []
 ): PlanAnalysisResult {
   const analysedResources: PlanAnalysisResult['resources'] = resources.map((input) => {
     const baseline = calculateBaseline(input, ledger);
@@ -429,6 +430,7 @@ export function analysePlan(
     planFile,
     resources: analysedResources,
     skipped,
+    unsupportedTypes,
     totals,
   };
 }

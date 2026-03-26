@@ -55,7 +55,7 @@ if (extracted.error) {
   process.exit(1);
 }
 
-const result = analysePlan(extracted.resources, extracted.skipped, planFile);
+const result = analysePlan(extracted.resources, extracted.skipped, planFile, undefined, extracted.unsupportedTypes);
 const showUpgradePrompt = values['show-upgrade-prompt'] === 'true';
 
 if (values.format === 'table') {
