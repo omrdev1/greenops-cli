@@ -1,0 +1,27 @@
+name: GreenOps E2E Test
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'extractor.ts'
+      - 'engine.ts'
+      - 'cli.ts'
+      - 'factors.json'
+      - 'dist/index.cjs'
+      - '.github/workflows/greenops-e2e.yml'
+
+jobs:
+  greenops-e2e:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run GreenOps against fixture plan
+        uses: ./
+        with:
+          plan-file: fixtures/tfplan.e2e.json
+          github-token: ${{ secrets.GITHUB_TOKEN }}

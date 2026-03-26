@@ -235,7 +235,30 @@ function isKnownAfterApply(change, fieldPath) {
     return true;
   return false;
 }
-function resolveRegion(change) {
+function extractProviderRegion(plan) {
+  const providerConfig = plan.configuration?.provider_config;
+  if (!providerConfig)
+    return null;
+  for (const [key, provider] of Object.entries(providerConfig)) {
+    if (key === "aws" || key.startsWith("aws.")) {
+      const alias = provider.expressions?.alias?.constant_value;
+      if (alias && key !== "aws")
+        continue;
+      const region = provider.expressions?.region?.constant_value;
+      if (region && typeof region === "string")
+        return region;
+    }
+  }
+  for (const [key, provider] of Object.entries(providerConfig)) {
+    if (key === "aws" || key.startsWith("aws.")) {
+      const region = provider.expressions?.region?.constant_value;
+      if (region && typeof region === "string")
+        return region;
+    }
+  }
+  return null;
+}
+function resolveRegion(change, providerRegion) {
   if (change?.after?.arn && typeof change.after.arn === "string") {
     const parts = change.after.arn.split(":");
     if (parts.length >= 4 && parts[3])
@@ -252,6 +275,8 @@ function resolveRegion(change) {
   if (change?.before?.region && typeof change.before.region === "string") {
     return change.before.region;
   }
+  if (providerRegion)
+    return providerRegion;
   return null;
 }
 function extractResourceInputs(planFilePath) {
@@ -275,6 +300,12 @@ function extractResourceInputs(planFilePath) {
     return result2;
   }
   const typedPlan = plan;
+  const providerRegion = extractProviderRegion(typedPlan);
+  const plannedValuesMap = /* @__PURE__ */ new Map();
+  for (const r of typedPlan.planned_values?.root_module?.resources ?? []) {
+    if (r.address && r.values)
+      plannedValuesMap.set(r.address, r.values);
+  }
   for (const rawRes of typedPlan.resource_changes) {
     const res = rawRes;
     const actions = res.change?.actions;
@@ -292,8 +323,14 @@ function extractResourceInputs(planFilePath) {
     const isDb = res.type === "aws_db_instance";
     const typeField = isDb ? "instance_class" : "instance_type";
     if (isKnownAfterApply(res.change, typeField)) {
-      result2.skipped.push({ resourceId: res.address, reason: "known_after_apply" });
-      continue;
+      const plannedType = plannedValuesMap.get(res.address)?.[typeField];
+      if (typeof plannedType !== "string") {
+        result2.skipped.push({ resourceId: res.address, reason: "known_after_apply" });
+        continue;
+      }
+      if (!res.change.after)
+        res.change.after = {};
+      res.change.after[typeField] = plannedType;
     }
     let instanceType = res.change.after[typeField];
     if (typeof res.change.after[typeField] !== "string") {
@@ -307,7 +344,7 @@ function extractResourceInputs(planFilePath) {
         continue;
       }
     }
-    const region = resolveRegion(res.change);
+    const region = resolveRegion(res.change, providerRegion);
     if (!region) {
       result2.skipped.push({ resourceId: res.address, reason: "known_after_apply" });
       continue;

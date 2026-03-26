@@ -16,6 +16,26 @@ interface TerraformResourceChange {
   };
 }
 
+interface TerraformPlan {
+  resource_changes: unknown[];
+  configuration?: {
+    provider_config?: Record<string, {
+      expressions?: {
+        region?: { constant_value?: string };
+        alias?: { constant_value?: string };
+      };
+    }>;
+  };
+  planned_values?: {
+    root_module?: {
+      resources?: Array<{
+        address: string;
+        values?: Record<string, unknown>;
+      }>;
+    };
+  };
+}
+
 export interface ExtractorResult {
   resources: ResourceInput[];
   skipped: PlanAnalysisResult['skipped'];
@@ -38,23 +58,55 @@ function isKnownAfterApply(change: TerraformResourceChange['change'], fieldPath:
 }
 
 /**
- * Attempts to resolve the AWS region for a resource in the plan.
- * Lookup chain is:
- * 1. `change.after.arn` (e.g. arn:aws:ec2:us-east-1:...)
- * 2. `change.after.availability_zone` (fallback, stripping last char)
- * 3. `change.after.region` (if provided explicitly on the resource)
- * 
- * If all fail, we will emit known_after_apply to skip.
+ * Extracts the default AWS region from the plan's provider configuration block.
+ * Handles multi-provider configs by preferring the un-aliased "aws" provider.
+ * Returns null if not statically resolvable (e.g. region set via variable).
  */
-function resolveRegion(change: TerraformResourceChange['change']): string | null {
+function extractProviderRegion(plan: TerraformPlan): string | null {
+  const providerConfig = plan.configuration?.provider_config;
+  if (!providerConfig) return null;
+
+  // First pass: prefer the default (un-aliased) aws provider
+  for (const [key, provider] of Object.entries(providerConfig)) {
+    if (key === 'aws' || key.startsWith('aws.')) {
+      const alias = provider.expressions?.alias?.constant_value;
+      if (alias && key !== 'aws') continue;
+      const region = provider.expressions?.region?.constant_value;
+      if (region && typeof region === 'string') return region;
+    }
+  }
+
+  // Second pass: accept any aws provider if no un-aliased one found
+  for (const [key, provider] of Object.entries(providerConfig)) {
+    if (key === 'aws' || key.startsWith('aws.')) {
+      const region = provider.expressions?.region?.constant_value;
+      if (region && typeof region === 'string') return region;
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Attempts to resolve the AWS region for a resource in the plan.
+ * Lookup chain:
+ * 1. `change.after.arn` (e.g. arn:aws:ec2:us-east-1:...)
+ * 2. `change.after.availability_zone` (strips trailing AZ letter)
+ * 3. `change.after.region` (explicit resource-level region attribute)
+ * 4. `change.before.region` (for update actions where region is unchanged)
+ * 5. `providerRegion` (from configuration.provider_config — handles real-world plans
+ *    where region is set on the provider block, not on individual resources)
+ *
+ * If all fail, returns null → resource will be skipped as known_after_apply.
+ */
+function resolveRegion(change: TerraformResourceChange['change'], providerRegion: string | null): string | null {
   if (change?.after?.arn && typeof change.after.arn === 'string') {
     const parts = change.after.arn.split(':');
     if (parts.length >= 4 && parts[3]) return parts[3];
   }
   
   if (change?.after?.availability_zone && typeof change.after.availability_zone === 'string') {
-    // Extract region from AZ using regex to handle Local Zones (e.g. us-east-1-bos-1a)
-    // and standard AZs (e.g. us-east-1a) correctly.
+    // Handles Local Zones (e.g. us-east-1-bos-1a) and standard AZs (e.g. us-east-1a)
     const azMatch = (change.after.availability_zone as string).match(/^([a-z]{2}-[a-z]+-\d+)/);
     if (azMatch) return azMatch[1];
   }
@@ -63,10 +115,14 @@ function resolveRegion(change: TerraformResourceChange['change']): string | null
     return change.after.region as string;
   }
 
-  // Fallback: check 'before' state for update actions where region persists unchanged
+  // For update actions where region is stable and lives in before state
   if (change?.before?.region && typeof change.before.region === 'string') {
     return change.before.region as string;
   }
+
+  // Real-world AWS plans: region lives on the provider block, not the resource.
+  // This is the most common case in practice.
+  if (providerRegion) return providerRegion;
   
   return null;
 }
@@ -95,7 +151,19 @@ export function extractResourceInputs(planFilePath: string): ExtractorResult {
     return result;
   }
 
-  const typedPlan = plan as { resource_changes: unknown[] };
+  const typedPlan = plan as TerraformPlan;
+
+  // Extract provider-level region once — used as final fallback in resolveRegion()
+  const providerRegion = extractProviderRegion(typedPlan);
+
+  // Build a lookup map from planned_values for instance type resolution.
+  // planned_values resolves attributes that are statically known but may not yet
+  // be reflected in change.after (e.g. when the provider populates defaults at plan time).
+  const plannedValuesMap = new Map<string, Record<string, unknown>>();
+  for (const r of typedPlan.planned_values?.root_module?.resources ?? []) {
+    if (r.address && r.values) plannedValuesMap.set(r.address, r.values);
+  }
+
   for (const rawRes of typedPlan.resource_changes) {
     const res = rawRes as TerraformResourceChange;
     const actions = res.change?.actions;
@@ -122,10 +190,18 @@ export function extractResourceInputs(planFilePath: string): ExtractorResult {
     const isDb = res.type === 'aws_db_instance';
     const typeField = isDb ? 'instance_class' : 'instance_type';
 
-    // Verify type isn't unknown_after_apply
+    // Verify type isn't unknown_after_apply.
+    // If change.after doesn't have it, check planned_values before giving up —
+    // some providers populate planned_values even when change.after is incomplete.
     if (isKnownAfterApply(res.change, typeField)) {
-      result.skipped.push({ resourceId: res.address, reason: 'known_after_apply' });
-      continue;
+      const plannedType = plannedValuesMap.get(res.address)?.[typeField];
+      if (typeof plannedType !== 'string') {
+        result.skipped.push({ resourceId: res.address, reason: 'known_after_apply' });
+        continue;
+      }
+      // Inject into change.after so downstream logic stays consistent
+      if (!res.change!.after) res.change!.after = {};
+      res.change!.after[typeField] = plannedType;
     }
 
     let instanceType: string = res.change!.after![typeField] as string;
@@ -146,7 +222,7 @@ export function extractResourceInputs(planFilePath: string): ExtractorResult {
       }
     }
 
-    const region = resolveRegion(res.change);
+    const region = resolveRegion(res.change, providerRegion);
     if (!region) {
       // If we completely exhausted our lookup heuristics and failed to find a region,
       // it means we either need it applied dynamically, or the TF configuration leverages entirely external provider abstractions
