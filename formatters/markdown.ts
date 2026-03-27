@@ -7,7 +7,7 @@ export interface FormatterOptions {
 }
 
 export function formatMarkdown(result: PlanAnalysisResult, options: FormatterOptions = {}): string {
-  const METHODOLOGY_URL = options.repositoryUrl || 'https://github.com/greenops-cli/greenops-cli/blob/main/README.md';
+  const METHODOLOGY_URL = options.repositoryUrl || 'https://github.com/omrdev1/greenops-cli/blob/main/METHODOLOGY.md';
   const recsCount = result.resources.filter(r => r.recommendation).length;
 
   let out = `## 🌱 GreenOps Infrastructure Impact\n\n`;
@@ -15,7 +15,9 @@ export function formatMarkdown(result: PlanAnalysisResult, options: FormatterOpt
   out += `> **Total Current Footprint:** ${formatGrams(result.totals.currentCo2eGramsPerMonth)} CO2e/month | **$${result.totals.currentCostUsdPerMonth.toFixed(2)}**/month\n`;
   
   if (recsCount > 0) {
-    const pct = ((result.totals.potentialCo2eSavingGramsPerMonth / result.totals.currentCo2eGramsPerMonth) * 100).toFixed(1);
+    const pct = result.totals.currentCo2eGramsPerMonth > 0
+      ? ((result.totals.potentialCo2eSavingGramsPerMonth / result.totals.currentCo2eGramsPerMonth) * 100).toFixed(1)
+      : '0.0';
     out += `> **Potential Savings:** -${formatGrams(result.totals.potentialCo2eSavingGramsPerMonth)} CO2e/month (${pct}%) | -$${result.totals.potentialCostSavingUsdPerMonth.toFixed(2)}/month\n`;
     out += `> 💡 Found **${recsCount}** optimization ${recsCount === 1 ? 'recommendation' : 'recommendations'}.\n\n`;
   } else {
@@ -33,7 +35,7 @@ export function formatMarkdown(result: PlanAnalysisResult, options: FormatterOpt
 
   if (result.skipped.length > 0) {
     out += `<details><summary>⚠️ <b>${result.skipped.length} Skipped Resources</b></summary>\n\n`;
-    out += `The following resources were skipped from calculation (usually due to runtime abstractions). This means the actual footprint footprint might be higher.\n\n`;
+    out += `The following resources were skipped from calculation (usually due to runtime abstractions). The actual footprint may be higher.\n\n`;
     out += `| Resource | Reason |\n|---|---|\n`;
     for (const s of result.skipped) {
       out += `| \`${s.resourceId}\` | \`${s.reason}\` |\n`;
@@ -57,7 +59,12 @@ export function formatMarkdown(result: PlanAnalysisResult, options: FormatterOpt
   }
 
   out += `---\n`;
-  out += `*Emissions calculated using the Open GreenOps Methodology Ledger (v${result.ledgerVersion}). Math is MIT-licensed and auditable. Analysed at ${result.analysedAt}. [Learn more](${METHODOLOGY_URL}).*\n`;
+  out += `*Emissions calculated using the Open GreenOps Methodology Ledger (v${result.ledgerVersion}). Scope 2 operational emissions only — embodied carbon and water are not tracked. Math is MIT-licensed and auditable. Analysed at ${result.analysedAt}. [Learn more](${METHODOLOGY_URL}).*\n`;
+
+  if (result.unsupportedTypes.length > 0) {
+    const typeList = result.unsupportedTypes.map(t => `\`${t}\``).join(', ');
+    out += `\n> ⚠️ **Coverage note:** This analysis covers \`aws_instance\` and \`aws_db_instance\` resources only. The following compute-relevant types were detected but are not yet supported: ${typeList}. Their footprint is not reflected above.\n`;
+  }
 
   if (options.showUpgradePrompt) {
     out += `\n> 🏢 **Managing green-ops across dozens of repositories?** [Upgrade to GreenOps Dashboard](https://greenops-cli.dev/upgrade) to aggregate CI/CD carbon data natively.\n`;

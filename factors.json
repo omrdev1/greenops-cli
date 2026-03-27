@@ -1,7 +1,7 @@
 {
   "metadata": {
-    "ledger_version": "1.0.0",
-    "updated_at": "2026-03-18T00:00:00Z",
+    "ledger_version": "1.1.0",
+    "updated_at": "2026-03-25T00:00:00Z",
     "sources": {
       "grid": "electricity-maps-2024-avg",
       "hardware": "cloud-carbon-footprint-v3",
@@ -47,91 +47,73 @@
       "architecture": "x86_64",
       "vcpus": 2,
       "memory_gb": 4,
-      "power_watts": {
-        "idle": 3.4,
-        "max": 10.2
-      }
+      "power_watts": { "idle": 3.4, "max": 10.2 }
     },
     "t3.large": {
       "architecture": "x86_64",
       "vcpus": 2,
       "memory_gb": 8,
-      "power_watts": {
-        "idle": 6.8,
-        "max": 20.4
-      }
+      "power_watts": { "idle": 6.8, "max": 20.4 }
     },
     "m5.large": {
       "architecture": "x86_64",
       "vcpus": 2,
       "memory_gb": 8,
-      "power_watts": {
-        "idle": 6.8,
-        "max": 20.4
-      }
+      "power_watts": { "idle": 6.8, "max": 20.4 }
     },
     "m5.xlarge": {
       "architecture": "x86_64",
       "vcpus": 4,
       "memory_gb": 16,
-      "power_watts": {
-        "idle": 13.6,
-        "max": 40.8
-      }
+      "power_watts": { "idle": 13.6, "max": 40.8 }
     },
     "c5.large": {
       "architecture": "x86_64",
       "vcpus": 2,
       "memory_gb": 4,
-      "power_watts": {
-        "idle": 6.5,
-        "max": 22.0
-      }
+      "power_watts": { "idle": 6.5, "max": 22.0 }
     },
     "c5.xlarge": {
       "architecture": "x86_64",
       "vcpus": 4,
       "memory_gb": 8,
-      "power_watts": {
-        "idle": 13.0,
-        "max": 44.0
-      }
+      "power_watts": { "idle": 13.0, "max": 44.0 }
+    },
+    "t4g.medium": {
+      "architecture": "arm64",
+      "vcpus": 2,
+      "memory_gb": 4,
+      "power_watts": { "idle": 2.2, "max": 6.8 }
+    },
+    "t4g.large": {
+      "architecture": "arm64",
+      "vcpus": 2,
+      "memory_gb": 8,
+      "power_watts": { "idle": 4.4, "max": 13.6 }
     },
     "m6g.large": {
       "architecture": "arm64",
       "vcpus": 2,
       "memory_gb": 8,
-      "power_watts": {
-        "idle": 4.1,
-        "max": 13.2
-      }
+      "power_watts": { "idle": 4.1, "max": 13.2 }
     },
     "m6g.xlarge": {
       "architecture": "arm64",
       "vcpus": 4,
       "memory_gb": 16,
-      "power_watts": {
-        "idle": 8.2,
-        "max": 26.4
-      }
+      "power_watts": { "idle": 8.2, "max": 26.4 }
     },
     "c6g.large": {
       "architecture": "arm64",
       "vcpus": 2,
       "memory_gb": 4,
-      "power_watts": {
-        "idle": 3.9,
-        "max": 14.5
-      }
+      "power_watts": { "idle": 3.9, "max": 14.5 }
     },
     "c6g.xlarge": {
       "architecture": "arm64",
       "vcpus": 4,
       "memory_gb": 8,
-      "power_watts": {
-        "idle": 7.8,
-        "max": 29.0
-      }
+      "power_watts": { "idle": 7.8, "max": 29.0 }
     }
   },
   "pricing_usd_per_hour": {
@@ -142,6 +124,8 @@
       "m5.xlarge": 0.1920,
       "c5.large": 0.0850,
       "c5.xlarge": 0.1700,
+      "t4g.medium": 0.0336,
+      "t4g.large": 0.0672,
       "m6g.large": 0.0770,
       "m6g.xlarge": 0.1540,
       "c6g.large": 0.0680,
@@ -154,6 +138,8 @@
       "m5.xlarge": 0.1920,
       "c5.large": 0.0850,
       "c5.xlarge": 0.1700,
+      "t4g.medium": 0.0336,
+      "t4g.large": 0.0672,
       "m6g.large": 0.0770,
       "m6g.xlarge": 0.1540,
       "c6g.large": 0.0680,
@@ -166,6 +152,8 @@
       "m5.xlarge": 0.2140,
       "c5.large": 0.0960,
       "c5.xlarge": 0.1920,
+      "t4g.medium": 0.0376,
+      "t4g.large": 0.0752,
       "m6g.large": 0.0860,
       "m6g.xlarge": 0.1720,
       "c6g.large": 0.0760,
@@ -178,6 +166,8 @@
       "m5.xlarge": 0.2300,
       "c5.large": 0.1020,
       "c5.xlarge": 0.2040,
+      "t4g.medium": 0.0416,
+      "t4g.large": 0.0832,
       "m6g.large": 0.0920,
       "m6g.xlarge": 0.1840,
       "c6g.large": 0.0820,
@@ -190,6 +180,8 @@
       "m5.xlarge": 0.2680,
       "c5.large": 0.1180,
       "c5.xlarge": 0.2360,
+      "t4g.medium": 0.0452,
+      "t4g.large": 0.0904,
       "m6g.large": 0.1070,
       "m6g.xlarge": 0.2140,
       "c6g.large": 0.0940,

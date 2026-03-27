@@ -6,13 +6,13 @@
 export function formatDelta(grams: number): string {
   // If grams is negative, it's a reduction -> display '-' prefix.
   // E.g., co2eDeltaGramsPerMonth: -1500 -> -1.50kg
-  const sign = grams <= 0 ? '-' : '+';
+  const sign = grams < 0 ? '-' : '+';
   const kg = Math.abs(grams) / 1000;
   return `${sign}${kg.toFixed(2)}kg`;
 }
 
 export function formatCostDelta(usd: number): string {
-  const sign = usd <= 0 ? '-' : '+';
+  const sign = usd < 0 ? '-' : '+';
   return `${sign}$${Math.abs(usd).toFixed(2)}`;
 }
 

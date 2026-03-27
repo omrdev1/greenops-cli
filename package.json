@@ -1,14 +1,18 @@
 {
   "name": "greenops-cli",
-  "version": "0.1.0",
+  "version": "0.2.1",
   "description": "Analyzes Terraform plans for carbon and cost impact.",
   "main": "dist/index.cjs",
   "bin": {
     "greenops-cli": "dist/index.cjs"
   },
   "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
-    "test": "tsx --test",
+    "test": "tsx --test ./*.test.ts ./formatters/*.test.ts",
+    "typecheck": "tsc --noEmit",
     "build": "esbuild cli.ts --bundle --platform=node --target=node20 --outfile=dist/index.cjs --format=cjs --banner:js=\"#!/usr/bin/env node\"",
     "prepack": "npm run build"
   },

@@ -23,6 +23,12 @@ export interface EmissionAndCostEstimate {
   
   confidence: ConfidenceLevel;
   unsupportedReason?: string;  
+
+  /** Which emission scopes this estimate covers.
+   *  Currently SCOPE_2_OPERATIONAL only — embodied emissions (Scope 3) and
+   *  water consumption are not tracked. */
+  scope: 'SCOPE_2_OPERATIONAL';
+
   assumptionsApplied: {
     utilizationApplied: number;
     gridIntensityApplied: number;
@@ -55,6 +61,10 @@ export interface PlanAnalysisResult {
     resourceId: string;
     reason: "known_after_apply" | "unsupported_instance" | "unsupported_region" | string;
   }>;
+
+  /** Compute-relevant resource types present in the plan that are not yet supported for analysis
+   *  (e.g. aws_launch_template, aws_ecs_service). Empty array means full coverage of detected compute. */
+  unsupportedTypes: string[];
   
   totals: {
     currentCo2eGramsPerMonth: number;

@@ -7,7 +7,9 @@ export interface JsonEnvelope {
 
 export function formatJson(result: PlanAnalysisResult): string {
   const envelope: JsonEnvelope = {
-    schemaVersion: "1.0.0",
+    // schemaVersion tracks the ledger version so downstream consumers
+    // can version-gate parsing logic as the methodology evolves.
+    schemaVersion: result.ledgerVersion,
     result
   };
   return JSON.stringify(envelope);

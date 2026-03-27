@@ -123,4 +123,107 @@ describe('Terraform Plan Extractor', () => {
     assert.ok(result.error.includes('Failed to read'));
     assert.equal(result.resources.length, 0);
   });
+
+  test('delete action is correctly ignored (not extracted, not skipped)', () => {
+    const fixture = {
+      resource_changes: [
+        {
+          address: 'aws_instance.old',
+          type: 'aws_instance',
+          change: {
+            actions: ['delete'],
+            after: { instance_type: 'm5.large', region: 'us-east-1' }
+          }
+        }
+      ]
+    };
+    const result = runFixtureTest(fixture);
+    assert.equal(result.resources.length, 0);
+    assert.equal(result.skipped.length, 0);
+  });
+
+  test('region resolved from change.before on update actions', () => {
+    const fixture = {
+      resource_changes: [
+        {
+          address: 'aws_instance.updating',
+          type: 'aws_instance',
+          change: {
+            actions: ['update'],
+            after: { instance_type: 'm5.large' },
+            before: { region: 'eu-west-1' }
+          }
+        }
+      ]
+    };
+    const result = runFixtureTest(fixture);
+    assert.equal(result.resources.length, 1);
+    assert.equal(result.resources[0].region, 'eu-west-1');
+  });
+
+  test('Local Zone AZ extracts correct region (us-east-1-bos-1a)', () => {
+    const fixture = {
+      resource_changes: [
+        {
+          address: 'aws_instance.local_zone',
+          type: 'aws_instance',
+          change: {
+            actions: ['create'],
+            after: { instance_type: 't3.medium', availability_zone: 'us-east-1-bos-1a' }
+          }
+        }
+      ]
+    };
+    const result = runFixtureTest(fixture);
+    assert.equal(result.resources.length, 1);
+    assert.equal(result.resources[0].region, 'us-east-1');
+  });
+
+  test('db.serverless instance class is skipped as unsupported', () => {
+    const fixture = {
+      resource_changes: [
+        {
+          address: 'aws_db_instance.aurora',
+          type: 'aws_db_instance',
+          change: {
+            actions: ['create'],
+            after: { instance_class: 'db.serverless', region: 'us-east-1' }
+          }
+        }
+      ]
+    };
+    const result = runFixtureTest(fixture);
+    assert.equal(result.resources.length, 0);
+    assert.equal(result.skipped.length, 1);
+    assert.equal(result.skipped[0].reason, 'unsupported_instance');
+  });
+
+  test('empty resource_changes array produces empty result (no error)', () => {
+    const fixture = { resource_changes: [] };
+    const result = runFixtureTest(fixture);
+    assert.equal(result.error, undefined);
+    assert.equal(result.resources.length, 0);
+    assert.equal(result.skipped.length, 0);
+  });
+
+  test('unsupported compute-relevant types are tracked', () => {
+    const fixture = {
+      resource_changes: [
+        {
+          address: 'aws_launch_template.web',
+          type: 'aws_launch_template',
+          change: { actions: ['create'], after: {} }
+        },
+        {
+          address: 'aws_ecs_service.api',
+          type: 'aws_ecs_service',
+          change: { actions: ['create'], after: {} }
+        }
+      ]
+    };
+    const result = runFixtureTest(fixture);
+    assert.equal(result.resources.length, 0);
+    assert.ok(result.unsupportedTypes.includes('aws_launch_template'));
+    assert.ok(result.unsupportedTypes.includes('aws_ecs_service'));
+  });
 });
