@@ -53,6 +53,12 @@ const GRAMS_PER_KWH_TO_KWH_FACTOR = 1000; // grid intensity is in gCO2e/kWh
  * Precedence: explicit input → ledger metadata default.
  */
 function resolveUtilization(input: ResourceInput, ledger: Ledger): number {
+  if (input.avgUtilization !== undefined && (input.avgUtilization < 0 || input.avgUtilization > 1)) {
+    throw new RangeError(`avgUtilization must be between 0 and 1, got ${input.avgUtilization}`);
+  }
+  if (input.hoursPerMonth !== undefined && input.hoursPerMonth <= 0) {
+    throw new RangeError(`hoursPerMonth must be positive, got ${input.hoursPerMonth}`);
+  }
   return input.avgUtilization ?? ledger.metadata.assumptions.default_utilization.value;
 }
 
@@ -63,6 +69,11 @@ function resolveUtilization(input: ResourceInput, ledger: Ledger): number {
  * This is the standard CCF model for general-purpose compute.
  * It assumes power scales linearly between idle and max TDP
  * as CPU utilization increases from 0% to 100%.
+ *
+ * NOTE (CPU-only): This model uses only CPU TDP bounds. Memory power draw
+ * is a known omission — GreenPixie and some CCF extensions include a separate
+ * memory power component. Our factors.json stores memory_gb per instance for
+ * future expansion, but it is NOT used in the current calculation.
  */
 function linearInterpolationWatts(
   idle: number,
@@ -97,7 +108,12 @@ function wattsToCarbon(
 const ARM_UPGRADE_MAP: Record<string, string> = {
   m5: 'm6g',
   c5: 'c6g',
-  t3: 't4g', // Note: t4g must be added to factors.json when supported
+  t3: 't4g',
+  // Extended families — entries are safe no-ops if targets aren't in factors.json
+  r5: 'r6g',
+  m5a: 'm6g',
+  c5a: 'c6g',
+  r5a: 'r6g',
 };
 
 /**
@@ -140,6 +156,8 @@ function getCleanerRegion(
   if (regions.length === 0) return null;
 
   const [cleanestRegionId, cleanestRegion] = regions[0];
+  // If current region is unknown, treat intensity as Infinity so no region can appear "cleaner" — this
+  // prevents recommendations when we can't establish a valid baseline for comparison.
   const currentIntensity = ledger.regions[currentRegion]?.grid_intensity_gco2e_per_kwh ?? Infinity;
 
   // Only recommend if the cleaner region is meaningfully better (>10% reduction)
@@ -175,6 +193,7 @@ export function calculateBaseline(
       totalCo2eGramsPerMonth: 0,
       totalCostUsdPerMonth: 0,
       confidence: 'LOW_ASSUMED_DEFAULT',
+      scope: 'SCOPE_2_OPERATIONAL',
       unsupportedReason: `Region "${input.region}" is not present in the open methodology ledger v${ledger.metadata.ledger_version}.`,
       assumptionsApplied: {
         utilizationApplied: utilization,
@@ -191,6 +210,7 @@ export function calculateBaseline(
       totalCo2eGramsPerMonth: 0,
       totalCostUsdPerMonth: 0,
       confidence: 'LOW_ASSUMED_DEFAULT',
+      scope: 'SCOPE_2_OPERATIONAL',
       unsupportedReason: `Instance type "${input.instanceType}" is not present in the open methodology ledger v${ledger.metadata.ledger_version}.`,
       assumptionsApplied: {
         utilizationApplied: utilization,
@@ -207,6 +227,7 @@ export function calculateBaseline(
       totalCo2eGramsPerMonth: 0,
       totalCostUsdPerMonth: 0,
       confidence: 'LOW_ASSUMED_DEFAULT',
+      scope: 'SCOPE_2_OPERATIONAL',
       unsupportedReason: `No pricing data for "${input.instanceType}" in "${input.region}" in the open methodology ledger v${ledger.metadata.ledger_version}.`,
       assumptionsApplied: {
         utilizationApplied: utilization,
@@ -238,8 +259,12 @@ export function calculateBaseline(
   const totalCostUsdPerMonth = pricePerHour * hours;
 
   // --- Confidence ---
-  // HIGH: all values from ledger with no fallbacks applied.
-  // MEDIUM: explicit utilization supplied but outside typical range (future use).
+  // HIGH:              all values sourced from ledger, default utilization applied.
+  // MEDIUM:            caller supplied explicit avgUtilization. The estimate is still
+  //                    mathematically valid but depends on the accuracy of the supplied
+  //                    value. SaaS consumers should surface this to the end user.
+  // LOW_ASSUMED_DEFAULT: unsupported region/instance/pricing — estimate is zero and
+  //                    unreliable. See unsupportedReason for details.
   const confidence: ConfidenceLevel =
     input.avgUtilization !== undefined ? 'MEDIUM' : 'HIGH';
 
@@ -247,6 +272,7 @@ export function calculateBaseline(
     totalCo2eGramsPerMonth,
     totalCostUsdPerMonth,
     confidence,
+    scope: 'SCOPE_2_OPERATIONAL',
     assumptionsApplied: {
       utilizationApplied: utilization,
       gridIntensityApplied: regionData.grid_intensity_gco2e_per_kwh,
@@ -312,8 +338,10 @@ export function generateRecommendation(
       const costDelta = regionEstimate.totalCostUsdPerMonth - baseline.totalCostUsdPerMonth;
 
       // Region shifts may increase cost — include if carbon reduction is significant (>15%)
-      const co2ReductionPct =
-        Math.abs(co2Delta) / baseline.totalCo2eGramsPerMonth;
+      // Guard against division by zero: if baseline carbon is 0, no meaningful reduction to compare.
+      const co2ReductionPct = baseline.totalCo2eGramsPerMonth > 0
+        ? Math.abs(co2Delta) / baseline.totalCo2eGramsPerMonth
+        : 0;
 
       if (co2Delta < 0 && co2ReductionPct > 0.15) {
         const regionName = ledger.regions[cleanerRegion]?.location ?? cleanerRegion;
@@ -336,12 +364,16 @@ export function generateRecommendation(
 
   // Return the recommendation with the greatest combined carbon + cost reduction.
   // We weight carbon reduction at 60% and cost at 40% to reflect the tool's primary mission.
-  const scored = candidates.map((rec) => ({
-    rec,
-    score:
-      Math.abs(rec.co2eDeltaGramsPerMonth) * 0.6 +
-      Math.abs(rec.costDeltaUsdPerMonth) * 100 * 0.4, // normalise cost to similar scale
-  }));
+  // Both dimensions are normalized to percentage-of-baseline so the weighting is accurate.
+  const scored = candidates.map((rec) => {
+    const co2Pct = baseline.totalCo2eGramsPerMonth > 0
+      ? Math.abs(rec.co2eDeltaGramsPerMonth) / baseline.totalCo2eGramsPerMonth
+      : 0;
+    const costPct = baseline.totalCostUsdPerMonth > 0
+      ? Math.abs(rec.costDeltaUsdPerMonth) / baseline.totalCostUsdPerMonth
+      : 0;
+    return { rec, score: co2Pct * 0.6 + costPct * 0.4 };
+  });
 
   scored.sort((a, b) => b.score - a.score);
   return scored[0].rec;
@@ -360,7 +392,8 @@ export function analysePlan(
   resources: ResourceInput[],
   skipped: PlanAnalysisResult['skipped'],
   planFile: string,
-  ledger: Ledger = factorsData as Ledger
+  ledger: Ledger = factorsData as Ledger,
+  unsupportedTypes: string[] = []
 ): PlanAnalysisResult {
   const analysedResources: PlanAnalysisResult['resources'] = resources.map((input) => {
     const baseline = calculateBaseline(input, ledger);
@@ -397,6 +430,7 @@ export function analysePlan(
     planFile,
     resources: analysedResources,
     skipped,
+    unsupportedTypes,
     totals,
   };
 }

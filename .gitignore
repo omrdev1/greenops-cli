@@ -2,9 +2,19 @@ node_modules/
 dist-raw/
 coverage/
 
+# Claude Code worktrees (managed by git internally, never committed)
+.claude/worktrees/
+
+# Claude Code local settings (user-specific, never committed)
+.claude/settings.local.json
+*/.claude/settings.local.json
+
+# Terraform plan outputs — may contain account IDs, ARNs, and internal topology
+tfplan.json
+tfplan*.json
+
 # Ad-hoc & Demo Files
-demo.json
-linkedin.md
+launch_*.md
 research.*.md
 *.log
 

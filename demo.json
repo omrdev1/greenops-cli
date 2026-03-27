@@ -1,0 +1,26 @@
+{
+  "resource_changes": [
+    {
+      "address": "aws_instance.api_server",
+      "type": "aws_instance",
+      "change": {
+        "actions": ["create"],
+        "after": {
+          "instance_type": "m5.xlarge",
+          "arn": "arn:aws:ec2:us-east-1:1234567890:instance/i-0abcd"
+        }
+      }
+    },
+    {
+      "address": "module.database.aws_db_instance.main",
+      "type": "aws_db_instance",
+      "change": {
+        "actions": ["create"],
+        "after": {
+          "instance_class": "db.m5.large",
+          "arn": "arn:aws:rds:us-east-1:1234567890:db:main"
+        }
+      }
+    }
+  ]
+}

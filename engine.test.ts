@@ -125,4 +125,52 @@ describe('calculateBaseline', () => {
       explicit730.totalCo2eGramsPerMonth
     );
   });
+
+  it('throws RangeError for avgUtilization > 1', () => {
+    assert.throws(() => {
+      calculateBaseline({ resourceId: 'test', region: 'us-east-1', instanceType: 'm5.large', avgUtilization: 1.5 });
+    }, RangeError);
+  });
+
+  it('throws RangeError for avgUtilization < 0', () => {
+    assert.throws(() => {
+      calculateBaseline({ resourceId: 'test', region: 'us-east-1', instanceType: 'm5.large', avgUtilization: -0.1 });
+    }, RangeError);
+  });
+
+  it('throws RangeError for hoursPerMonth = 0', () => {
+    assert.throws(() => {
+      calculateBaseline({ resourceId: 'test', region: 'us-east-1', instanceType: 'm5.large', hoursPerMonth: 0 });
+    }, RangeError);
+  });
+
+  it('throws RangeError for negative hoursPerMonth', () => {
+    assert.throws(() => {
+      calculateBaseline({ resourceId: 'test', region: 'us-east-1', instanceType: 'm5.large', hoursPerMonth: -100 });
+    }, RangeError);
+  });
+
+  it('accepts avgUtilization = 0 (idle-only carbon)', () => {
+    const result = calculateBaseline({
+      resourceId: 'test', region: 'us-east-1', instanceType: 'm5.large', avgUtilization: 0,
+    });
+    assert.ok(result.totalCo2eGramsPerMonth > 0, 'Should still have carbon from idle power');
+  });
+
+  it('accepts avgUtilization = 1 (max carbon)', () => {
+    const idle = calculateBaseline({
+      resourceId: 'test', region: 'us-east-1', instanceType: 'm5.large', avgUtilization: 0,
+    });
+    const max = calculateBaseline({
+      resourceId: 'test', region: 'us-east-1', instanceType: 'm5.large', avgUtilization: 1,
+    });
+    assert.ok(max.totalCo2eGramsPerMonth > idle.totalCo2eGramsPerMonth, 'Max utilization should produce more carbon');
+  });
+
+  it('returns scope SCOPE_2_OPERATIONAL on all estimates', () => {
+    const result = calculateBaseline({
+      resourceId: 'test', region: 'us-east-1', instanceType: 'm5.large',
+    });
+    assert.equal(result.scope, 'SCOPE_2_OPERATIONAL');
+  });
 });

@@ -1,13 +1,22 @@
 import { PlanAnalysisResult } from '../types.js';
 import { formatDelta, formatCostDelta, formatGrams } from './util.js';
 
+// Strip ANSI escape codes to get the true visible length of a string,
+// so padEnd() aligns columns correctly in the terminal table.
+function visibleLength(str: string): number {
+  return str.replace(/\x1b\[[0-9;]*m/g, '').length;
+}
+
 function truncate(str: string, len: number): string {
-  return str.length > len ? str.substring(0, len - 3) + '...' : str.padEnd(len);
+  // Always use visible text for consistent output — callers handle coloring at row level
+  const visible = str.replace(/\x1b\[[0-9;]*m/g, '');
+  if (visible.length > len) return visible.substring(0, len - 3) + '...';
+  return visible + ' '.repeat(len - visible.length);
 }
 
 export function formatTable(result: PlanAnalysisResult): string {
   let out = `\n\x1b[1m🌱 GreenOps Infrastructure Impact\x1b[0m\n\n`;
-  
+
   if (result.resources.length === 0 && result.skipped.length === 0) {
     return out + `No compatible infrastructure detected.\n`;
   }
@@ -31,7 +40,6 @@ export function formatTable(result: PlanAnalysisResult): string {
     out += `\x1b[32mSavings: ${formatDelta(-result.totals.potentialCo2eSavingGramsPerMonth)} | ${formatCostDelta(-result.totals.potentialCostSavingUsdPerMonth)}\x1b[0m\n`;
   }
 
-  // Reason for skipping shown inline for terminal, vs `<details>` for Github UI which lacks markdown support in terminal.
   if (result.skipped.length > 0) {
     out += `\n\x1b[90mNote: ${result.skipped.length} resource(s) were skipped due to runtime abstractions.\x1b[0m\n`;
   }

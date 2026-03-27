@@ -1,0 +1,164 @@
+{
+  "format_version": "1.2",
+  "terraform_version": "1.7.5",
+  "planned_values": {
+    "root_module": {
+      "resources": [
+        {
+          "address": "aws_instance.web",
+          "mode": "managed",
+          "type": "aws_instance",
+          "name": "web",
+          "provider_name": "registry.terraform.io/hashicorp/aws",
+          "schema_version": 1,
+          "values": {
+            "ami": "ami-0c02fb55956c7d316",
+            "credit_specification": [],
+            "get_password_data": false,
+            "hibernation": null,
+            "instance_type": "m5.large",
+            "launch_template": [],
+            "source_dest_check": true,
+            "tags": { "Name": "greenops-e2e-test" },
+            "tags_all": { "Name": "greenops-e2e-test" },
+            "timeouts": null,
+            "user_data_replace_on_change": false,
+            "volume_tags": null
+          }
+        },
+        {
+          "address": "aws_instance.worker",
+          "mode": "managed",
+          "type": "aws_instance",
+          "name": "worker",
+          "provider_name": "registry.terraform.io/hashicorp/aws",
+          "schema_version": 1,
+          "values": {
+            "ami": "ami-0c02fb55956c7d316",
+            "credit_specification": [],
+            "get_password_data": false,
+            "hibernation": null,
+            "instance_type": "m6g.large",
+            "launch_template": [],
+            "source_dest_check": true,
+            "tags": { "Name": "greenops-e2e-worker" },
+            "tags_all": { "Name": "greenops-e2e-worker" },
+            "timeouts": null,
+            "user_data_replace_on_change": false,
+            "volume_tags": null
+          }
+        }
+      ]
+    }
+  },
+  "resource_changes": [
+    {
+      "address": "aws_instance.web",
+      "mode": "managed",
+      "type": "aws_instance",
+      "name": "web",
+      "provider_name": "registry.terraform.io/hashicorp/aws",
+      "change": {
+        "actions": ["create"],
+        "before": null,
+        "after": {
+          "ami": "ami-0c02fb55956c7d316",
+          "credit_specification": [],
+          "get_password_data": false,
+          "hibernation": null,
+          "instance_type": "m5.large",
+          "launch_template": [],
+          "source_dest_check": true,
+          "tags": { "Name": "greenops-e2e-test" },
+          "tags_all": { "Name": "greenops-e2e-test" },
+          "timeouts": null,
+          "user_data_replace_on_change": false,
+          "volume_tags": null
+        },
+        "after_unknown": {
+          "arn": true, "associate_public_ip_address": true,
+          "availability_zone": true, "id": true,
+          "instance_state": true, "private_ip": true,
+          "public_ip": true, "subnet_id": true,
+          "vpc_security_group_ids": true
+        },
+        "before_sensitive": false,
+        "after_sensitive": {}
+      }
+    },
+    {
+      "address": "aws_instance.worker",
+      "mode": "managed",
+      "type": "aws_instance",
+      "name": "worker",
+      "provider_name": "registry.terraform.io/hashicorp/aws",
+      "change": {
+        "actions": ["create"],
+        "before": null,
+        "after": {
+          "ami": "ami-0c02fb55956c7d316",
+          "credit_specification": [],
+          "get_password_data": false,
+          "hibernation": null,
+          "instance_type": "m6g.large",
+          "launch_template": [],
+          "source_dest_check": true,
+          "tags": { "Name": "greenops-e2e-worker" },
+          "tags_all": { "Name": "greenops-e2e-worker" },
+          "timeouts": null,
+          "user_data_replace_on_change": false,
+          "volume_tags": null
+        },
+        "after_unknown": {
+          "arn": true, "associate_public_ip_address": true,
+          "availability_zone": true, "id": true,
+          "instance_state": true, "private_ip": true,
+          "public_ip": true, "subnet_id": true,
+          "vpc_security_group_ids": true
+        },
+        "before_sensitive": false,
+        "after_sensitive": {}
+      }
+    }
+  ],
+  "configuration": {
+    "provider_config": {
+      "aws": {
+        "name": "aws",
+        "full_name": "registry.terraform.io/hashicorp/aws",
+        "version_constraint": "~> 5.0",
+        "expressions": {
+          "region": { "constant_value": "us-east-1" }
+        }
+      }
+    },
+    "root_module": {
+      "resources": [
+        {
+          "address": "aws_instance.web",
+          "mode": "managed", "type": "aws_instance", "name": "web",
+          "provider_config_key": "aws",
+          "expressions": {
+            "ami": { "constant_value": "ami-0c02fb55956c7d316" },
+            "instance_type": { "constant_value": "m5.large" },
+            "tags": { "constant_value": { "Name": "greenops-e2e-test" } }
+          },
+          "schema_version": 1
+        },
+        {
+          "address": "aws_instance.worker",
+          "mode": "managed", "type": "aws_instance", "name": "worker",
+          "provider_config_key": "aws",
+          "expressions": {
+            "ami": { "constant_value": "ami-0c02fb55956c7d316" },
+            "instance_type": { "constant_value": "m6g.large" },
+            "tags": { "constant_value": { "Name": "greenops-e2e-worker" } }
+          },
+          "schema_version": 1
+        }
+      ]
+    }
+  },
+  "timestamp": "2026-03-26T22:49:12Z",
+  "errored": false
+}
