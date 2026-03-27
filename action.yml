@@ -1,35 +1,46 @@
 name: "GreenOps PR Analysis"
-description: "Analyses a Terraform plan for carbon & cost impact and posts a PR comment"
+description: "Analyses a Terraform plan for carbon & cost impact, enforces policy budgets, and posts inline Terraform suggestions on the PR"
 branding:
   icon: activity
   color: green
 inputs:
   plan-file:
-    description: "Path to terraform plan json"
+    description: "Path to terraform plan JSON file"
     required: true
   github-token:
-    description: "GitHub token for commenting"
+    description: "GitHub token for posting PR comments and suggestions"
     required: true
+  post-suggestions:
+    description: "Post inline Terraform suggestion comments on the PR (one-click committable fixes)"
+    required: false
+    default: 'false'
   show-upgrade-prompt:
-    description: "Enable opt-out dashboard upsell trigger"
+    description: "Show GreenOps Dashboard upsell in the PR comment"
     required: false
     default: 'true'
   api-key:
-    description: "Optional secret API key for GreenOps Dashboard telemetry (masks automatically as GitHub Secret)"
+    description: "Optional GreenOps Dashboard API key for telemetry aggregation"
     required: false
 runs:
   using: "composite"
   steps:
-    - name: Run GreenOps CLI
+    - name: Run GreenOps Analysis
       id: run-cli
       shell: bash
-      env:
-        GREENOPS_PLAN_FILE: ${{ inputs.plan-file }}
-        GREENOPS_SHOW_UPGRADE_PROMPT: ${{ inputs.show-upgrade-prompt }}
       run: |
-        node "${{ github.action_path }}/dist/index.cjs" diff "$GREENOPS_PLAN_FILE" \
+        SUGGESTIONS_FLAG=""
+        if [ "${{ inputs.post-suggestions }}" = "true" ]; then
+          SUGGESTIONS_FLAG="--post-suggestions \
+            --github-token=${{ inputs.github-token }} \
+            --repo=${{ github.repository }} \
+            --pr-number=${{ github.event.pull_request.number }} \
+            --commit-sha=${{ github.event.pull_request.head.sha }}"
+        fi
+
+        node "${{ github.action_path }}/dist/index.cjs" diff "${{ inputs.plan-file }}" \
           --format markdown \
-          "--show-upgrade-prompt=$GREENOPS_SHOW_UPGRADE_PROMPT" > greenops-output.md
+          --show-upgrade-prompt="${{ inputs.show-upgrade-prompt }}" \
+          $SUGGESTIONS_FLAG > greenops-output.md
 
         EOF=$(dd if=/dev/urandom bs=15 count=1 status=none | base64)
         echo "comment_body<<$EOF" >> "$GITHUB_OUTPUT"
@@ -39,8 +50,6 @@ runs:
     - name: Post or Update PR Comment
       uses: actions/github-script@v7
       env:
-        # Pass via env to avoid backtick/quote injection when the Markdown output
-        # contains backtick-wrapped resource identifiers (e.g. `aws_instance.web`)
         GREENOPS_COMMENT_BODY: ${{ steps.run-cli.outputs.comment_body }}
       with:
         github-token: ${{ inputs.github-token }}
@@ -63,21 +72,21 @@ runs:
             await github.rest.issues.createComment({ owner, repo, issue_number: number, body });
           }
 
-    - name: Run GreenOps CLI (JSON) & Upload Telemetry
+    - name: Upload Telemetry (optional)
       if: inputs.api-key != ''
       shell: bash
       env:
         GREENOPS_API_KEY: ${{ inputs.api-key }}
-        GREENOPS_PLAN_FILE: ${{ inputs.plan-file }}
       run: |
-        node "${{ github.action_path }}/dist/index.cjs" diff "$GREENOPS_PLAN_FILE" \
+        node "${{ github.action_path }}/dist/index.cjs" diff "${{ inputs.plan-file }}" \
           --format json > result.json
 
         jq --arg repo "$GITHUB_REPOSITORY" \
            --arg pr "${{ github.event.pull_request.number }}" \
            --arg sha "$GITHUB_SHA" \
            --arg ref "$GITHUB_REF" \
-           '{ repository: $repo, pull_request_number: ($pr | tonumber), commit_sha: $sha, ref: $ref, analysis: . }' result.json > upload.json
+           '{ repository: $repo, pull_request_number: ($pr | tonumber), commit_sha: $sha, ref: $ref, analysis: . }' \
+           result.json > upload.json
 
         curl -f -X POST https://api.greenops-cli.dev/ingest \
           -H "Authorization: Bearer $GREENOPS_API_KEY" \

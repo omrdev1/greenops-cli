@@ -106,13 +106,15 @@ function wattsToCarbon(
 // ---------------------------------------------------------------------------
 
 const ARM_UPGRADE_MAP: Record<string, string> = {
-  m5: 'm6g',
-  c5: 'c6g',
+  // x86 → ARM64 upgrade targets (same vCPU/RAM class, lower power draw)
+  // Source: AWS EC2 instance family documentation + CCF hardware coefficients
   t3: 't4g',
-  // Extended families — entries are safe no-ops if targets aren't in factors.json
-  r5: 'r6g',
+  t3a: 't4g',
+  m5: 'm6g',
   m5a: 'm6g',
+  c5: 'c6g',
   c5a: 'c6g',
+  r5: 'r6g',
   r5a: 'r6g',
 };
 

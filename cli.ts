@@ -3,6 +3,8 @@ import factorsData from './factors.json';
 import pkg from './package.json';
 import { extractResourceInputs } from './extractor.js';
 import { analysePlan } from './engine.js';
+import { loadPolicy, evaluatePolicy } from './policy.js';
+import { postSuggestions } from './suggestions.js';
 import { formatMarkdown } from './formatters/markdown.js';
 import { formatTable } from './formatters/table.js';
 import { formatJson } from './formatters/json.js';
@@ -16,7 +18,12 @@ const { positionals, values } = parseArgs({
     help: { type: 'boolean', default: false },
     version: { type: 'boolean', default: false },
     'show-upgrade-prompt': { type: 'string', default: 'true' },
-    env: { type: 'string', default: 'production' },
+    // Policy + suggestions flags (used by GitHub Action)
+    'github-token': { type: 'string' },
+    'repo': { type: 'string' },
+    'pr-number': { type: 'string' },
+    'commit-sha': { type: 'string' },
+    'post-suggestions': { type: 'boolean', default: false },
   }
 });
 
@@ -26,17 +33,41 @@ if (values.version) {
 }
 
 if (values.help) {
-  console.log(`GreenOps CLI v${pkg.version}\nUsage: greenops-cli diff <plan.json> [--format markdown|table|json]\n       greenops-cli --coverage [--format json]\n       greenops-cli --version`);
+  console.log([
+    `GreenOps CLI v${pkg.version}`,
+    ``,
+    `Usage:`,
+    `  greenops-cli diff <plan.json> [options]`,
+    `  greenops-cli --coverage [--format json]`,
+    `  greenops-cli --version`,
+    ``,
+    `Options:`,
+    `  --format          Output format: markdown (default), table, json`,
+    `  --coverage        List supported regions and instance types`,
+    `  --github-token    GitHub token for posting suggestion comments`,
+    `  --repo            Repository full name (e.g. owner/repo)`,
+    `  --pr-number       Pull request number`,
+    `  --commit-sha      Head commit SHA for suggestion anchoring`,
+    `  --post-suggestions  Post inline Terraform suggestion comments on the PR`,
+    `  --show-upgrade-prompt  Show dashboard upsell (true/false, default: true)`,
+    `  --version         Print version and exit`,
+    `  --help            Print this help and exit`,
+  ].join('\n'));
   process.exit(0);
 }
 
 if (values.coverage) {
   const rawFs = Object.assign({}, factorsData);
   if (values.format === 'json') {
-    console.log(JSON.stringify({ regions: Object.keys(rawFs.regions), instances: Object.keys(rawFs.instances) }, null, 2));
+    console.log(JSON.stringify({
+      ledgerVersion: rawFs.metadata.ledger_version,
+      regions: Object.keys(rawFs.regions),
+      instances: Object.keys(rawFs.instances)
+    }, null, 2));
   } else {
-    console.log(`Supported Regions: ${Object.keys(rawFs.regions).join(', ')}`);
-    console.log(`Supported Instances: ${Object.keys(rawFs.instances).join(', ')}`);
+    console.log(`GreenOps Methodology Ledger v${rawFs.metadata.ledger_version}`);
+    console.log(`Supported Regions (${Object.keys(rawFs.regions).length}): ${Object.keys(rawFs.regions).join(', ')}`);
+    console.log(`Supported Instances (${Object.keys(rawFs.instances).length}): ${Object.keys(rawFs.instances).join(', ')}`);
   }
   process.exit(0);
 }
@@ -45,17 +76,9 @@ const command = positionals[0];
 const planFile = positionals[1];
 
 if (command !== 'diff' || !planFile) {
-  console.error("Error: Missing 'diff' command or plan file parameter.");
+  console.error("Error: Missing 'diff' command or plan file parameter. Run --help for usage.");
   process.exit(1);
 }
-
-// Environment profiles: staging environments typically run ~22% of the month
-// (weekday business hours only), so we use 160h/month instead of 730h.
-const HOURS_BY_ENV: Record<string, number> = {
-  production: 730,
-  staging: 160,
-};
-const hoursPerMonth = HOURS_BY_ENV[values.env ?? 'production'] ?? 730;
 
 const extracted = extractResourceInputs(planFile);
 
@@ -64,14 +87,41 @@ if (extracted.error) {
   process.exit(1);
 }
 
-// Apply the environment's hoursPerMonth to every resource that doesn't already have one set
-const resourcesWithEnv = extracted.resources.map(r =>
-  r.hoursPerMonth !== undefined ? r : { ...r, hoursPerMonth }
-);
-
-const result = analysePlan(resourcesWithEnv, extracted.skipped, planFile, undefined, extracted.unsupportedTypes);
+const result = analysePlan(extracted.resources, extracted.skipped, planFile, undefined, extracted.unsupportedTypes);
 const showUpgradePrompt = values['show-upgrade-prompt'] === 'true';
 
+// --- Policy evaluation ---
+let policyExitCode = 0;
+try {
+  const policy = loadPolicy(process.cwd());
+  if (policy) {
+    const evaluation = evaluatePolicy(result, policy);
+    if (!evaluation.isCompliant) {
+      // Append violations to output regardless of format
+      const violationLines = evaluation.violations.map(v =>
+        `⛔ Policy violation [${v.constraint}]: ${v.message}`
+      ).join('\n');
+
+      if (values.format === 'json') {
+        // For JSON format, violations are included in the output object downstream
+        // We write them to stderr so they don't corrupt the JSON pipe
+        process.stderr.write(`\n${violationLines}\n`);
+      } else {
+        // Append to stdout for markdown/table formats
+        process.stdout.write(`\n${violationLines}\n`);
+      }
+
+      if (evaluation.shouldBlock) {
+        policyExitCode = 1;
+      }
+    }
+  }
+} catch (err) {
+  // Policy file parse errors are warnings, not fatal
+  process.stderr.write(`[WARN] .greenops.yml parse error: ${err instanceof Error ? err.message : String(err)}\n`);
+}
+
+// --- Format and output ---
 if (values.format === 'table') {
   console.log(formatTable(result));
 } else if (values.format === 'json') {
@@ -80,4 +130,40 @@ if (values.format === 'table') {
   console.log(formatMarkdown(result, { showUpgradePrompt }));
 }
 
-process.exit(0);
+// --- Post GitHub suggestion comments (async, fail-open) ---
+if (values['post-suggestions']) {
+  const token = values['github-token'];
+  const repo = values['repo'];
+  const prNumber = values['pr-number'];
+  const commitSha = values['commit-sha'];
+
+  if (!token || !repo || !prNumber || !commitSha) {
+    process.stderr.write(
+      '[WARN] --post-suggestions requires --github-token, --repo, --pr-number, and --commit-sha. Skipping.\n'
+    );
+  } else {
+    postSuggestions(result, {
+      token,
+      repoFullName: repo,
+      pullNumber: parseInt(prNumber, 10),
+      commitSha,
+      planFilePath: planFile,
+    }).then(suggestionResult => {
+      if (suggestionResult.posted > 0 || suggestionResult.updated > 0) {
+        process.stderr.write(
+          `[GreenOps] Suggestions: ${suggestionResult.posted} posted, ${suggestionResult.updated} updated, ${suggestionResult.skipped} skipped\n`
+        );
+      }
+      for (const warn of suggestionResult.warnings) {
+        process.stderr.write(`[WARN] ${warn}\n`);
+      }
+    }).catch(err => {
+      // Fail-open: suggestion posting errors never block the CLI
+      process.stderr.write(
+        `[WARN] GreenOps suggestion engine error: ${err instanceof Error ? err.message : String(err)}. Continuing.\n`
+      );
+    });
+  }
+}
+
+process.exit(policyExitCode);
