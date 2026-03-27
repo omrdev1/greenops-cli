@@ -44,12 +44,12 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Generate Terraform Plan
-        # Note: this example uses -backend=false for demonstration.
-        # For repositories with remote state, remove that flag and configure
-        # your backend credentials as secrets before this step.
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         run: |
-          terraform init -backend=false
-          terraform plan -out=tfplan -refresh=false
+          terraform init
+          terraform plan -out=tfplan
           terraform show -json tfplan > plan.json
 
       - name: GreenOps Carbon Lint
