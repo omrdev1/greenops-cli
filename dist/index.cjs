@@ -200,7 +200,7 @@ var factors_default = {
 // package.json
 var package_default = {
   name: "greenops-cli",
-  version: "0.2.1",
+  version: "0.2.2",
   description: "Analyzes Terraform plans for carbon and cost impact.",
   main: "dist/index.cjs",
   bin: {
