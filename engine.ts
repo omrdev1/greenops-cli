@@ -9,7 +9,7 @@ import type {
 } from './types';
 
 // ---------------------------------------------------------------------------
-// Internal types for ledger shape (mirrors factors.json structure)
+// Internal types for ledger shape (mirrors factors.json v1.3.0)
 // ---------------------------------------------------------------------------
 
 interface LedgerInstance {
@@ -17,12 +17,19 @@ interface LedgerInstance {
   vcpus: number;
   memory_gb: number;
   power_watts: { idle: number; max: number };
+  /** Prorated Scope 3 embodied carbon from manufacturing lifecycle (gCO2e/month).
+   *  Source: CCF DELL R740 baseline (1,200 kgCO2e/server, 4yr lifespan, 48 vCPUs).
+   *  ARM (Graviton) applies 20% discount reflecting smaller die + lower TDP. */
+  embodied_co2e_grams_per_month: number;
 }
 
 interface LedgerRegion {
   location: string;
   grid_intensity_gco2e_per_kwh: number;
   pue: number;
+  /** AWS WUE (Water Usage Effectiveness) in litres per kWh of IT load.
+   *  Source: AWS 2023 Sustainability Report. */
+  water_intensity_litres_per_kwh: number;
 }
 
 interface Ledger {
@@ -41,17 +48,13 @@ interface Ledger {
 // Constants
 // ---------------------------------------------------------------------------
 
-const HOURS_PER_MONTH = 730; // 365 days * 24h / 12 months
-const GRAMS_PER_KWH_TO_KWH_FACTOR = 1000; // grid intensity is in gCO2e/kWh
+const HOURS_PER_MONTH = 730;
+const GRAMS_PER_KWH_TO_KWH_FACTOR = 1000;
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
-/**
- * Resolves the effective utilization for a resource.
- * Precedence: explicit input → ledger metadata default.
- */
 function resolveUtilization(input: ResourceInput, ledger: Ledger): number {
   if (input.avgUtilization !== undefined && (input.avgUtilization < 0 || input.avgUtilization > 1)) {
     throw new RangeError(`avgUtilization must be between 0 and 1, got ${input.avgUtilization}`);
@@ -63,33 +66,22 @@ function resolveUtilization(input: ResourceInput, ledger: Ledger): number {
 }
 
 /**
- * Linear interpolation power model:
- *   watts = idle + (max - idle) * utilization
+ * Linear interpolation power model (standard CCF methodology):
+ *   W = W_idle + (W_max - W_idle) × utilization
  *
- * This is the standard CCF model for general-purpose compute.
- * It assumes power scales linearly between idle and max TDP
- * as CPU utilization increases from 0% to 100%.
- *
- * NOTE (CPU-only): This model uses only CPU TDP bounds. Memory power draw
- * is a known omission — GreenPixie and some CCF extensions include a separate
- * memory power component. Our factors.json stores memory_gb per instance for
- * future expansion, but it is NOT used in the current calculation.
+ * CPU-only. Memory power draw tracked via memory_gb in factors.json
+ * but not yet included in the calculation (reserved for v1.4.0).
  */
-function linearInterpolationWatts(
-  idle: number,
-  max: number,
-  utilization: number
-): number {
+function linearInterpolationWatts(idle: number, max: number, utilization: number): number {
   return idle + (max - idle) * utilization;
 }
 
 /**
- * Converts watt-hours of data center energy to grams of CO2e.
- *
- *   energy_kwh = watts * hours / 1000
- *   carbon_g   = energy_kwh * grid_intensity_gco2e_per_kwh
+ * Converts effective CPU watts to monthly Scope 2 CO2e grams.
+ *   energy_kwh = watts × pue × hours / 1000
+ *   carbon_g   = energy_kwh × grid_intensity_gco2e_per_kwh
  */
-function wattsToCarbon(
+function wattsToScope2Carbon(
   watts: number,
   hours: number,
   pue: number,
@@ -99,15 +91,21 @@ function wattsToCarbon(
   return energyKwh * gridIntensityGco2ePerKwh;
 }
 
+/**
+ * Calculates monthly water consumption from operational energy.
+ *   energy_kwh (IT load, before PUE) × WUE litres/kWh
+ */
+function wattsToWater(watts: number, hours: number, waterIntensityLitresPerKwh: number): number {
+  const energyKwh = (watts * hours) / GRAMS_PER_KWH_TO_KWH_FACTOR;
+  return energyKwh * waterIntensityLitresPerKwh;
+}
+
 // ---------------------------------------------------------------------------
 // ARM recommendation map
-// Maps x86 families → their ARM equivalents (same vCPU/RAM class).
-// Extend this as new instance families are added to the ledger.
 // ---------------------------------------------------------------------------
 
 const ARM_UPGRADE_MAP: Record<string, string> = {
-  // x86 → ARM64 upgrade targets (same vCPU/RAM class, lower power draw)
-  // Source: AWS EC2 instance family documentation + CCF hardware coefficients
+  // x86 → ARM64 upgrade targets (same vCPU/RAM class, lower power + embodied)
   t3: 't4g',
   t3a: 't4g',
   m5: 'm6g',
@@ -118,39 +116,19 @@ const ARM_UPGRADE_MAP: Record<string, string> = {
   r5a: 'r6g',
 };
 
-/**
- * Given an instance type like "m5.large", returns the ARM equivalent
- * "m6g.large" if a mapping exists and the target is supported in the ledger.
- * Returns null if no upgrade is available.
- */
-function getArmAlternative(
-  instanceType: string,
-  ledger: Ledger
-): string | null {
+function getArmAlternative(instanceType: string, ledger: Ledger): string | null {
   const [family, size] = instanceType.split('.');
   if (!family || !size) return null;
-
   const armFamily = ARM_UPGRADE_MAP[family];
   if (!armFamily) return null;
-
   const candidate = `${armFamily}.${size}`;
   return ledger.instances[candidate] ? candidate : null;
 }
 
-/**
- * Finds the cleanest (lowest grid intensity) supported region
- * that is NOT the current region, to use as a region-shift recommendation.
- */
-function getCleanerRegion(
-  currentRegion: string,
-  instanceType: string,
-  ledger: Ledger
-): string | null {
+function getCleanerRegion(currentRegion: string, instanceType: string, ledger: Ledger): string | null {
   const regions = Object.entries(ledger.regions)
     .filter(([regionId]) => {
-      // Must be a different region
       if (regionId === currentRegion) return false;
-      // Must have pricing data for this instance type
       return !!ledger.pricing_usd_per_hour[regionId]?.[instanceType];
     })
     .sort(([, a], [, b]) => a.grid_intensity_gco2e_per_kwh - b.grid_intensity_gco2e_per_kwh);
@@ -158,28 +136,24 @@ function getCleanerRegion(
   if (regions.length === 0) return null;
 
   const [cleanestRegionId, cleanestRegion] = regions[0];
-  // If current region is unknown, treat intensity as Infinity so no region can appear "cleaner" — this
-  // prevents recommendations when we can't establish a valid baseline for comparison.
   const currentIntensity = ledger.regions[currentRegion]?.grid_intensity_gco2e_per_kwh ?? Infinity;
-
-  // Only recommend if the cleaner region is meaningfully better (>10% reduction)
   if (cleanestRegion.grid_intensity_gco2e_per_kwh >= currentIntensity * 0.9) return null;
-
   return cleanestRegionId;
 }
 
 // ---------------------------------------------------------------------------
-// Core Engine Functions
+// Core Engine
 // ---------------------------------------------------------------------------
 
 /**
- * Calculates the baseline emissions and cost for a single resource.
+ * Calculates the full environmental and cost baseline for a single resource.
  *
- * Returns a structured estimate with full transparency on every assumption
- * applied — suitable for inclusion in an audit ledger export.
+ * Returns three emission dimensions:
+ *   - Scope 2 operational (CPU power × grid carbon intensity × PUE)
+ *   - Scope 3 embodied (prorated hardware manufacturing lifecycle)
+ *   - Water consumption (operational energy × regional AWS WUE)
  *
- * If the region or instance type is not present in the ledger, returns an
- * estimate with confidence "LOW_ASSUMED_DEFAULT" and an unsupportedReason.
+ * Every assumption applied is recorded in assumptionsApplied for audit transparency.
  */
 export function calculateBaseline(
   input: ResourceInput,
@@ -188,59 +162,47 @@ export function calculateBaseline(
   const hours = input.hoursPerMonth ?? HOURS_PER_MONTH;
   const utilization = resolveUtilization(input, ledger);
 
-  // --- Validate region ---
+  const zeroResult = (unsupportedReason: string, gridIntensity = 0, embodied = 0, waterIntensity = 0): EmissionAndCostEstimate => ({
+    totalCo2eGramsPerMonth: 0,
+    embodiedCo2eGramsPerMonth: 0,
+    totalLifecycleCo2eGramsPerMonth: 0,
+    waterLitresPerMonth: 0,
+    totalCostUsdPerMonth: 0,
+    confidence: 'LOW_ASSUMED_DEFAULT',
+    scope: 'SCOPE_2_AND_3',
+    unsupportedReason,
+    assumptionsApplied: {
+      utilizationApplied: utilization,
+      gridIntensityApplied: gridIntensity,
+      powerModelUsed: 'LINEAR_INTERPOLATION',
+      embodiedCo2ePerVcpuPerMonthApplied: embodied,
+      waterIntensityLitresPerKwhApplied: waterIntensity,
+    },
+  });
+
   const regionData = ledger.regions[input.region];
   if (!regionData) {
-    return {
-      totalCo2eGramsPerMonth: 0,
-      totalCostUsdPerMonth: 0,
-      confidence: 'LOW_ASSUMED_DEFAULT',
-      scope: 'SCOPE_2_OPERATIONAL',
-      unsupportedReason: `Region "${input.region}" is not present in the open methodology ledger v${ledger.metadata.ledger_version}.`,
-      assumptionsApplied: {
-        utilizationApplied: utilization,
-        gridIntensityApplied: 0,
-        powerModelUsed: 'LINEAR_INTERPOLATION',
-      },
-    };
+    return zeroResult(`Region "${input.region}" is not present in the Open GreenOps Methodology Ledger v${ledger.metadata.ledger_version}.`);
   }
 
-  // --- Validate instance type ---
   const instanceData = ledger.instances[input.instanceType];
   if (!instanceData) {
-    return {
-      totalCo2eGramsPerMonth: 0,
-      totalCostUsdPerMonth: 0,
-      confidence: 'LOW_ASSUMED_DEFAULT',
-      scope: 'SCOPE_2_OPERATIONAL',
-      unsupportedReason: `Instance type "${input.instanceType}" is not present in the open methodology ledger v${ledger.metadata.ledger_version}.`,
-      assumptionsApplied: {
-        utilizationApplied: utilization,
-        gridIntensityApplied: regionData.grid_intensity_gco2e_per_kwh,
-        powerModelUsed: 'LINEAR_INTERPOLATION',
-      },
-    };
+    return zeroResult(
+      `Instance type "${input.instanceType}" is not present in the Open GreenOps Methodology Ledger v${ledger.metadata.ledger_version}.`,
+      regionData.grid_intensity_gco2e_per_kwh, 0, regionData.water_intensity_litres_per_kwh
+    );
   }
 
-  // --- Validate pricing ---
   const pricePerHour = ledger.pricing_usd_per_hour[input.region]?.[input.instanceType];
   if (pricePerHour === undefined) {
-    return {
-      totalCo2eGramsPerMonth: 0,
-      totalCostUsdPerMonth: 0,
-      confidence: 'LOW_ASSUMED_DEFAULT',
-      scope: 'SCOPE_2_OPERATIONAL',
-      unsupportedReason: `No pricing data for "${input.instanceType}" in "${input.region}" in the open methodology ledger v${ledger.metadata.ledger_version}.`,
-      assumptionsApplied: {
-        utilizationApplied: utilization,
-        gridIntensityApplied: regionData.grid_intensity_gco2e_per_kwh,
-        powerModelUsed: 'LINEAR_INTERPOLATION',
-      },
-    };
+    return zeroResult(
+      `No pricing data for "${input.instanceType}" in "${input.region}" in the Open GreenOps Methodology Ledger v${ledger.metadata.ledger_version}.`,
+      regionData.grid_intensity_gco2e_per_kwh,
+      instanceData.embodied_co2e_grams_per_month,
+      regionData.water_intensity_litres_per_kwh
+    );
   }
 
-  // --- Power model: LINEAR_INTERPOLATION ---
-  // watts = idle + (max - idle) * utilization
   const powerModel: PowerModel = 'LINEAR_INTERPOLATION';
   const effectiveWatts = linearInterpolationWatts(
     instanceData.power_watts.idle,
@@ -248,115 +210,102 @@ export function calculateBaseline(
     utilization
   );
 
-  // --- Carbon calculation ---
-  // Applies PUE to account for data center overhead (cooling, networking, etc.)
-  const totalCo2eGramsPerMonth = wattsToCarbon(
-    effectiveWatts,
-    hours,
-    regionData.pue,
-    regionData.grid_intensity_gco2e_per_kwh
+  // Scope 2: operational emissions
+  const totalCo2eGramsPerMonth = wattsToScope2Carbon(
+    effectiveWatts, hours, regionData.pue, regionData.grid_intensity_gco2e_per_kwh
   );
 
-  // --- Cost calculation ---
-  const totalCostUsdPerMonth = pricePerHour * hours;
+  // Scope 3: embodied emissions — prorated by hours if partial month
+  const embodiedCo2eGramsPerMonth =
+    instanceData.embodied_co2e_grams_per_month * (hours / HOURS_PER_MONTH);
 
-  // --- Confidence ---
-  // HIGH:              all values sourced from ledger, default utilization applied.
-  // MEDIUM:            caller supplied explicit avgUtilization. The estimate is still
-  //                    mathematically valid but depends on the accuracy of the supplied
-  //                    value. SaaS consumers should surface this to the end user.
-  // LOW_ASSUMED_DEFAULT: unsupported region/instance/pricing — estimate is zero and
-  //                    unreliable. See unsupportedReason for details.
-  const confidence: ConfidenceLevel =
-    input.avgUtilization !== undefined ? 'MEDIUM' : 'HIGH';
+  // Water consumption
+  const waterLitresPerMonth = wattsToWater(
+    effectiveWatts, hours, regionData.water_intensity_litres_per_kwh
+  );
+
+  const totalLifecycleCo2eGramsPerMonth = totalCo2eGramsPerMonth + embodiedCo2eGramsPerMonth;
+  const totalCostUsdPerMonth = pricePerHour * hours;
+  const confidence: ConfidenceLevel = input.avgUtilization !== undefined ? 'MEDIUM' : 'HIGH';
 
   return {
     totalCo2eGramsPerMonth,
+    embodiedCo2eGramsPerMonth,
+    totalLifecycleCo2eGramsPerMonth,
+    waterLitresPerMonth,
     totalCostUsdPerMonth,
     confidence,
-    scope: 'SCOPE_2_OPERATIONAL',
+    scope: 'SCOPE_2_AND_3',
     assumptionsApplied: {
       utilizationApplied: utilization,
       gridIntensityApplied: regionData.grid_intensity_gco2e_per_kwh,
       powerModelUsed: powerModel,
+      embodiedCo2ePerVcpuPerMonthApplied: instanceData.embodied_co2e_grams_per_month,
+      waterIntensityLitresPerKwhApplied: regionData.water_intensity_litres_per_kwh,
     },
   };
 }
 
 /**
- * Analyses a baseline estimate and generates the single best recommendation
- * for reducing carbon and cost.
+ * Generates the single best recommendation for reducing environmental impact.
  *
- * Strategy (in priority order):
- *   1. ARM upgrade:        Same region, switch x86 → ARM (same vCPU/RAM class)
- *   2. Region shift:       Same instance, move to lowest grid-intensity region
- *   3. ARM + region shift: Combined — tried only if individual improvements
- *                          are below a minimum threshold (reserved for v1)
- *
- * Returns null if no improvement can be found in the current ledger.
+ * Scoring: 60% weight on CO2 reduction, 40% on cost reduction.
+ * Both dimensions normalised to percentage-of-baseline.
+ * ARM upgrades surface embodied carbon benefit in the rationale.
  */
 export function generateRecommendation(
   input: ResourceInput,
   baseline: EmissionAndCostEstimate,
   ledger: Ledger = factorsData as Ledger
 ): UpgradeRecommendation | null {
-  // Cannot recommend for unsupported resources
   if (baseline.confidence === 'LOW_ASSUMED_DEFAULT') return null;
 
   const candidates: UpgradeRecommendation[] = [];
 
-  // --- Strategy 1: ARM upgrade ---
+  // Strategy 1: ARM upgrade
   const armAlternative = getArmAlternative(input.instanceType, ledger);
   if (armAlternative) {
-    const armEstimate = calculateBaseline(
-      { ...input, instanceType: armAlternative },
-      ledger
-    );
+    const armEstimate = calculateBaseline({ ...input, instanceType: armAlternative }, ledger);
     if (armEstimate.confidence !== 'LOW_ASSUMED_DEFAULT') {
       const co2Delta = armEstimate.totalCo2eGramsPerMonth - baseline.totalCo2eGramsPerMonth;
       const costDelta = armEstimate.totalCostUsdPerMonth - baseline.totalCostUsdPerMonth;
-
-      // Only include if it actually reduces both carbon AND cost
+      const embodiedDelta = armEstimate.embodiedCo2eGramsPerMonth - baseline.embodiedCo2eGramsPerMonth;
       if (co2Delta < 0 && costDelta < 0) {
+        const embodiedNote = embodiedDelta < 0
+          ? ` ARM64 also reduces embodied (Scope 3) carbon by ${Math.abs(Math.round(embodiedDelta))}g CO2e/month.`
+          : '';
         candidates.push({
           suggestedInstanceType: armAlternative,
           co2eDeltaGramsPerMonth: co2Delta,
           costDeltaUsdPerMonth: costDelta,
-          rationale: `Switching from ${input.instanceType} (x86_64) to ${armAlternative} (ARM64) provides identical vCPU and memory at lower power draw, reducing carbon by ${Math.abs(Math.round(co2Delta))}g CO2e/month and cost by $${Math.abs(costDelta).toFixed(2)}/month.`,
+          rationale: `Switching from ${input.instanceType} (x86_64) to ${armAlternative} (ARM64) provides identical vCPU and memory at lower power draw, reducing Scope 2 carbon by ${Math.abs(Math.round(co2Delta))}g CO2e/month and cost by $${Math.abs(costDelta).toFixed(2)}/month.${embodiedNote}`,
         });
       }
     }
   }
 
-  // --- Strategy 2: Region shift ---
+  // Strategy 2: Region shift
   const cleanerRegion = getCleanerRegion(input.region, input.instanceType, ledger);
   if (cleanerRegion) {
-    const regionEstimate = calculateBaseline(
-      { ...input, region: cleanerRegion },
-      ledger
-    );
+    const regionEstimate = calculateBaseline({ ...input, region: cleanerRegion }, ledger);
     if (regionEstimate.confidence !== 'LOW_ASSUMED_DEFAULT') {
       const co2Delta = regionEstimate.totalCo2eGramsPerMonth - baseline.totalCo2eGramsPerMonth;
       const costDelta = regionEstimate.totalCostUsdPerMonth - baseline.totalCostUsdPerMonth;
-
-      // Region shifts may increase cost — include if carbon reduction is significant (>15%)
-      // Guard against division by zero: if baseline carbon is 0, no meaningful reduction to compare.
       const co2ReductionPct = baseline.totalCo2eGramsPerMonth > 0
-        ? Math.abs(co2Delta) / baseline.totalCo2eGramsPerMonth
-        : 0;
-
+        ? Math.abs(co2Delta) / baseline.totalCo2eGramsPerMonth : 0;
       if (co2Delta < 0 && co2ReductionPct > 0.15) {
         const regionName = ledger.regions[cleanerRegion]?.location ?? cleanerRegion;
-        const costNote =
-          costDelta > 0
-            ? ` (note: cost increases by $${costDelta.toFixed(2)}/month)`
-            : ` saving $${Math.abs(costDelta).toFixed(2)}/month`;
-
+        const costNote = costDelta > 0
+          ? ` (note: cost increases by $${costDelta.toFixed(2)}/month)`
+          : ` saving $${Math.abs(costDelta).toFixed(2)}/month`;
+        const waterDelta = regionEstimate.waterLitresPerMonth - baseline.waterLitresPerMonth;
+        const waterNote = waterDelta < -0.1
+          ? ` Water consumption also decreases by ${Math.abs(waterDelta).toFixed(1)}L/month.` : '';
         candidates.push({
           suggestedRegion: cleanerRegion,
           co2eDeltaGramsPerMonth: co2Delta,
           costDeltaUsdPerMonth: costDelta,
-          rationale: `Moving ${input.instanceType} from ${input.region} to ${regionName} (${cleanerRegion}) reduces grid carbon intensity from ${ledger.regions[input.region]?.grid_intensity_gco2e_per_kwh}g to ${ledger.regions[cleanerRegion]?.grid_intensity_gco2e_per_kwh}g CO2e/kWh, saving ${Math.abs(Math.round(co2Delta))}g CO2e/month${costNote}.`,
+          rationale: `Moving ${input.instanceType} from ${input.region} to ${regionName} (${cleanerRegion}) reduces Scope 2 grid carbon intensity from ${ledger.regions[input.region]?.grid_intensity_gco2e_per_kwh}g to ${ledger.regions[cleanerRegion]?.grid_intensity_gco2e_per_kwh}g CO2e/kWh, saving ${Math.abs(Math.round(co2Delta))}g CO2e/month${costNote}.${waterNote}`,
         });
       }
     }
@@ -364,19 +313,13 @@ export function generateRecommendation(
 
   if (candidates.length === 0) return null;
 
-  // Return the recommendation with the greatest combined carbon + cost reduction.
-  // We weight carbon reduction at 60% and cost at 40% to reflect the tool's primary mission.
-  // Both dimensions are normalized to percentage-of-baseline so the weighting is accurate.
   const scored = candidates.map((rec) => {
     const co2Pct = baseline.totalCo2eGramsPerMonth > 0
-      ? Math.abs(rec.co2eDeltaGramsPerMonth) / baseline.totalCo2eGramsPerMonth
-      : 0;
+      ? Math.abs(rec.co2eDeltaGramsPerMonth) / baseline.totalCo2eGramsPerMonth : 0;
     const costPct = baseline.totalCostUsdPerMonth > 0
-      ? Math.abs(rec.costDeltaUsdPerMonth) / baseline.totalCostUsdPerMonth
-      : 0;
+      ? Math.abs(rec.costDeltaUsdPerMonth) / baseline.totalCostUsdPerMonth : 0;
     return { rec, score: co2Pct * 0.6 + costPct * 0.4 };
   });
-
   scored.sort((a, b) => b.score - a.score);
   return scored[0].rec;
 }
@@ -385,11 +328,6 @@ export function generateRecommendation(
 // Plan-level aggregator
 // ---------------------------------------------------------------------------
 
-/**
- * Runs calculateBaseline + generateRecommendation for every resource in a
- * parsed plan and assembles the full PlanAnalysisResult, including pre-computed
- * totals for the PR comment headline.
- */
 export function analysePlan(
   resources: ResourceInput[],
   skipped: PlanAnalysisResult['skipped'],
@@ -406,20 +344,21 @@ export function analysePlan(
   const totals = analysedResources.reduce(
     (acc, { baseline, recommendation }) => {
       acc.currentCo2eGramsPerMonth += baseline.totalCo2eGramsPerMonth;
+      acc.currentEmbodiedCo2eGramsPerMonth += baseline.embodiedCo2eGramsPerMonth;
+      acc.currentLifecycleCo2eGramsPerMonth += baseline.totalLifecycleCo2eGramsPerMonth;
+      acc.currentWaterLitresPerMonth += baseline.waterLitresPerMonth;
       acc.currentCostUsdPerMonth += baseline.totalCostUsdPerMonth;
       if (recommendation) {
-        // Deltas are negative for improvements, so we negate for "saving" fields
-        acc.potentialCo2eSavingGramsPerMonth += Math.abs(
-          recommendation.co2eDeltaGramsPerMonth
-        );
-        acc.potentialCostSavingUsdPerMonth += Math.abs(
-          recommendation.costDeltaUsdPerMonth
-        );
+        acc.potentialCo2eSavingGramsPerMonth += Math.abs(recommendation.co2eDeltaGramsPerMonth);
+        acc.potentialCostSavingUsdPerMonth += Math.abs(recommendation.costDeltaUsdPerMonth);
       }
       return acc;
     },
     {
       currentCo2eGramsPerMonth: 0,
+      currentEmbodiedCo2eGramsPerMonth: 0,
+      currentLifecycleCo2eGramsPerMonth: 0,
+      currentWaterLitresPerMonth: 0,
       currentCostUsdPerMonth: 0,
       potentialCo2eSavingGramsPerMonth: 0,
       potentialCostSavingUsdPerMonth: 0,

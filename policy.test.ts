@@ -14,7 +14,10 @@ function makeMockResult(overrides: Partial<PlanAnalysisResult['totals']> = {}): 
     skipped: [],
     unsupportedTypes: [],
     totals: {
-      currentCo2eGramsPerMonth: 5000,   // 5kg
+      currentCo2eGramsPerMonth: 5000,
+      currentEmbodiedCo2eGramsPerMonth: 1041.7,
+      currentLifecycleCo2eGramsPerMonth: 6041.7,
+      currentWaterLitresPerMonth: 2.3,
       currentCostUsdPerMonth: 200,
       potentialCo2eSavingGramsPerMonth: 1000,
       potentialCostSavingUsdPerMonth: 20,
