@@ -1,0 +1,20 @@
+# Source files — not needed by consumers, only the built dist is required
+*.ts
+!*.d.ts
+
+# Test files
+*.test.ts
+integration.test.ts
+
+# Fixtures and dev files
+fixtures/
+demo.json
+tsconfig.json
+
+# GitHub workflows and templates
+.github/workflows/
+.github/ISSUE_TEMPLATE/
+.github/PULL_REQUEST_TEMPLATE.md
+
+# Research and internal docs
+research.*.md
