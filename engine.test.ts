@@ -167,10 +167,10 @@ describe('calculateBaseline', () => {
     assert.ok(max.totalCo2eGramsPerMonth > idle.totalCo2eGramsPerMonth, 'Max utilization should produce more carbon');
   });
 
-  it('returns scope SCOPE_2_OPERATIONAL on all estimates', () => {
+  it('returns scope SCOPE_2_AND_3 on all estimates', () => {
     const result = calculateBaseline({
       resourceId: 'test', region: 'us-east-1', instanceType: 'm5.large',
     });
-    assert.equal(result.scope, 'SCOPE_2_OPERATIONAL');
+    assert.equal(result.scope, 'SCOPE_2_AND_3');
   });
 });

@@ -1,17 +1,15 @@
 import { PlanAnalysisResult } from '../types.js';
 import { formatDelta, formatCostDelta, formatGrams } from './util.js';
 
-// Strip ANSI escape codes to get the true visible length of a string,
-// so padEnd() aligns columns correctly in the terminal table.
-function visibleLength(str: string): number {
-  return str.replace(/\x1b\[[0-9;]*m/g, '').length;
-}
-
 function truncate(str: string, len: number): string {
-  // Always use visible text for consistent output — callers handle coloring at row level
   const visible = str.replace(/\x1b\[[0-9;]*m/g, '');
   if (visible.length > len) return visible.substring(0, len - 3) + '...';
   return visible + ' '.repeat(len - visible.length);
+}
+
+function formatWater(litres: number): string {
+  if (litres >= 1000) return `${(litres / 1000).toFixed(1)}m³`;
+  return `${litres.toFixed(1)}L`;
 }
 
 export function formatTable(result: PlanAnalysisResult): string {
@@ -21,23 +19,27 @@ export function formatTable(result: PlanAnalysisResult): string {
     return out + `No compatible infrastructure detected.\n`;
   }
 
-  out += `┌${'─'.repeat(40)}┬${'─'.repeat(15)}┬${'─'.repeat(15)}┬${'─'.repeat(15)}┬${'─'.repeat(15)}┐\n`;
-  out += `│ ${truncate('Resource', 38)} │ ${truncate('Instance', 13)} │ ${truncate('Region', 13)} │ ${truncate('CO2e/mo', 13)} │ ${truncate('Action', 13)} │\n`;
-  out += `├${'─'.repeat(40)}┼${'─'.repeat(15)}┼${'─'.repeat(15)}┼${'─'.repeat(15)}┼${'─'.repeat(15)}┤\n`;
+  out += `┌${'─'.repeat(38)}┬${'─'.repeat(13)}┬${'─'.repeat(13)}┬${'─'.repeat(11)}┬${'─'.repeat(11)}┬${'─'.repeat(9)}┬${'─'.repeat(13)}┐\n`;
+  out += `│ ${truncate('Resource', 36)} │ ${truncate('Instance', 11)} │ ${truncate('Region', 11)} │ ${truncate('Scope 2', 9)} │ ${truncate('Scope 3', 9)} │ ${truncate('Water', 7)} │ ${truncate('Action', 11)} │\n`;
+  out += `├${'─'.repeat(38)}┼${'─'.repeat(13)}┼${'─'.repeat(13)}┼${'─'.repeat(11)}┼${'─'.repeat(11)}┼${'─'.repeat(9)}┼${'─'.repeat(13)}┤\n`;
 
   for (const r of result.resources) {
-    const c = formatGrams(r.baseline.totalCo2eGramsPerMonth);
+    const scope2 = formatGrams(r.baseline.totalCo2eGramsPerMonth);
+    const scope3 = formatGrams(r.baseline.embodiedCo2eGramsPerMonth);
+    const water = formatWater(r.baseline.waterLitresPerMonth);
     const action = r.recommendation ? `\x1b[33mUPGRADE\x1b[0m` : `\x1b[32mOK\x1b[0m`;
-    out += `│ ${truncate(r.input.resourceId, 38)} │ ${truncate(r.input.instanceType, 13)} │ ${truncate(r.input.region, 13)} │ ${truncate(c, 13)} │ ${truncate(action, 13)} │\n`;
+    out += `│ ${truncate(r.input.resourceId, 36)} │ ${truncate(r.input.instanceType, 11)} │ ${truncate(r.input.region, 11)} │ ${truncate(scope2, 9)} │ ${truncate(scope3, 9)} │ ${truncate(water, 7)} │ ${truncate(action, 11)} │\n`;
   }
   for (const s of result.skipped) {
-    out += `│ \x1b[90m${truncate(s.resourceId, 38)}\x1b[0m │ \x1b[90m${truncate('---', 13)}\x1b[0m │ \x1b[90m${truncate('---', 13)}\x1b[0m │ \x1b[90m${truncate('---', 13)}\x1b[0m │ \x1b[33m${truncate('⚠ SKIPPED', 13)}\x1b[0m │\n`;
+    out += `│ \x1b[90m${truncate(s.resourceId, 36)}\x1b[0m │ \x1b[90m${truncate('---', 11)}\x1b[0m │ \x1b[90m${truncate('---', 11)}\x1b[0m │ \x1b[90m${truncate('---', 9)}\x1b[0m │ \x1b[90m${truncate('---', 9)}\x1b[0m │ \x1b[90m${truncate('---', 7)}\x1b[0m │ \x1b[33m${truncate('⚠ SKIPPED', 11)}\x1b[0m │\n`;
   }
-  out += `└${'─'.repeat(40)}┴${'─'.repeat(15)}┴${'─'.repeat(15)}┴${'─'.repeat(15)}┴${'─'.repeat(15)}┘\n\n`;
+  out += `└${'─'.repeat(38)}┴${'─'.repeat(13)}┴${'─'.repeat(13)}┴${'─'.repeat(11)}┴${'─'.repeat(11)}┴${'─'.repeat(9)}┴${'─'.repeat(13)}┘\n\n`;
 
-  out += `Current: ${formatGrams(result.totals.currentCo2eGramsPerMonth)} | $${result.totals.currentCostUsdPerMonth.toFixed(2)}\n`;
+  out += `Scope 2: ${formatGrams(result.totals.currentCo2eGramsPerMonth)} | Scope 3: ${formatGrams(result.totals.currentEmbodiedCo2eGramsPerMonth)} | Lifecycle: ${formatGrams(result.totals.currentLifecycleCo2eGramsPerMonth)}\n`;
+  out += `Water: ${formatWater(result.totals.currentWaterLitresPerMonth)} | Cost: $${result.totals.currentCostUsdPerMonth.toFixed(2)}/month\n`;
+
   if (result.totals.potentialCo2eSavingGramsPerMonth > 0) {
-    out += `\x1b[32mSavings: ${formatDelta(-result.totals.potentialCo2eSavingGramsPerMonth)} | ${formatCostDelta(-result.totals.potentialCostSavingUsdPerMonth)}\x1b[0m\n`;
+    out += `\x1b[32mScope 2 Savings: ${formatDelta(-result.totals.potentialCo2eSavingGramsPerMonth)} | ${formatCostDelta(-result.totals.potentialCostSavingUsdPerMonth)}\x1b[0m\n`;
   }
 
   if (result.skipped.length > 0) {

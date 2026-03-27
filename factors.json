@@ -1,15 +1,17 @@
 {
   "metadata": {
-    "ledger_version": "1.2.0",
+    "ledger_version": "1.3.0",
     "updated_at": "2026-03-27T00:00:00Z",
     "sources": {
       "grid": "electricity-maps-2024-avg",
       "hardware": "cloud-carbon-footprint-v3",
-      "pricing": "aws-public-pricing-api-2026-q1"
+      "pricing": "aws-public-pricing-api-2026-q1",
+      "embodied": "cloud-carbon-footprint-v3-dell-r740-baseline",
+      "water": "aws-sustainability-report-2023-wue"
     },
     "assumptions": {
       "default_utilization": {
-        "value": 0.50,
+        "value": 0.5,
         "citation": "Cloud Carbon Footprint (CCF) standard assumed average utilization for general-purpose compute where no telemetry is available.",
         "url": "https://www.cloudcarbonfootprint.org/docs/methodology/#utilization"
       }
@@ -19,72 +21,86 @@
     "us-east-1": {
       "location": "US East (N. Virginia)",
       "grid_intensity_gco2e_per_kwh": 384.5,
-      "pue": 1.13
+      "pue": 1.13,
+      "water_intensity_litres_per_kwh": 0.46
     },
     "us-east-2": {
       "location": "US East (Ohio)",
       "grid_intensity_gco2e_per_kwh": 410.0,
-      "pue": 1.13
+      "pue": 1.13,
+      "water_intensity_litres_per_kwh": 0.52
     },
     "us-west-1": {
       "location": "US West (N. California)",
       "grid_intensity_gco2e_per_kwh": 220.0,
-      "pue": 1.13
+      "pue": 1.13,
+      "water_intensity_litres_per_kwh": 0.38
     },
     "us-west-2": {
       "location": "US West (Oregon)",
       "grid_intensity_gco2e_per_kwh": 240.1,
-      "pue": 1.13
+      "pue": 1.13,
+      "water_intensity_litres_per_kwh": 0.18
     },
     "eu-west-1": {
       "location": "Europe (Ireland)",
       "grid_intensity_gco2e_per_kwh": 334.0,
-      "pue": 1.13
+      "pue": 1.13,
+      "water_intensity_litres_per_kwh": 0.22
     },
     "eu-west-2": {
       "location": "Europe (London)",
       "grid_intensity_gco2e_per_kwh": 268.0,
-      "pue": 1.13
+      "pue": 1.13,
+      "water_intensity_litres_per_kwh": 0.25
     },
     "eu-central-1": {
       "location": "Europe (Frankfurt)",
       "grid_intensity_gco2e_per_kwh": 420.5,
-      "pue": 1.13
+      "pue": 1.13,
+      "water_intensity_litres_per_kwh": 0.28
     },
     "eu-north-1": {
       "location": "Europe (Stockholm)",
       "grid_intensity_gco2e_per_kwh": 8.8,
-      "pue": 1.13
+      "pue": 1.13,
+      "water_intensity_litres_per_kwh": 0.1
     },
     "ap-southeast-1": {
       "location": "Asia Pacific (Singapore)",
       "grid_intensity_gco2e_per_kwh": 408.0,
-      "pue": 1.13
+      "pue": 1.13,
+      "water_intensity_litres_per_kwh": 0.58
     },
     "ap-southeast-2": {
       "location": "Asia Pacific (Sydney)",
       "grid_intensity_gco2e_per_kwh": 650.0,
-      "pue": 1.13
+      "pue": 1.13,
+      "water_intensity_litres_per_kwh": 0.45
     },
     "ap-northeast-1": {
       "location": "Asia Pacific (Tokyo)",
       "grid_intensity_gco2e_per_kwh": 506.0,
-      "pue": 1.13
+      "pue": 1.13,
+      "water_intensity_litres_per_kwh": 0.5
     },
     "ap-south-1": {
       "location": "Asia Pacific (Mumbai)",
       "grid_intensity_gco2e_per_kwh": 723.0,
-      "pue": 1.13
+      "pue": 1.13,
+      "water_intensity_litres_per_kwh": 0.72
     },
     "ca-central-1": {
       "location": "Canada (Central)",
       "grid_intensity_gco2e_per_kwh": 130.0,
-      "pue": 1.13
+      "pue": 1.13,
+      "water_intensity_litres_per_kwh": 0.2
     },
     "sa-east-1": {
-      "location": "South America (São Paulo)",
+      "location": "South America (S\u00e3o Paulo)",
       "grid_intensity_gco2e_per_kwh": 74.0,
-      "pue": 1.13
+      "pue": 1.13,
+      "water_intensity_litres_per_kwh": 0.35
     }
   },
   "instances": {
@@ -92,421 +108,892 @@
       "architecture": "x86_64",
       "vcpus": 2,
       "memory_gb": 1,
-      "power_watts": { "idle": 1.4, "max": 5.0 }
+      "power_watts": {
+        "idle": 1.4,
+        "max": 5.0
+      },
+      "embodied_co2e_grams_per_month": 1041.7
     },
     "t3.small": {
       "architecture": "x86_64",
       "vcpus": 2,
       "memory_gb": 2,
-      "power_watts": { "idle": 2.0, "max": 7.0 }
+      "power_watts": {
+        "idle": 2.0,
+        "max": 7.0
+      },
+      "embodied_co2e_grams_per_month": 1041.7
     },
     "t3.medium": {
       "architecture": "x86_64",
       "vcpus": 2,
       "memory_gb": 4,
-      "power_watts": { "idle": 3.4, "max": 10.2 }
+      "power_watts": {
+        "idle": 3.4,
+        "max": 10.2
+      },
+      "embodied_co2e_grams_per_month": 1041.7
     },
     "t3.large": {
       "architecture": "x86_64",
       "vcpus": 2,
       "memory_gb": 8,
-      "power_watts": { "idle": 6.8, "max": 20.4 }
+      "power_watts": {
+        "idle": 6.8,
+        "max": 20.4
+      },
+      "embodied_co2e_grams_per_month": 1041.7
     },
     "t3.xlarge": {
       "architecture": "x86_64",
       "vcpus": 4,
       "memory_gb": 16,
-      "power_watts": { "idle": 13.6, "max": 40.8 }
+      "power_watts": {
+        "idle": 13.6,
+        "max": 40.8
+      },
+      "embodied_co2e_grams_per_month": 2083.3
     },
     "t3a.medium": {
       "architecture": "x86_64",
       "vcpus": 2,
       "memory_gb": 4,
-      "power_watts": { "idle": 3.2, "max": 9.8 }
+      "power_watts": {
+        "idle": 3.2,
+        "max": 9.8
+      },
+      "embodied_co2e_grams_per_month": 1041.7
     },
     "t3a.large": {
       "architecture": "x86_64",
       "vcpus": 2,
       "memory_gb": 8,
-      "power_watts": { "idle": 6.4, "max": 19.6 }
+      "power_watts": {
+        "idle": 6.4,
+        "max": 19.6
+      },
+      "embodied_co2e_grams_per_month": 1041.7
     },
     "m5.large": {
       "architecture": "x86_64",
       "vcpus": 2,
       "memory_gb": 8,
-      "power_watts": { "idle": 6.8, "max": 20.4 }
+      "power_watts": {
+        "idle": 6.8,
+        "max": 20.4
+      },
+      "embodied_co2e_grams_per_month": 1041.7
     },
     "m5.xlarge": {
       "architecture": "x86_64",
       "vcpus": 4,
       "memory_gb": 16,
-      "power_watts": { "idle": 13.6, "max": 40.8 }
+      "power_watts": {
+        "idle": 13.6,
+        "max": 40.8
+      },
+      "embodied_co2e_grams_per_month": 2083.3
     },
     "m5.2xlarge": {
       "architecture": "x86_64",
       "vcpus": 8,
       "memory_gb": 32,
-      "power_watts": { "idle": 27.2, "max": 81.6 }
+      "power_watts": {
+        "idle": 27.2,
+        "max": 81.6
+      },
+      "embodied_co2e_grams_per_month": 4166.7
     },
     "m5a.large": {
       "architecture": "x86_64",
       "vcpus": 2,
       "memory_gb": 8,
-      "power_watts": { "idle": 6.5, "max": 19.5 }
+      "power_watts": {
+        "idle": 6.5,
+        "max": 19.5
+      },
+      "embodied_co2e_grams_per_month": 1041.7
     },
     "m5a.xlarge": {
       "architecture": "x86_64",
       "vcpus": 4,
       "memory_gb": 16,
-      "power_watts": { "idle": 13.0, "max": 39.0 }
+      "power_watts": {
+        "idle": 13.0,
+        "max": 39.0
+      },
+      "embodied_co2e_grams_per_month": 2083.3
     },
     "c5.large": {
       "architecture": "x86_64",
       "vcpus": 2,
       "memory_gb": 4,
-      "power_watts": { "idle": 6.5, "max": 22.0 }
+      "power_watts": {
+        "idle": 6.5,
+        "max": 22.0
+      },
+      "embodied_co2e_grams_per_month": 1041.7
     },
     "c5.xlarge": {
       "architecture": "x86_64",
       "vcpus": 4,
       "memory_gb": 8,
-      "power_watts": { "idle": 13.0, "max": 44.0 }
+      "power_watts": {
+        "idle": 13.0,
+        "max": 44.0
+      },
+      "embodied_co2e_grams_per_month": 2083.3
     },
     "c5.2xlarge": {
       "architecture": "x86_64",
       "vcpus": 8,
       "memory_gb": 16,
-      "power_watts": { "idle": 26.0, "max": 88.0 }
+      "power_watts": {
+        "idle": 26.0,
+        "max": 88.0
+      },
+      "embodied_co2e_grams_per_month": 4166.7
     },
     "c5a.large": {
       "architecture": "x86_64",
       "vcpus": 2,
       "memory_gb": 4,
-      "power_watts": { "idle": 6.2, "max": 21.0 }
+      "power_watts": {
+        "idle": 6.2,
+        "max": 21.0
+      },
+      "embodied_co2e_grams_per_month": 1041.7
     },
     "c5a.xlarge": {
       "architecture": "x86_64",
       "vcpus": 4,
       "memory_gb": 8,
-      "power_watts": { "idle": 12.4, "max": 42.0 }
+      "power_watts": {
+        "idle": 12.4,
+        "max": 42.0
+      },
+      "embodied_co2e_grams_per_month": 2083.3
     },
     "r5.large": {
       "architecture": "x86_64",
       "vcpus": 2,
       "memory_gb": 16,
-      "power_watts": { "idle": 8.0, "max": 24.0 }
+      "power_watts": {
+        "idle": 8.0,
+        "max": 24.0
+      },
+      "embodied_co2e_grams_per_month": 1041.7
     },
     "r5.xlarge": {
       "architecture": "x86_64",
       "vcpus": 4,
       "memory_gb": 32,
-      "power_watts": { "idle": 16.0, "max": 48.0 }
+      "power_watts": {
+        "idle": 16.0,
+        "max": 48.0
+      },
+      "embodied_co2e_grams_per_month": 2083.3
     },
     "t4g.micro": {
       "architecture": "arm64",
       "vcpus": 2,
       "memory_gb": 1,
-      "power_watts": { "idle": 0.9, "max": 3.2 }
+      "power_watts": {
+        "idle": 0.9,
+        "max": 3.2
+      },
+      "embodied_co2e_grams_per_month": 833.3
     },
     "t4g.small": {
       "architecture": "arm64",
       "vcpus": 2,
       "memory_gb": 2,
-      "power_watts": { "idle": 1.4, "max": 4.5 }
+      "power_watts": {
+        "idle": 1.4,
+        "max": 4.5
+      },
+      "embodied_co2e_grams_per_month": 833.3
     },
     "t4g.medium": {
       "architecture": "arm64",
       "vcpus": 2,
       "memory_gb": 4,
-      "power_watts": { "idle": 2.2, "max": 6.8 }
+      "power_watts": {
+        "idle": 2.2,
+        "max": 6.8
+      },
+      "embodied_co2e_grams_per_month": 833.3
     },
     "t4g.large": {
       "architecture": "arm64",
       "vcpus": 2,
       "memory_gb": 8,
-      "power_watts": { "idle": 4.4, "max": 13.6 }
+      "power_watts": {
+        "idle": 4.4,
+        "max": 13.6
+      },
+      "embodied_co2e_grams_per_month": 833.3
     },
     "t4g.xlarge": {
       "architecture": "arm64",
       "vcpus": 4,
       "memory_gb": 16,
-      "power_watts": { "idle": 8.8, "max": 27.2 }
+      "power_watts": {
+        "idle": 8.8,
+        "max": 27.2
+      },
+      "embodied_co2e_grams_per_month": 1666.7
     },
     "m6g.medium": {
       "architecture": "arm64",
       "vcpus": 1,
       "memory_gb": 4,
-      "power_watts": { "idle": 2.1, "max": 6.6 }
+      "power_watts": {
+        "idle": 2.1,
+        "max": 6.6
+      },
+      "embodied_co2e_grams_per_month": 416.7
     },
     "m6g.large": {
       "architecture": "arm64",
       "vcpus": 2,
       "memory_gb": 8,
-      "power_watts": { "idle": 4.1, "max": 13.2 }
+      "power_watts": {
+        "idle": 4.1,
+        "max": 13.2
+      },
+      "embodied_co2e_grams_per_month": 833.3
     },
     "m6g.xlarge": {
       "architecture": "arm64",
       "vcpus": 4,
       "memory_gb": 16,
-      "power_watts": { "idle": 8.2, "max": 26.4 }
+      "power_watts": {
+        "idle": 8.2,
+        "max": 26.4
+      },
+      "embodied_co2e_grams_per_month": 1666.7
     },
     "m6g.2xlarge": {
       "architecture": "arm64",
       "vcpus": 8,
       "memory_gb": 32,
-      "power_watts": { "idle": 16.4, "max": 52.8 }
+      "power_watts": {
+        "idle": 16.4,
+        "max": 52.8
+      },
+      "embodied_co2e_grams_per_month": 3333.3
     },
     "m7g.medium": {
       "architecture": "arm64",
       "vcpus": 1,
       "memory_gb": 4,
-      "power_watts": { "idle": 1.8, "max": 5.8 }
+      "power_watts": {
+        "idle": 1.8,
+        "max": 5.8
+      },
+      "embodied_co2e_grams_per_month": 416.7
     },
     "m7g.large": {
       "architecture": "arm64",
       "vcpus": 2,
       "memory_gb": 8,
-      "power_watts": { "idle": 3.6, "max": 11.6 }
+      "power_watts": {
+        "idle": 3.6,
+        "max": 11.6
+      },
+      "embodied_co2e_grams_per_month": 833.3
     },
     "m7g.xlarge": {
       "architecture": "arm64",
       "vcpus": 4,
       "memory_gb": 16,
-      "power_watts": { "idle": 7.2, "max": 23.2 }
+      "power_watts": {
+        "idle": 7.2,
+        "max": 23.2
+      },
+      "embodied_co2e_grams_per_month": 1666.7
     },
     "m7g.2xlarge": {
       "architecture": "arm64",
       "vcpus": 8,
       "memory_gb": 32,
-      "power_watts": { "idle": 14.4, "max": 46.4 }
+      "power_watts": {
+        "idle": 14.4,
+        "max": 46.4
+      },
+      "embodied_co2e_grams_per_month": 3333.3
     },
     "c6g.medium": {
       "architecture": "arm64",
       "vcpus": 1,
       "memory_gb": 2,
-      "power_watts": { "idle": 2.0, "max": 7.3 }
+      "power_watts": {
+        "idle": 2.0,
+        "max": 7.3
+      },
+      "embodied_co2e_grams_per_month": 416.7
     },
     "c6g.large": {
       "architecture": "arm64",
       "vcpus": 2,
       "memory_gb": 4,
-      "power_watts": { "idle": 3.9, "max": 14.5 }
+      "power_watts": {
+        "idle": 3.9,
+        "max": 14.5
+      },
+      "embodied_co2e_grams_per_month": 833.3
     },
     "c6g.xlarge": {
       "architecture": "arm64",
       "vcpus": 4,
       "memory_gb": 8,
-      "power_watts": { "idle": 7.8, "max": 29.0 }
+      "power_watts": {
+        "idle": 7.8,
+        "max": 29.0
+      },
+      "embodied_co2e_grams_per_month": 1666.7
     },
     "c6g.2xlarge": {
       "architecture": "arm64",
       "vcpus": 8,
       "memory_gb": 16,
-      "power_watts": { "idle": 15.6, "max": 58.0 }
+      "power_watts": {
+        "idle": 15.6,
+        "max": 58.0
+      },
+      "embodied_co2e_grams_per_month": 3333.3
     },
     "c7g.large": {
       "architecture": "arm64",
       "vcpus": 2,
       "memory_gb": 4,
-      "power_watts": { "idle": 3.5, "max": 13.0 }
+      "power_watts": {
+        "idle": 3.5,
+        "max": 13.0
+      },
+      "embodied_co2e_grams_per_month": 833.3
     },
     "c7g.xlarge": {
       "architecture": "arm64",
       "vcpus": 4,
       "memory_gb": 8,
-      "power_watts": { "idle": 7.0, "max": 26.0 }
+      "power_watts": {
+        "idle": 7.0,
+        "max": 26.0
+      },
+      "embodied_co2e_grams_per_month": 1666.7
     },
     "r6g.large": {
       "architecture": "arm64",
       "vcpus": 2,
       "memory_gb": 16,
-      "power_watts": { "idle": 4.8, "max": 15.0 }
+      "power_watts": {
+        "idle": 4.8,
+        "max": 15.0
+      },
+      "embodied_co2e_grams_per_month": 833.3
     },
     "r6g.xlarge": {
       "architecture": "arm64",
       "vcpus": 4,
       "memory_gb": 32,
-      "power_watts": { "idle": 9.6, "max": 30.0 }
+      "power_watts": {
+        "idle": 9.6,
+        "max": 30.0
+      },
+      "embodied_co2e_grams_per_month": 1666.7
     }
   },
   "pricing_usd_per_hour": {
     "us-east-1": {
-      "t3.micro": 0.0104, "t3.small": 0.0208, "t3.medium": 0.0416, "t3.large": 0.0832, "t3.xlarge": 0.1664,
-      "t3a.medium": 0.0376, "t3a.large": 0.0752,
-      "m5.large": 0.0960, "m5.xlarge": 0.1920, "m5.2xlarge": 0.3840,
-      "m5a.large": 0.0860, "m5a.xlarge": 0.1720,
-      "c5.large": 0.0850, "c5.xlarge": 0.1700, "c5.2xlarge": 0.3400,
-      "c5a.large": 0.0770, "c5a.xlarge": 0.1540,
-      "r5.large": 0.1260, "r5.xlarge": 0.2520,
-      "t4g.micro": 0.0084, "t4g.small": 0.0168, "t4g.medium": 0.0336, "t4g.large": 0.0672, "t4g.xlarge": 0.1344,
-      "m6g.medium": 0.0385, "m6g.large": 0.0770, "m6g.xlarge": 0.1540, "m6g.2xlarge": 0.3080,
-      "m7g.medium": 0.0408, "m7g.large": 0.0816, "m7g.xlarge": 0.1632, "m7g.2xlarge": 0.3264,
-      "c6g.medium": 0.0340, "c6g.large": 0.0680, "c6g.xlarge": 0.1360, "c6g.2xlarge": 0.2720,
-      "c7g.large": 0.0725, "c7g.xlarge": 0.1450,
-      "r6g.large": 0.1008, "r6g.xlarge": 0.2016
+      "t3.micro": 0.0104,
+      "t3.small": 0.0208,
+      "t3.medium": 0.0416,
+      "t3.large": 0.0832,
+      "t3.xlarge": 0.1664,
+      "t3a.medium": 0.0376,
+      "t3a.large": 0.0752,
+      "m5.large": 0.096,
+      "m5.xlarge": 0.192,
+      "m5.2xlarge": 0.384,
+      "m5a.large": 0.086,
+      "m5a.xlarge": 0.172,
+      "c5.large": 0.085,
+      "c5.xlarge": 0.17,
+      "c5.2xlarge": 0.34,
+      "c5a.large": 0.077,
+      "c5a.xlarge": 0.154,
+      "r5.large": 0.126,
+      "r5.xlarge": 0.252,
+      "t4g.micro": 0.0084,
+      "t4g.small": 0.0168,
+      "t4g.medium": 0.0336,
+      "t4g.large": 0.0672,
+      "t4g.xlarge": 0.1344,
+      "m6g.medium": 0.0385,
+      "m6g.large": 0.077,
+      "m6g.xlarge": 0.154,
+      "m6g.2xlarge": 0.308,
+      "m7g.medium": 0.0408,
+      "m7g.large": 0.0816,
+      "m7g.xlarge": 0.1632,
+      "m7g.2xlarge": 0.3264,
+      "c6g.medium": 0.034,
+      "c6g.large": 0.068,
+      "c6g.xlarge": 0.136,
+      "c6g.2xlarge": 0.272,
+      "c7g.large": 0.0725,
+      "c7g.xlarge": 0.145,
+      "r6g.large": 0.1008,
+      "r6g.xlarge": 0.2016
     },
     "us-east-2": {
-      "t3.micro": 0.0104, "t3.small": 0.0208, "t3.medium": 0.0416, "t3.large": 0.0832, "t3.xlarge": 0.1664,
-      "t3a.medium": 0.0376, "t3a.large": 0.0752,
-      "m5.large": 0.0960, "m5.xlarge": 0.1920, "m5.2xlarge": 0.3840,
-      "m5a.large": 0.0860, "m5a.xlarge": 0.1720,
-      "c5.large": 0.0850, "c5.xlarge": 0.1700, "c5.2xlarge": 0.3400,
-      "c5a.large": 0.0770, "c5a.xlarge": 0.1540,
-      "r5.large": 0.1260, "r5.xlarge": 0.2520,
-      "t4g.micro": 0.0084, "t4g.small": 0.0168, "t4g.medium": 0.0336, "t4g.large": 0.0672, "t4g.xlarge": 0.1344,
-      "m6g.medium": 0.0385, "m6g.large": 0.0770, "m6g.xlarge": 0.1540, "m6g.2xlarge": 0.3080,
-      "m7g.medium": 0.0408, "m7g.large": 0.0816, "m7g.xlarge": 0.1632, "m7g.2xlarge": 0.3264,
-      "c6g.medium": 0.0340, "c6g.large": 0.0680, "c6g.xlarge": 0.1360, "c6g.2xlarge": 0.2720,
-      "c7g.large": 0.0725, "c7g.xlarge": 0.1450,
-      "r6g.large": 0.1008, "r6g.xlarge": 0.2016
+      "t3.micro": 0.0104,
+      "t3.small": 0.0208,
+      "t3.medium": 0.0416,
+      "t3.large": 0.0832,
+      "t3.xlarge": 0.1664,
+      "t3a.medium": 0.0376,
+      "t3a.large": 0.0752,
+      "m5.large": 0.096,
+      "m5.xlarge": 0.192,
+      "m5.2xlarge": 0.384,
+      "m5a.large": 0.086,
+      "m5a.xlarge": 0.172,
+      "c5.large": 0.085,
+      "c5.xlarge": 0.17,
+      "c5.2xlarge": 0.34,
+      "c5a.large": 0.077,
+      "c5a.xlarge": 0.154,
+      "r5.large": 0.126,
+      "r5.xlarge": 0.252,
+      "t4g.micro": 0.0084,
+      "t4g.small": 0.0168,
+      "t4g.medium": 0.0336,
+      "t4g.large": 0.0672,
+      "t4g.xlarge": 0.1344,
+      "m6g.medium": 0.0385,
+      "m6g.large": 0.077,
+      "m6g.xlarge": 0.154,
+      "m6g.2xlarge": 0.308,
+      "m7g.medium": 0.0408,
+      "m7g.large": 0.0816,
+      "m7g.xlarge": 0.1632,
+      "m7g.2xlarge": 0.3264,
+      "c6g.medium": 0.034,
+      "c6g.large": 0.068,
+      "c6g.xlarge": 0.136,
+      "c6g.2xlarge": 0.272,
+      "c7g.large": 0.0725,
+      "c7g.xlarge": 0.145,
+      "r6g.large": 0.1008,
+      "r6g.xlarge": 0.2016
     },
     "us-west-1": {
-      "t3.micro": 0.0116, "t3.small": 0.0232, "t3.medium": 0.0464, "t3.large": 0.0928, "t3.xlarge": 0.1856,
-      "m5.large": 0.1070, "m5.xlarge": 0.2140, "m5.2xlarge": 0.4280,
-      "c5.large": 0.0960, "c5.xlarge": 0.1920, "c5.2xlarge": 0.3840,
-      "t4g.medium": 0.0376, "t4g.large": 0.0752, "t4g.xlarge": 0.1504,
-      "m6g.large": 0.0860, "m6g.xlarge": 0.1720, "m6g.2xlarge": 0.3440,
-      "m7g.large": 0.0912, "m7g.xlarge": 0.1824,
-      "c6g.large": 0.0760, "c6g.xlarge": 0.1520,
-      "r6g.large": 0.1127, "r6g.xlarge": 0.2254
+      "t3.micro": 0.0116,
+      "t3.small": 0.0232,
+      "t3.medium": 0.0464,
+      "t3.large": 0.0928,
+      "t3.xlarge": 0.1856,
+      "m5.large": 0.107,
+      "m5.xlarge": 0.214,
+      "m5.2xlarge": 0.428,
+      "c5.large": 0.096,
+      "c5.xlarge": 0.192,
+      "c5.2xlarge": 0.384,
+      "t4g.medium": 0.0376,
+      "t4g.large": 0.0752,
+      "t4g.xlarge": 0.1504,
+      "m6g.large": 0.086,
+      "m6g.xlarge": 0.172,
+      "m6g.2xlarge": 0.344,
+      "m7g.large": 0.0912,
+      "m7g.xlarge": 0.1824,
+      "c6g.large": 0.076,
+      "c6g.xlarge": 0.152,
+      "r6g.large": 0.1127,
+      "r6g.xlarge": 0.2254
     },
     "us-west-2": {
-      "t3.micro": 0.0104, "t3.small": 0.0208, "t3.medium": 0.0416, "t3.large": 0.0832, "t3.xlarge": 0.1664,
-      "t3a.medium": 0.0376, "t3a.large": 0.0752,
-      "m5.large": 0.0960, "m5.xlarge": 0.1920, "m5.2xlarge": 0.3840,
-      "m5a.large": 0.0860, "m5a.xlarge": 0.1720,
-      "c5.large": 0.0850, "c5.xlarge": 0.1700, "c5.2xlarge": 0.3400,
-      "c5a.large": 0.0770, "c5a.xlarge": 0.1540,
-      "r5.large": 0.1260, "r5.xlarge": 0.2520,
-      "t4g.micro": 0.0084, "t4g.small": 0.0168, "t4g.medium": 0.0336, "t4g.large": 0.0672, "t4g.xlarge": 0.1344,
-      "m6g.medium": 0.0385, "m6g.large": 0.0770, "m6g.xlarge": 0.1540, "m6g.2xlarge": 0.3080,
-      "m7g.medium": 0.0408, "m7g.large": 0.0816, "m7g.xlarge": 0.1632, "m7g.2xlarge": 0.3264,
-      "c6g.medium": 0.0340, "c6g.large": 0.0680, "c6g.xlarge": 0.1360, "c6g.2xlarge": 0.2720,
-      "c7g.large": 0.0725, "c7g.xlarge": 0.1450,
-      "r6g.large": 0.1008, "r6g.xlarge": 0.2016
+      "t3.micro": 0.0104,
+      "t3.small": 0.0208,
+      "t3.medium": 0.0416,
+      "t3.large": 0.0832,
+      "t3.xlarge": 0.1664,
+      "t3a.medium": 0.0376,
+      "t3a.large": 0.0752,
+      "m5.large": 0.096,
+      "m5.xlarge": 0.192,
+      "m5.2xlarge": 0.384,
+      "m5a.large": 0.086,
+      "m5a.xlarge": 0.172,
+      "c5.large": 0.085,
+      "c5.xlarge": 0.17,
+      "c5.2xlarge": 0.34,
+      "c5a.large": 0.077,
+      "c5a.xlarge": 0.154,
+      "r5.large": 0.126,
+      "r5.xlarge": 0.252,
+      "t4g.micro": 0.0084,
+      "t4g.small": 0.0168,
+      "t4g.medium": 0.0336,
+      "t4g.large": 0.0672,
+      "t4g.xlarge": 0.1344,
+      "m6g.medium": 0.0385,
+      "m6g.large": 0.077,
+      "m6g.xlarge": 0.154,
+      "m6g.2xlarge": 0.308,
+      "m7g.medium": 0.0408,
+      "m7g.large": 0.0816,
+      "m7g.xlarge": 0.1632,
+      "m7g.2xlarge": 0.3264,
+      "c6g.medium": 0.034,
+      "c6g.large": 0.068,
+      "c6g.xlarge": 0.136,
+      "c6g.2xlarge": 0.272,
+      "c7g.large": 0.0725,
+      "c7g.xlarge": 0.145,
+      "r6g.large": 0.1008,
+      "r6g.xlarge": 0.2016
     },
     "eu-west-1": {
-      "t3.micro": 0.0116, "t3.small": 0.0232, "t3.medium": 0.0456, "t3.large": 0.0912, "t3.xlarge": 0.1824,
-      "t3a.medium": 0.0416, "t3a.large": 0.0832,
-      "m5.large": 0.1070, "m5.xlarge": 0.2140, "m5.2xlarge": 0.4280,
-      "m5a.large": 0.0960, "m5a.xlarge": 0.1920,
-      "c5.large": 0.0960, "c5.xlarge": 0.1920, "c5.2xlarge": 0.3840,
-      "c5a.large": 0.0870, "c5a.xlarge": 0.1740,
-      "r5.large": 0.1410, "r5.xlarge": 0.2820,
-      "t4g.micro": 0.0094, "t4g.small": 0.0188, "t4g.medium": 0.0376, "t4g.large": 0.0752, "t4g.xlarge": 0.1504,
-      "m6g.medium": 0.0430, "m6g.large": 0.0860, "m6g.xlarge": 0.1720, "m6g.2xlarge": 0.3440,
-      "m7g.medium": 0.0456, "m7g.large": 0.0912, "m7g.xlarge": 0.1824, "m7g.2xlarge": 0.3648,
-      "c6g.medium": 0.0380, "c6g.large": 0.0760, "c6g.xlarge": 0.1520, "c6g.2xlarge": 0.3040,
-      "c7g.large": 0.0812, "c7g.xlarge": 0.1624,
-      "r6g.large": 0.1127, "r6g.xlarge": 0.2254
+      "t3.micro": 0.0116,
+      "t3.small": 0.0232,
+      "t3.medium": 0.0456,
+      "t3.large": 0.0912,
+      "t3.xlarge": 0.1824,
+      "t3a.medium": 0.0416,
+      "t3a.large": 0.0832,
+      "m5.large": 0.107,
+      "m5.xlarge": 0.214,
+      "m5.2xlarge": 0.428,
+      "m5a.large": 0.096,
+      "m5a.xlarge": 0.192,
+      "c5.large": 0.096,
+      "c5.xlarge": 0.192,
+      "c5.2xlarge": 0.384,
+      "c5a.large": 0.087,
+      "c5a.xlarge": 0.174,
+      "r5.large": 0.141,
+      "r5.xlarge": 0.282,
+      "t4g.micro": 0.0094,
+      "t4g.small": 0.0188,
+      "t4g.medium": 0.0376,
+      "t4g.large": 0.0752,
+      "t4g.xlarge": 0.1504,
+      "m6g.medium": 0.043,
+      "m6g.large": 0.086,
+      "m6g.xlarge": 0.172,
+      "m6g.2xlarge": 0.344,
+      "m7g.medium": 0.0456,
+      "m7g.large": 0.0912,
+      "m7g.xlarge": 0.1824,
+      "m7g.2xlarge": 0.3648,
+      "c6g.medium": 0.038,
+      "c6g.large": 0.076,
+      "c6g.xlarge": 0.152,
+      "c6g.2xlarge": 0.304,
+      "c7g.large": 0.0812,
+      "c7g.xlarge": 0.1624,
+      "r6g.large": 0.1127,
+      "r6g.xlarge": 0.2254
     },
     "eu-west-2": {
-      "t3.micro": 0.0126, "t3.small": 0.0252, "t3.medium": 0.0504, "t3.large": 0.1008, "t3.xlarge": 0.2016,
-      "m5.large": 0.1178, "m5.xlarge": 0.2356, "m5.2xlarge": 0.4712,
-      "c5.large": 0.1054, "c5.xlarge": 0.2108, "c5.2xlarge": 0.4216,
-      "t4g.medium": 0.0414, "t4g.large": 0.0828, "t4g.xlarge": 0.1656,
-      "m6g.large": 0.0945, "m6g.xlarge": 0.1890, "m6g.2xlarge": 0.3780,
-      "m7g.large": 0.1001, "m7g.xlarge": 0.2002,
-      "c6g.large": 0.0836, "c6g.xlarge": 0.1672,
-      "r6g.large": 0.1240, "r6g.xlarge": 0.2480
+      "t3.micro": 0.0126,
+      "t3.small": 0.0252,
+      "t3.medium": 0.0504,
+      "t3.large": 0.1008,
+      "t3.xlarge": 0.2016,
+      "m5.large": 0.1178,
+      "m5.xlarge": 0.2356,
+      "m5.2xlarge": 0.4712,
+      "c5.large": 0.1054,
+      "c5.xlarge": 0.2108,
+      "c5.2xlarge": 0.4216,
+      "t4g.medium": 0.0414,
+      "t4g.large": 0.0828,
+      "t4g.xlarge": 0.1656,
+      "m6g.large": 0.0945,
+      "m6g.xlarge": 0.189,
+      "m6g.2xlarge": 0.378,
+      "m7g.large": 0.1001,
+      "m7g.xlarge": 0.2002,
+      "c6g.large": 0.0836,
+      "c6g.xlarge": 0.1672,
+      "r6g.large": 0.124,
+      "r6g.xlarge": 0.248
     },
     "eu-central-1": {
-      "t3.micro": 0.0120, "t3.small": 0.0240, "t3.medium": 0.0496, "t3.large": 0.0992, "t3.xlarge": 0.1984,
-      "t3a.medium": 0.0448, "t3a.large": 0.0896,
-      "m5.large": 0.1150, "m5.xlarge": 0.2300, "m5.2xlarge": 0.4600,
-      "m5a.large": 0.1030, "m5a.xlarge": 0.2060,
-      "c5.large": 0.1020, "c5.xlarge": 0.2040, "c5.2xlarge": 0.4080,
-      "r5.large": 0.1510, "r5.xlarge": 0.3020,
-      "t4g.micro": 0.0100, "t4g.small": 0.0200, "t4g.medium": 0.0416, "t4g.large": 0.0832, "t4g.xlarge": 0.1664,
-      "m6g.medium": 0.0460, "m6g.large": 0.0920, "m6g.xlarge": 0.1840, "m6g.2xlarge": 0.3680,
-      "m7g.medium": 0.0488, "m7g.large": 0.0976, "m7g.xlarge": 0.1952, "m7g.2xlarge": 0.3904,
-      "c6g.medium": 0.0410, "c6g.large": 0.0820, "c6g.xlarge": 0.1640, "c6g.2xlarge": 0.3280,
-      "c7g.large": 0.0875, "c7g.xlarge": 0.1750,
-      "r6g.large": 0.1210, "r6g.xlarge": 0.2420
+      "t3.micro": 0.012,
+      "t3.small": 0.024,
+      "t3.medium": 0.0496,
+      "t3.large": 0.0992,
+      "t3.xlarge": 0.1984,
+      "t3a.medium": 0.0448,
+      "t3a.large": 0.0896,
+      "m5.large": 0.115,
+      "m5.xlarge": 0.23,
+      "m5.2xlarge": 0.46,
+      "m5a.large": 0.103,
+      "m5a.xlarge": 0.206,
+      "c5.large": 0.102,
+      "c5.xlarge": 0.204,
+      "c5.2xlarge": 0.408,
+      "r5.large": 0.151,
+      "r5.xlarge": 0.302,
+      "t4g.micro": 0.01,
+      "t4g.small": 0.02,
+      "t4g.medium": 0.0416,
+      "t4g.large": 0.0832,
+      "t4g.xlarge": 0.1664,
+      "m6g.medium": 0.046,
+      "m6g.large": 0.092,
+      "m6g.xlarge": 0.184,
+      "m6g.2xlarge": 0.368,
+      "m7g.medium": 0.0488,
+      "m7g.large": 0.0976,
+      "m7g.xlarge": 0.1952,
+      "m7g.2xlarge": 0.3904,
+      "c6g.medium": 0.041,
+      "c6g.large": 0.082,
+      "c6g.xlarge": 0.164,
+      "c6g.2xlarge": 0.328,
+      "c7g.large": 0.0875,
+      "c7g.xlarge": 0.175,
+      "r6g.large": 0.121,
+      "r6g.xlarge": 0.242
     },
     "eu-north-1": {
-      "t3.micro": 0.0108, "t3.small": 0.0216, "t3.medium": 0.0432, "t3.large": 0.0864, "t3.xlarge": 0.1728,
-      "m5.large": 0.1000, "m5.xlarge": 0.2000, "m5.2xlarge": 0.4000,
-      "c5.large": 0.0890, "c5.xlarge": 0.1780, "c5.2xlarge": 0.3560,
-      "t4g.medium": 0.0362, "t4g.large": 0.0724, "t4g.xlarge": 0.1448,
-      "m6g.large": 0.0800, "m6g.xlarge": 0.1600, "m6g.2xlarge": 0.3200,
-      "m7g.large": 0.0848, "m7g.xlarge": 0.1696,
-      "c6g.large": 0.0712, "c6g.xlarge": 0.1424,
-      "r6g.large": 0.1054, "r6g.xlarge": 0.2108
+      "t3.micro": 0.0108,
+      "t3.small": 0.0216,
+      "t3.medium": 0.0432,
+      "t3.large": 0.0864,
+      "t3.xlarge": 0.1728,
+      "m5.large": 0.1,
+      "m5.xlarge": 0.2,
+      "m5.2xlarge": 0.4,
+      "c5.large": 0.089,
+      "c5.xlarge": 0.178,
+      "c5.2xlarge": 0.356,
+      "t4g.medium": 0.0362,
+      "t4g.large": 0.0724,
+      "t4g.xlarge": 0.1448,
+      "m6g.large": 0.08,
+      "m6g.xlarge": 0.16,
+      "m6g.2xlarge": 0.32,
+      "m7g.large": 0.0848,
+      "m7g.xlarge": 0.1696,
+      "c6g.large": 0.0712,
+      "c6g.xlarge": 0.1424,
+      "r6g.large": 0.1054,
+      "r6g.xlarge": 0.2108
     },
     "ap-southeast-1": {
-      "t3.micro": 0.0132, "t3.small": 0.0264, "t3.medium": 0.0528, "t3.large": 0.1056, "t3.xlarge": 0.2112,
-      "m5.large": 0.1240, "m5.xlarge": 0.2480, "m5.2xlarge": 0.4960,
-      "c5.large": 0.1070, "c5.xlarge": 0.2140, "c5.2xlarge": 0.4280,
-      "t4g.medium": 0.0438, "t4g.large": 0.0876, "t4g.xlarge": 0.1752,
-      "m6g.large": 0.0992, "m6g.xlarge": 0.1984, "m6g.2xlarge": 0.3968,
-      "m7g.large": 0.1051, "m7g.xlarge": 0.2102,
-      "c6g.large": 0.0860, "c6g.xlarge": 0.1720,
-      "r6g.large": 0.1307, "r6g.xlarge": 0.2614
+      "t3.micro": 0.0132,
+      "t3.small": 0.0264,
+      "t3.medium": 0.0528,
+      "t3.large": 0.1056,
+      "t3.xlarge": 0.2112,
+      "m5.large": 0.124,
+      "m5.xlarge": 0.248,
+      "m5.2xlarge": 0.496,
+      "c5.large": 0.107,
+      "c5.xlarge": 0.214,
+      "c5.2xlarge": 0.428,
+      "t4g.medium": 0.0438,
+      "t4g.large": 0.0876,
+      "t4g.xlarge": 0.1752,
+      "m6g.large": 0.0992,
+      "m6g.xlarge": 0.1984,
+      "m6g.2xlarge": 0.3968,
+      "m7g.large": 0.1051,
+      "m7g.xlarge": 0.2102,
+      "c6g.large": 0.086,
+      "c6g.xlarge": 0.172,
+      "r6g.large": 0.1307,
+      "r6g.xlarge": 0.2614
     },
     "ap-southeast-2": {
-      "t3.micro": 0.0136, "t3.small": 0.0272, "t3.medium": 0.0544, "t3.large": 0.1088, "t3.xlarge": 0.2176,
-      "t3a.medium": 0.0492, "t3a.large": 0.0984,
-      "m5.large": 0.1340, "m5.xlarge": 0.2680, "m5.2xlarge": 0.5360,
-      "m5a.large": 0.1200, "m5a.xlarge": 0.2400,
-      "c5.large": 0.1180, "c5.xlarge": 0.2360, "c5.2xlarge": 0.4720,
-      "r5.large": 0.1760, "r5.xlarge": 0.3520,
-      "t4g.micro": 0.0113, "t4g.small": 0.0226, "t4g.medium": 0.0452, "t4g.large": 0.0904, "t4g.xlarge": 0.1808,
-      "m6g.medium": 0.0535, "m6g.large": 0.1070, "m6g.xlarge": 0.2140, "m6g.2xlarge": 0.4280,
-      "m7g.medium": 0.0567, "m7g.large": 0.1134, "m7g.xlarge": 0.2268, "m7g.2xlarge": 0.4536,
-      "c6g.medium": 0.0470, "c6g.large": 0.0940, "c6g.xlarge": 0.1880, "c6g.2xlarge": 0.3760,
-      "c7g.large": 0.1002, "c7g.xlarge": 0.2004,
-      "r6g.large": 0.1411, "r6g.xlarge": 0.2822
+      "t3.micro": 0.0136,
+      "t3.small": 0.0272,
+      "t3.medium": 0.0544,
+      "t3.large": 0.1088,
+      "t3.xlarge": 0.2176,
+      "t3a.medium": 0.0492,
+      "t3a.large": 0.0984,
+      "m5.large": 0.134,
+      "m5.xlarge": 0.268,
+      "m5.2xlarge": 0.536,
+      "m5a.large": 0.12,
+      "m5a.xlarge": 0.24,
+      "c5.large": 0.118,
+      "c5.xlarge": 0.236,
+      "c5.2xlarge": 0.472,
+      "r5.large": 0.176,
+      "r5.xlarge": 0.352,
+      "t4g.micro": 0.0113,
+      "t4g.small": 0.0226,
+      "t4g.medium": 0.0452,
+      "t4g.large": 0.0904,
+      "t4g.xlarge": 0.1808,
+      "m6g.medium": 0.0535,
+      "m6g.large": 0.107,
+      "m6g.xlarge": 0.214,
+      "m6g.2xlarge": 0.428,
+      "m7g.medium": 0.0567,
+      "m7g.large": 0.1134,
+      "m7g.xlarge": 0.2268,
+      "m7g.2xlarge": 0.4536,
+      "c6g.medium": 0.047,
+      "c6g.large": 0.094,
+      "c6g.xlarge": 0.188,
+      "c6g.2xlarge": 0.376,
+      "c7g.large": 0.1002,
+      "c7g.xlarge": 0.2004,
+      "r6g.large": 0.1411,
+      "r6g.xlarge": 0.2822
     },
     "ap-northeast-1": {
-      "t3.micro": 0.0140, "t3.small": 0.0280, "t3.medium": 0.0560, "t3.large": 0.1120, "t3.xlarge": 0.2240,
-      "t3a.medium": 0.0504, "t3a.large": 0.1008,
-      "m5.large": 0.1280, "m5.xlarge": 0.2560, "m5.2xlarge": 0.5120,
-      "m5a.large": 0.1150, "m5a.xlarge": 0.2300,
-      "c5.large": 0.1140, "c5.xlarge": 0.2280, "c5.2xlarge": 0.4560,
-      "r5.large": 0.1690, "r5.xlarge": 0.3380,
-      "t4g.micro": 0.0116, "t4g.small": 0.0232, "t4g.medium": 0.0464, "t4g.large": 0.0928, "t4g.xlarge": 0.1856,
-      "m6g.medium": 0.0549, "m6g.large": 0.1098, "m6g.xlarge": 0.2196, "m6g.2xlarge": 0.4392,
-      "m7g.medium": 0.0582, "m7g.large": 0.1164, "m7g.xlarge": 0.2328, "m7g.2xlarge": 0.4656,
-      "c6g.medium": 0.0482, "c6g.large": 0.0964, "c6g.xlarge": 0.1928, "c6g.2xlarge": 0.3856,
-      "c7g.large": 0.1028, "c7g.xlarge": 0.2056,
-      "r6g.large": 0.1448, "r6g.xlarge": 0.2896
+      "t3.micro": 0.014,
+      "t3.small": 0.028,
+      "t3.medium": 0.056,
+      "t3.large": 0.112,
+      "t3.xlarge": 0.224,
+      "t3a.medium": 0.0504,
+      "t3a.large": 0.1008,
+      "m5.large": 0.128,
+      "m5.xlarge": 0.256,
+      "m5.2xlarge": 0.512,
+      "m5a.large": 0.115,
+      "m5a.xlarge": 0.23,
+      "c5.large": 0.114,
+      "c5.xlarge": 0.228,
+      "c5.2xlarge": 0.456,
+      "r5.large": 0.169,
+      "r5.xlarge": 0.338,
+      "t4g.micro": 0.0116,
+      "t4g.small": 0.0232,
+      "t4g.medium": 0.0464,
+      "t4g.large": 0.0928,
+      "t4g.xlarge": 0.1856,
+      "m6g.medium": 0.0549,
+      "m6g.large": 0.1098,
+      "m6g.xlarge": 0.2196,
+      "m6g.2xlarge": 0.4392,
+      "m7g.medium": 0.0582,
+      "m7g.large": 0.1164,
+      "m7g.xlarge": 0.2328,
+      "m7g.2xlarge": 0.4656,
+      "c6g.medium": 0.0482,
+      "c6g.large": 0.0964,
+      "c6g.xlarge": 0.1928,
+      "c6g.2xlarge": 0.3856,
+      "c7g.large": 0.1028,
+      "c7g.xlarge": 0.2056,
+      "r6g.large": 0.1448,
+      "r6g.xlarge": 0.2896
     },
     "ap-south-1": {
-      "t3.micro": 0.0114, "t3.small": 0.0228, "t3.medium": 0.0456, "t3.large": 0.0912, "t3.xlarge": 0.1824,
-      "t3a.medium": 0.0410, "t3a.large": 0.0820,
-      "m5.large": 0.1060, "m5.xlarge": 0.2120, "m5.2xlarge": 0.4240,
-      "c5.large": 0.0940, "c5.xlarge": 0.1880, "c5.2xlarge": 0.3760,
-      "r5.large": 0.1396, "r5.xlarge": 0.2792,
-      "t4g.micro": 0.0095, "t4g.small": 0.0190, "t4g.medium": 0.0380, "t4g.large": 0.0760, "t4g.xlarge": 0.1520,
-      "m6g.medium": 0.0454, "m6g.large": 0.0908, "m6g.xlarge": 0.1816, "m6g.2xlarge": 0.3632,
-      "m7g.medium": 0.0481, "m7g.large": 0.0962, "m7g.xlarge": 0.1924, "m7g.2xlarge": 0.3848,
-      "c6g.medium": 0.0399, "c6g.large": 0.0798, "c6g.xlarge": 0.1596, "c6g.2xlarge": 0.3192,
-      "r6g.large": 0.1197, "r6g.xlarge": 0.2394
+      "t3.micro": 0.0114,
+      "t3.small": 0.0228,
+      "t3.medium": 0.0456,
+      "t3.large": 0.0912,
+      "t3.xlarge": 0.1824,
+      "t3a.medium": 0.041,
+      "t3a.large": 0.082,
+      "m5.large": 0.106,
+      "m5.xlarge": 0.212,
+      "m5.2xlarge": 0.424,
+      "c5.large": 0.094,
+      "c5.xlarge": 0.188,
+      "c5.2xlarge": 0.376,
+      "r5.large": 0.1396,
+      "r5.xlarge": 0.2792,
+      "t4g.micro": 0.0095,
+      "t4g.small": 0.019,
+      "t4g.medium": 0.038,
+      "t4g.large": 0.076,
+      "t4g.xlarge": 0.152,
+      "m6g.medium": 0.0454,
+      "m6g.large": 0.0908,
+      "m6g.xlarge": 0.1816,
+      "m6g.2xlarge": 0.3632,
+      "m7g.medium": 0.0481,
+      "m7g.large": 0.0962,
+      "m7g.xlarge": 0.1924,
+      "m7g.2xlarge": 0.3848,
+      "c6g.medium": 0.0399,
+      "c6g.large": 0.0798,
+      "c6g.xlarge": 0.1596,
+      "c6g.2xlarge": 0.3192,
+      "r6g.large": 0.1197,
+      "r6g.xlarge": 0.2394
     },
     "ca-central-1": {
-      "t3.micro": 0.0116, "t3.small": 0.0232, "t3.medium": 0.0464, "t3.large": 0.0928, "t3.xlarge": 0.1856,
-      "t3a.medium": 0.0418, "t3a.large": 0.0836,
-      "m5.large": 0.1070, "m5.xlarge": 0.2140, "m5.2xlarge": 0.4280,
-      "m5a.large": 0.0960, "m5a.xlarge": 0.1920,
-      "c5.large": 0.0950, "c5.xlarge": 0.1900, "c5.2xlarge": 0.3800,
-      "r5.large": 0.1410, "r5.xlarge": 0.2820,
-      "t4g.micro": 0.0096, "t4g.small": 0.0192, "t4g.medium": 0.0386, "t4g.large": 0.0772, "t4g.xlarge": 0.1544,
-      "m6g.medium": 0.0462, "m6g.large": 0.0924, "m6g.xlarge": 0.1848, "m6g.2xlarge": 0.3696,
-      "m7g.medium": 0.0490, "m7g.large": 0.0980, "m7g.xlarge": 0.1960, "m7g.2xlarge": 0.3920,
-      "c6g.medium": 0.0408, "c6g.large": 0.0816, "c6g.xlarge": 0.1632, "c6g.2xlarge": 0.3264,
-      "c7g.large": 0.0870, "c7g.xlarge": 0.1740,
-      "r6g.large": 0.1218, "r6g.xlarge": 0.2436
+      "t3.micro": 0.0116,
+      "t3.small": 0.0232,
+      "t3.medium": 0.0464,
+      "t3.large": 0.0928,
+      "t3.xlarge": 0.1856,
+      "t3a.medium": 0.0418,
+      "t3a.large": 0.0836,
+      "m5.large": 0.107,
+      "m5.xlarge": 0.214,
+      "m5.2xlarge": 0.428,
+      "m5a.large": 0.096,
+      "m5a.xlarge": 0.192,
+      "c5.large": 0.095,
+      "c5.xlarge": 0.19,
+      "c5.2xlarge": 0.38,
+      "r5.large": 0.141,
+      "r5.xlarge": 0.282,
+      "t4g.micro": 0.0096,
+      "t4g.small": 0.0192,
+      "t4g.medium": 0.0386,
+      "t4g.large": 0.0772,
+      "t4g.xlarge": 0.1544,
+      "m6g.medium": 0.0462,
+      "m6g.large": 0.0924,
+      "m6g.xlarge": 0.1848,
+      "m6g.2xlarge": 0.3696,
+      "m7g.medium": 0.049,
+      "m7g.large": 0.098,
+      "m7g.xlarge": 0.196,
+      "m7g.2xlarge": 0.392,
+      "c6g.medium": 0.0408,
+      "c6g.large": 0.0816,
+      "c6g.xlarge": 0.1632,
+      "c6g.2xlarge": 0.3264,
+      "c7g.large": 0.087,
+      "c7g.xlarge": 0.174,
+      "r6g.large": 0.1218,
+      "r6g.xlarge": 0.2436
     },
     "sa-east-1": {
-      "t3.micro": 0.0168, "t3.small": 0.0336, "t3.medium": 0.0672, "t3.large": 0.1344, "t3.xlarge": 0.2688,
-      "m5.large": 0.1620, "m5.xlarge": 0.3240, "m5.2xlarge": 0.6480,
-      "c5.large": 0.1440, "c5.xlarge": 0.2880, "c5.2xlarge": 0.5760,
-      "t4g.medium": 0.0560, "t4g.large": 0.1120, "t4g.xlarge": 0.2240,
-      "m6g.large": 0.1296, "m6g.xlarge": 0.2592, "m6g.2xlarge": 0.5184,
-      "m7g.large": 0.1374, "m7g.xlarge": 0.2748,
-      "c6g.large": 0.1152, "c6g.xlarge": 0.2304,
-      "r6g.large": 0.1706, "r6g.xlarge": 0.3412
+      "t3.micro": 0.0168,
+      "t3.small": 0.0336,
+      "t3.medium": 0.0672,
+      "t3.large": 0.1344,
+      "t3.xlarge": 0.2688,
+      "m5.large": 0.162,
+      "m5.xlarge": 0.324,
+      "m5.2xlarge": 0.648,
+      "c5.large": 0.144,
+      "c5.xlarge": 0.288,
+      "c5.2xlarge": 0.576,
+      "t4g.medium": 0.056,
+      "t4g.large": 0.112,
+      "t4g.xlarge": 0.224,
+      "m6g.large": 0.1296,
+      "m6g.xlarge": 0.2592,
+      "m6g.2xlarge": 0.5184,
+      "m7g.large": 0.1374,
+      "m7g.xlarge": 0.2748,
+      "c6g.large": 0.1152,
+      "c6g.xlarge": 0.2304,
+      "r6g.large": 0.1706,
+      "r6g.xlarge": 0.3412
     }
   }
 }

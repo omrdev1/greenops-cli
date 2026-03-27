@@ -3,20 +3,48 @@ import * as assert from 'node:assert/strict';
 import { formatTable } from './table.js';
 import { PlanAnalysisResult } from '../types.js';
 
+function makeMockBaseline(overrides: Record<string, unknown> = {}) {
+  return {
+    totalCo2eGramsPerMonth: 1000,
+    embodiedCo2eGramsPerMonth: 833.3,
+    totalLifecycleCo2eGramsPerMonth: 1833.3,
+    waterLitresPerMonth: 1.8,
+    totalCostUsdPerMonth: 50,
+    confidence: 'HIGH' as const,
+    scope: 'SCOPE_2_AND_3' as const,
+    assumptionsApplied: {
+      utilizationApplied: 0.5,
+      gridIntensityApplied: 240.1,
+      powerModelUsed: 'LINEAR_INTERPOLATION' as const,
+      embodiedCo2ePerVcpuPerMonthApplied: 833.3,
+      waterIntensityLitresPerKwhApplied: 0.18,
+    },
+    ...overrides,
+  };
+}
+
+function makeMockTotals(overrides: Record<string, unknown> = {}) {
+  return {
+    currentCo2eGramsPerMonth: 0,
+    currentEmbodiedCo2eGramsPerMonth: 0,
+    currentLifecycleCo2eGramsPerMonth: 0,
+    currentWaterLitresPerMonth: 0,
+    currentCostUsdPerMonth: 0,
+    potentialCo2eSavingGramsPerMonth: 0,
+    potentialCostSavingUsdPerMonth: 0,
+    ...overrides,
+  };
+}
+
 function makeMockResult(overrides: Partial<PlanAnalysisResult> = {}): PlanAnalysisResult {
   return {
     analysedAt: '2026-03-25T00:00:00Z',
-    ledgerVersion: '1.1.0',
+    ledgerVersion: '1.3.0',
     planFile: 'plan.json',
     resources: [],
     skipped: [],
     unsupportedTypes: [],
-    totals: {
-      currentCo2eGramsPerMonth: 0,
-      currentCostUsdPerMonth: 0,
-      potentialCo2eSavingGramsPerMonth: 0,
-      potentialCostSavingUsdPerMonth: 0,
-    },
+    totals: makeMockTotals(),
     ...overrides,
   };
 }
@@ -33,16 +61,10 @@ describe('formatTable', () => {
     const result = makeMockResult({
       resources: [{
         input: { resourceId: longId, instanceType: 'm5.large', region: 'us-east-1' },
-        baseline: {
-          totalCo2eGramsPerMonth: 1000,
-          totalCostUsdPerMonth: 50,
-          confidence: 'HIGH',
-          scope: 'SCOPE_2_OPERATIONAL',
-          assumptionsApplied: { utilizationApplied: 0.5, gridIntensityApplied: 384.5, powerModelUsed: 'LINEAR_INTERPOLATION' },
-        },
+        baseline: makeMockBaseline({ totalCo2eGramsPerMonth: 1000, totalCostUsdPerMonth: 50 }),
         recommendation: null,
       }],
-      totals: { currentCo2eGramsPerMonth: 1000, currentCostUsdPerMonth: 50, potentialCo2eSavingGramsPerMonth: 0, potentialCostSavingUsdPerMonth: 0 },
+      totals: makeMockTotals({ currentCo2eGramsPerMonth: 1000, currentCostUsdPerMonth: 50 }),
     });
 
     const table = formatTable(result);
@@ -56,5 +78,20 @@ describe('formatTable', () => {
     });
     const table = formatTable(result);
     assert.ok(table.includes('SKIPPED'), 'Should show SKIPPED for skipped resources');
+  });
+
+  it('shows Scope 2 and Scope 3 columns', () => {
+    const result = makeMockResult({
+      resources: [{
+        input: { resourceId: 'aws_instance.web', instanceType: 'm5.large', region: 'us-east-1' },
+        baseline: makeMockBaseline(),
+        recommendation: null,
+      }],
+      totals: makeMockTotals({ currentCo2eGramsPerMonth: 1000 }),
+    });
+
+    const table = formatTable(result);
+    assert.ok(table.includes('Scope 2'), 'Should show Scope 2 label');
+    assert.ok(table.includes('Scope 3'), 'Should show Scope 3 label');
   });
 });
