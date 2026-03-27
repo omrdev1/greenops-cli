@@ -1,0 +1,53 @@
+name: Bug Report
+description: Something is producing incorrect carbon estimates or failing to parse a plan
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Before filing a bug, please run `node dist/index.cjs --version` and include the version below.
+
+  - type: input
+    id: version
+    attributes:
+      label: GreenOps CLI version
+      placeholder: "0.2.1"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Extraction (plan parsing / known_after_apply)
+        - Carbon calculation (wrong CO2e figures)
+        - Cost calculation (wrong cost figures)
+        - Recommendations (wrong or missing suggestions)
+        - GitHub Action (comment not posted / wrong format)
+        - CLI output formatting
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+      description: Describe the bug clearly. Include the command you ran and the output you got.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect?
+    validations:
+      required: true
+
+  - type: textarea
+    id: plan
+    attributes:
+      label: Minimal plan JSON (redact all credentials and account IDs)
+      description: Paste a minimal `resource_changes` block that reproduces the issue. Remove any sensitive values.
+      render: json

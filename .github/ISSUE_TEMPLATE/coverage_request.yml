@@ -1,0 +1,43 @@
+name: Coverage Request
+description: Request a new AWS instance type or region
+labels: ["coverage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Coverage extensions are the fastest PRs to merge. If you can supply the TDP data and grid intensity, we can usually turn this around quickly.
+
+  - type: dropdown
+    id: type
+    attributes:
+      label: What are you requesting?
+      options:
+        - New instance type
+        - New AWS region
+        - Both
+    validations:
+      required: true
+
+  - type: input
+    id: instance
+    attributes:
+      label: Instance type (if applicable)
+      placeholder: "m7g.large"
+
+  - type: input
+    id: region
+    attributes:
+      label: AWS region (if applicable)
+      placeholder: "ap-northeast-1"
+
+  - type: textarea
+    id: data
+    attributes:
+      label: Source data (TDP bounds / grid intensity)
+      description: Link to Cloud Carbon Footprint coefficients or Electricity Maps data if you have it.
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Why do you need this?
+      description: Helps us prioritise. What are you running that we don't currently support?
