@@ -7,12 +7,14 @@ var import_node_util = require("node:util");
 // factors.json
 var factors_default = {
   metadata: {
-    ledger_version: "1.2.0",
+    ledger_version: "1.3.0",
     updated_at: "2026-03-27T00:00:00Z",
     sources: {
       grid: "electricity-maps-2024-avg",
       hardware: "cloud-carbon-footprint-v3",
-      pricing: "aws-public-pricing-api-2026-q1"
+      pricing: "aws-public-pricing-api-2026-q1",
+      embodied: "cloud-carbon-footprint-v3-dell-r740-baseline",
+      water: "aws-sustainability-report-2023-wue"
     },
     assumptions: {
       default_utilization: {
@@ -26,72 +28,86 @@ var factors_default = {
     "us-east-1": {
       location: "US East (N. Virginia)",
       grid_intensity_gco2e_per_kwh: 384.5,
-      pue: 1.13
+      pue: 1.13,
+      water_intensity_litres_per_kwh: 0.46
     },
     "us-east-2": {
       location: "US East (Ohio)",
       grid_intensity_gco2e_per_kwh: 410,
-      pue: 1.13
+      pue: 1.13,
+      water_intensity_litres_per_kwh: 0.52
     },
     "us-west-1": {
       location: "US West (N. California)",
       grid_intensity_gco2e_per_kwh: 220,
-      pue: 1.13
+      pue: 1.13,
+      water_intensity_litres_per_kwh: 0.38
     },
     "us-west-2": {
       location: "US West (Oregon)",
       grid_intensity_gco2e_per_kwh: 240.1,
-      pue: 1.13
+      pue: 1.13,
+      water_intensity_litres_per_kwh: 0.18
     },
     "eu-west-1": {
       location: "Europe (Ireland)",
       grid_intensity_gco2e_per_kwh: 334,
-      pue: 1.13
+      pue: 1.13,
+      water_intensity_litres_per_kwh: 0.22
     },
     "eu-west-2": {
       location: "Europe (London)",
       grid_intensity_gco2e_per_kwh: 268,
-      pue: 1.13
+      pue: 1.13,
+      water_intensity_litres_per_kwh: 0.25
     },
     "eu-central-1": {
       location: "Europe (Frankfurt)",
       grid_intensity_gco2e_per_kwh: 420.5,
-      pue: 1.13
+      pue: 1.13,
+      water_intensity_litres_per_kwh: 0.28
     },
     "eu-north-1": {
       location: "Europe (Stockholm)",
       grid_intensity_gco2e_per_kwh: 8.8,
-      pue: 1.13
+      pue: 1.13,
+      water_intensity_litres_per_kwh: 0.1
     },
     "ap-southeast-1": {
       location: "Asia Pacific (Singapore)",
       grid_intensity_gco2e_per_kwh: 408,
-      pue: 1.13
+      pue: 1.13,
+      water_intensity_litres_per_kwh: 0.58
     },
     "ap-southeast-2": {
       location: "Asia Pacific (Sydney)",
       grid_intensity_gco2e_per_kwh: 650,
-      pue: 1.13
+      pue: 1.13,
+      water_intensity_litres_per_kwh: 0.45
     },
     "ap-northeast-1": {
       location: "Asia Pacific (Tokyo)",
       grid_intensity_gco2e_per_kwh: 506,
-      pue: 1.13
+      pue: 1.13,
+      water_intensity_litres_per_kwh: 0.5
     },
     "ap-south-1": {
       location: "Asia Pacific (Mumbai)",
       grid_intensity_gco2e_per_kwh: 723,
-      pue: 1.13
+      pue: 1.13,
+      water_intensity_litres_per_kwh: 0.72
     },
     "ca-central-1": {
       location: "Canada (Central)",
       grid_intensity_gco2e_per_kwh: 130,
-      pue: 1.13
+      pue: 1.13,
+      water_intensity_litres_per_kwh: 0.2
     },
     "sa-east-1": {
       location: "South America (S\xE3o Paulo)",
       grid_intensity_gco2e_per_kwh: 74,
-      pue: 1.13
+      pue: 1.13,
+      water_intensity_litres_per_kwh: 0.35
     }
   },
   instances: {
@@ -99,241 +115,401 @@ var factors_default = {
       architecture: "x86_64",
       vcpus: 2,
       memory_gb: 1,
-      power_watts: { idle: 1.4, max: 5 }
+      power_watts: {
+        idle: 1.4,
+        max: 5
+      },
+      embodied_co2e_grams_per_month: 1041.7
     },
     "t3.small": {
       architecture: "x86_64",
       vcpus: 2,
       memory_gb: 2,
-      power_watts: { idle: 2, max: 7 }
+      power_watts: {
+        idle: 2,
+        max: 7
+      },
+      embodied_co2e_grams_per_month: 1041.7
     },
     "t3.medium": {
       architecture: "x86_64",
       vcpus: 2,
       memory_gb: 4,
-      power_watts: { idle: 3.4, max: 10.2 }
+      power_watts: {
+        idle: 3.4,
+        max: 10.2
+      },
+      embodied_co2e_grams_per_month: 1041.7
     },
     "t3.large": {
       architecture: "x86_64",
       vcpus: 2,
       memory_gb: 8,
-      power_watts: { idle: 6.8, max: 20.4 }
+      power_watts: {
+        idle: 6.8,
+        max: 20.4
+      },
+      embodied_co2e_grams_per_month: 1041.7
     },
     "t3.xlarge": {
       architecture: "x86_64",
       vcpus: 4,
       memory_gb: 16,
-      power_watts: { idle: 13.6, max: 40.8 }
+      power_watts: {
+        idle: 13.6,
+        max: 40.8
+      },
+      embodied_co2e_grams_per_month: 2083.3
     },
     "t3a.medium": {
       architecture: "x86_64",
       vcpus: 2,
       memory_gb: 4,
-      power_watts: { idle: 3.2, max: 9.8 }
+      power_watts: {
+        idle: 3.2,
+        max: 9.8
+      },
+      embodied_co2e_grams_per_month: 1041.7
     },
     "t3a.large": {
       architecture: "x86_64",
       vcpus: 2,
       memory_gb: 8,
-      power_watts: { idle: 6.4, max: 19.6 }
+      power_watts: {
+        idle: 6.4,
+        max: 19.6
+      },
+      embodied_co2e_grams_per_month: 1041.7
     },
     "m5.large": {
       architecture: "x86_64",
       vcpus: 2,
       memory_gb: 8,
-      power_watts: { idle: 6.8, max: 20.4 }
+      power_watts: {
+        idle: 6.8,
+        max: 20.4
+      },
+      embodied_co2e_grams_per_month: 1041.7
     },
     "m5.xlarge": {
       architecture: "x86_64",
       vcpus: 4,
       memory_gb: 16,
-      power_watts: { idle: 13.6, max: 40.8 }
+      power_watts: {
+        idle: 13.6,
+        max: 40.8
+      },
+      embodied_co2e_grams_per_month: 2083.3
     },
     "m5.2xlarge": {
       architecture: "x86_64",
       vcpus: 8,
       memory_gb: 32,
-      power_watts: { idle: 27.2, max: 81.6 }
+      power_watts: {
+        idle: 27.2,
+        max: 81.6
+      },
+      embodied_co2e_grams_per_month: 4166.7
     },
     "m5a.large": {
       architecture: "x86_64",
       vcpus: 2,
       memory_gb: 8,
-      power_watts: { idle: 6.5, max: 19.5 }
+      power_watts: {
+        idle: 6.5,
+        max: 19.5
+      },
+      embodied_co2e_grams_per_month: 1041.7
     },
     "m5a.xlarge": {
       architecture: "x86_64",
       vcpus: 4,
       memory_gb: 16,
-      power_watts: { idle: 13, max: 39 }
+      power_watts: {
+        idle: 13,
+        max: 39
+      },
+      embodied_co2e_grams_per_month: 2083.3
     },
     "c5.large": {
       architecture: "x86_64",
       vcpus: 2,
       memory_gb: 4,
-      power_watts: { idle: 6.5, max: 22 }
+      power_watts: {
+        idle: 6.5,
+        max: 22
+      },
+      embodied_co2e_grams_per_month: 1041.7
     },
     "c5.xlarge": {
       architecture: "x86_64",
       vcpus: 4,
       memory_gb: 8,
-      power_watts: { idle: 13, max: 44 }
+      power_watts: {
+        idle: 13,
+        max: 44
+      },
+      embodied_co2e_grams_per_month: 2083.3
     },
     "c5.2xlarge": {
       architecture: "x86_64",
       vcpus: 8,
       memory_gb: 16,
-      power_watts: { idle: 26, max: 88 }
+      power_watts: {
+        idle: 26,
+        max: 88
+      },
+      embodied_co2e_grams_per_month: 4166.7
     },
     "c5a.large": {
       architecture: "x86_64",
       vcpus: 2,
       memory_gb: 4,
-      power_watts: { idle: 6.2, max: 21 }
+      power_watts: {
+        idle: 6.2,
+        max: 21
+      },
+      embodied_co2e_grams_per_month: 1041.7
     },
     "c5a.xlarge": {
       architecture: "x86_64",
       vcpus: 4,
       memory_gb: 8,
-      power_watts: { idle: 12.4, max: 42 }
+      power_watts: {
+        idle: 12.4,
+        max: 42
+      },
+      embodied_co2e_grams_per_month: 2083.3
     },
     "r5.large": {
       architecture: "x86_64",
       vcpus: 2,
       memory_gb: 16,
-      power_watts: { idle: 8, max: 24 }
+      power_watts: {
+        idle: 8,
+        max: 24
+      },
+      embodied_co2e_grams_per_month: 1041.7
     },
     "r5.xlarge": {
       architecture: "x86_64",
       vcpus: 4,
       memory_gb: 32,
-      power_watts: { idle: 16, max: 48 }
+      power_watts: {
+        idle: 16,
+        max: 48
+      },
+      embodied_co2e_grams_per_month: 2083.3
     },
     "t4g.micro": {
       architecture: "arm64",
       vcpus: 2,
       memory_gb: 1,
-      power_watts: { idle: 0.9, max: 3.2 }
+      power_watts: {
+        idle: 0.9,
+        max: 3.2
+      },
+      embodied_co2e_grams_per_month: 833.3
     },
     "t4g.small": {
       architecture: "arm64",
       vcpus: 2,
       memory_gb: 2,
-      power_watts: { idle: 1.4, max: 4.5 }
+      power_watts: {
+        idle: 1.4,
+        max: 4.5
+      },
+      embodied_co2e_grams_per_month: 833.3
     },
     "t4g.medium": {
       architecture: "arm64",
       vcpus: 2,
       memory_gb: 4,
-      power_watts: { idle: 2.2, max: 6.8 }
+      power_watts: {
+        idle: 2.2,
+        max: 6.8
+      },
+      embodied_co2e_grams_per_month: 833.3
     },
     "t4g.large": {
       architecture: "arm64",
       vcpus: 2,
       memory_gb: 8,
-      power_watts: { idle: 4.4, max: 13.6 }
+      power_watts: {
+        idle: 4.4,
+        max: 13.6
+      },
+      embodied_co2e_grams_per_month: 833.3
     },
     "t4g.xlarge": {
       architecture: "arm64",
       vcpus: 4,
       memory_gb: 16,
-      power_watts: { idle: 8.8, max: 27.2 }
+      power_watts: {
+        idle: 8.8,
+        max: 27.2
+      },
+      embodied_co2e_grams_per_month: 1666.7
     },
     "m6g.medium": {
       architecture: "arm64",
       vcpus: 1,
       memory_gb: 4,
-      power_watts: { idle: 2.1, max: 6.6 }
+      power_watts: {
+        idle: 2.1,
+        max: 6.6
+      },
+      embodied_co2e_grams_per_month: 416.7
     },
     "m6g.large": {
       architecture: "arm64",
       vcpus: 2,
       memory_gb: 8,
-      power_watts: { idle: 4.1, max: 13.2 }
+      power_watts: {
+        idle: 4.1,
+        max: 13.2
+      },
+      embodied_co2e_grams_per_month: 833.3
     },
     "m6g.xlarge": {
       architecture: "arm64",
       vcpus: 4,
       memory_gb: 16,
-      power_watts: { idle: 8.2, max: 26.4 }
+      power_watts: {
+        idle: 8.2,
+        max: 26.4
+      },
+      embodied_co2e_grams_per_month: 1666.7
     },
     "m6g.2xlarge": {
       architecture: "arm64",
       vcpus: 8,
       memory_gb: 32,
-      power_watts: { idle: 16.4, max: 52.8 }
+      power_watts: {
+        idle: 16.4,
+        max: 52.8
+      },
+      embodied_co2e_grams_per_month: 3333.3
     },
     "m7g.medium": {
       architecture: "arm64",
       vcpus: 1,
       memory_gb: 4,
-      power_watts: { idle: 1.8, max: 5.8 }
+      power_watts: {
+        idle: 1.8,
+        max: 5.8
+      },
+      embodied_co2e_grams_per_month: 416.7
     },
     "m7g.large": {
       architecture: "arm64",
       vcpus: 2,
       memory_gb: 8,
-      power_watts: { idle: 3.6, max: 11.6 }
+      power_watts: {
+        idle: 3.6,
+        max: 11.6
+      },
+      embodied_co2e_grams_per_month: 833.3
     },
     "m7g.xlarge": {
       architecture: "arm64",
       vcpus: 4,
       memory_gb: 16,
-      power_watts: { idle: 7.2, max: 23.2 }
+      power_watts: {
+        idle: 7.2,
+        max: 23.2
+      },
+      embodied_co2e_grams_per_month: 1666.7
     },
     "m7g.2xlarge": {
       architecture: "arm64",
       vcpus: 8,
       memory_gb: 32,
-      power_watts: { idle: 14.4, max: 46.4 }
+      power_watts: {
+        idle: 14.4,
+        max: 46.4
+      },
+      embodied_co2e_grams_per_month: 3333.3
     },
     "c6g.medium": {
       architecture: "arm64",
       vcpus: 1,
       memory_gb: 2,
-      power_watts: { idle: 2, max: 7.3 }
+      power_watts: {
+        idle: 2,
+        max: 7.3
+      },
+      embodied_co2e_grams_per_month: 416.7
     },
     "c6g.large": {
       architecture: "arm64",
       vcpus: 2,
       memory_gb: 4,
-      power_watts: { idle: 3.9, max: 14.5 }
+      power_watts: {
+        idle: 3.9,
+        max: 14.5
+      },
+      embodied_co2e_grams_per_month: 833.3
     },
     "c6g.xlarge": {
       architecture: "arm64",
       vcpus: 4,
       memory_gb: 8,
-      power_watts: { idle: 7.8, max: 29 }
+      power_watts: {
+        idle: 7.8,
+        max: 29
+      },
+      embodied_co2e_grams_per_month: 1666.7
     },
     "c6g.2xlarge": {
       architecture: "arm64",
       vcpus: 8,
       memory_gb: 16,
-      power_watts: { idle: 15.6, max: 58 }
+      power_watts: {
+        idle: 15.6,
+        max: 58
+      },
+      embodied_co2e_grams_per_month: 3333.3
     },
     "c7g.large": {
       architecture: "arm64",
       vcpus: 2,
       memory_gb: 4,
-      power_watts: { idle: 3.5, max: 13 }
+      power_watts: {
+        idle: 3.5,
+        max: 13
+      },
+      embodied_co2e_grams_per_month: 833.3
     },
     "c7g.xlarge": {
       architecture: "arm64",
       vcpus: 4,
       memory_gb: 8,
-      power_watts: { idle: 7, max: 26 }
+      power_watts: {
+        idle: 7,
+        max: 26
+      },
+      embodied_co2e_grams_per_month: 1666.7
     },
     "r6g.large": {
       architecture: "arm64",
       vcpus: 2,
       memory_gb: 16,
-      power_watts: { idle: 4.8, max: 15 }
+      power_watts: {
+        idle: 4.8,
+        max: 15
+      },
+      embodied_co2e_grams_per_month: 833.3
     },
     "r6g.xlarge": {
       architecture: "arm64",
       vcpus: 4,
       memory_gb: 32,
-      power_watts: { idle: 9.6, max: 30 }
+      power_watts: {
+        idle: 9.6,
+        max: 30
+      },
+      embodied_co2e_grams_per_month: 1666.7
     }
   },
   pricing_usd_per_hour: {
@@ -832,7 +1008,7 @@ var factors_default = {
 // package.json
 var package_default = {
   name: "greenops-cli",
-  version: "0.3.0",
+  version: "0.4.0",
   description: "Carbon footprint linting for Terraform plans. Analyses infrastructure changes for CO2e impact and cost, posts recommendations directly on GitHub PRs.",
   main: "dist/index.cjs",
   bin: {
@@ -1034,13 +1210,16 @@ function resolveUtilization(input, ledger) {
 function linearInterpolationWatts(idle, max, utilization) {
   return idle + (max - idle) * utilization;
 }
-function wattsToCarbon(watts, hours, pue, gridIntensityGco2ePerKwh) {
+function wattsToScope2Carbon(watts, hours, pue, gridIntensityGco2ePerKwh) {
   const energyKwh = watts * pue * hours / GRAMS_PER_KWH_TO_KWH_FACTOR;
   return energyKwh * gridIntensityGco2ePerKwh;
 }
+function wattsToWater(watts, hours, waterIntensityLitresPerKwh) {
+  const energyKwh = watts * hours / GRAMS_PER_KWH_TO_KWH_FACTOR;
+  return energyKwh * waterIntensityLitresPerKwh;
+}
 var ARM_UPGRADE_MAP = {
-  // x86 → ARM64 upgrade targets (same vCPU/RAM class, lower power draw)
-  // Source: AWS EC2 instance family documentation + CCF hardware coefficients
+  // x86 → ARM64 upgrade targets (same vCPU/RAM class, lower power + embodied)
   t3: "t4g",
   t3a: "t4g",
   m5: "m6g",
@@ -1077,50 +1256,44 @@ function getCleanerRegion(currentRegion, instanceType, ledger) {
 function calculateBaseline(input, ledger = factors_default) {
   const hours = input.hoursPerMonth ?? HOURS_PER_MONTH;
   const utilization = resolveUtilization(input, ledger);
+  const zeroResult = (unsupportedReason, gridIntensity = 0, embodied = 0, waterIntensity = 0) => ({
+    totalCo2eGramsPerMonth: 0,
+    embodiedCo2eGramsPerMonth: 0,
+    totalLifecycleCo2eGramsPerMonth: 0,
+    waterLitresPerMonth: 0,
+    totalCostUsdPerMonth: 0,
+    confidence: "LOW_ASSUMED_DEFAULT",
+    scope: "SCOPE_2_AND_3",
+    unsupportedReason,
+    assumptionsApplied: {
+      utilizationApplied: utilization,
+      gridIntensityApplied: gridIntensity,
+      powerModelUsed: "LINEAR_INTERPOLATION",
+      embodiedCo2ePerVcpuPerMonthApplied: embodied,
+      waterIntensityLitresPerKwhApplied: waterIntensity
+    }
+  });
   const regionData = ledger.regions[input.region];
   if (!regionData) {
-    return {
-      totalCo2eGramsPerMonth: 0,
-      totalCostUsdPerMonth: 0,
-      confidence: "LOW_ASSUMED_DEFAULT",
-      scope: "SCOPE_2_OPERATIONAL",
-      unsupportedReason: `Region "${input.region}" is not present in the open methodology ledger v${ledger.metadata.ledger_version}.`,
-      assumptionsApplied: {
-        utilizationApplied: utilization,
-        gridIntensityApplied: 0,
-        powerModelUsed: "LINEAR_INTERPOLATION"
-      }
-    };
+    return zeroResult(`Region "${input.region}" is not present in the Open GreenOps Methodology Ledger v${ledger.metadata.ledger_version}.`);
   }
   const instanceData = ledger.instances[input.instanceType];
   if (!instanceData) {
-    return {
-      totalCo2eGramsPerMonth: 0,
-      totalCostUsdPerMonth: 0,
-      confidence: "LOW_ASSUMED_DEFAULT",
-      scope: "SCOPE_2_OPERATIONAL",
-      unsupportedReason: `Instance type "${input.instanceType}" is not present in the open methodology ledger v${ledger.metadata.ledger_version}.`,
-      assumptionsApplied: {
-        utilizationApplied: utilization,
-        gridIntensityApplied: regionData.grid_intensity_gco2e_per_kwh,
-        powerModelUsed: "LINEAR_INTERPOLATION"
-      }
-    };
+    return zeroResult(
+      `Instance type "${input.instanceType}" is not present in the Open GreenOps Methodology Ledger v${ledger.metadata.ledger_version}.`,
+      regionData.grid_intensity_gco2e_per_kwh,
+      0,
+      regionData.water_intensity_litres_per_kwh
+    );
   }
   const pricePerHour = ledger.pricing_usd_per_hour[input.region]?.[input.instanceType];
   if (pricePerHour === void 0) {
-    return {
-      totalCo2eGramsPerMonth: 0,
-      totalCostUsdPerMonth: 0,
-      confidence: "LOW_ASSUMED_DEFAULT",
-      scope: "SCOPE_2_OPERATIONAL",
-      unsupportedReason: `No pricing data for "${input.instanceType}" in "${input.region}" in the open methodology ledger v${ledger.metadata.ledger_version}.`,
-      assumptionsApplied: {
-        utilizationApplied: utilization,
-        gridIntensityApplied: regionData.grid_intensity_gco2e_per_kwh,
-        powerModelUsed: "LINEAR_INTERPOLATION"
-      }
-    };
+    return zeroResult(
+      `No pricing data for "${input.instanceType}" in "${input.region}" in the Open GreenOps Methodology Ledger v${ledger.metadata.ledger_version}.`,
+      regionData.grid_intensity_gco2e_per_kwh,
+      instanceData.embodied_co2e_grams_per_month,
+      regionData.water_intensity_litres_per_kwh
+    );
   }
   const powerModel = "LINEAR_INTERPOLATION";
   const effectiveWatts = linearInterpolationWatts(
@@ -1128,23 +1301,35 @@ function calculateBaseline(input, ledger = factors_default) {
     instanceData.power_watts.max,
     utilization
   );
-  const totalCo2eGramsPerMonth = wattsToCarbon(
+  const totalCo2eGramsPerMonth = wattsToScope2Carbon(
     effectiveWatts,
     hours,
     regionData.pue,
     regionData.grid_intensity_gco2e_per_kwh
   );
+  const embodiedCo2eGramsPerMonth = instanceData.embodied_co2e_grams_per_month * (hours / HOURS_PER_MONTH);
+  const waterLitresPerMonth = wattsToWater(
+    effectiveWatts,
+    hours,
+    regionData.water_intensity_litres_per_kwh
+  );
+  const totalLifecycleCo2eGramsPerMonth = totalCo2eGramsPerMonth + embodiedCo2eGramsPerMonth;
   const totalCostUsdPerMonth = pricePerHour * hours;
   const confidence = input.avgUtilization !== void 0 ? "MEDIUM" : "HIGH";
   return {
     totalCo2eGramsPerMonth,
+    embodiedCo2eGramsPerMonth,
+    totalLifecycleCo2eGramsPerMonth,
+    waterLitresPerMonth,
     totalCostUsdPerMonth,
     confidence,
-    scope: "SCOPE_2_OPERATIONAL",
+    scope: "SCOPE_2_AND_3",
     assumptionsApplied: {
       utilizationApplied: utilization,
       gridIntensityApplied: regionData.grid_intensity_gco2e_per_kwh,
-      powerModelUsed: powerModel
+      powerModelUsed: powerModel,
+      embodiedCo2ePerVcpuPerMonthApplied: instanceData.embodied_co2e_grams_per_month,
+      waterIntensityLitresPerKwhApplied: regionData.water_intensity_litres_per_kwh
     }
   };
 }
@@ -1154,29 +1339,25 @@ function generateRecommendation(input, baseline, ledger = factors_default) {
   const candidates = [];
   const armAlternative = getArmAlternative(input.instanceType, ledger);
   if (armAlternative) {
-    const armEstimate = calculateBaseline(
-      { ...input, instanceType: armAlternative },
-      ledger
-    );
+    const armEstimate = calculateBaseline({ ...input, instanceType: armAlternative }, ledger);
     if (armEstimate.confidence !== "LOW_ASSUMED_DEFAULT") {
       const co2Delta = armEstimate.totalCo2eGramsPerMonth - baseline.totalCo2eGramsPerMonth;
       const costDelta = armEstimate.totalCostUsdPerMonth - baseline.totalCostUsdPerMonth;
+      const embodiedDelta = armEstimate.embodiedCo2eGramsPerMonth - baseline.embodiedCo2eGramsPerMonth;
       if (co2Delta < 0 && costDelta < 0) {
+        const embodiedNote = embodiedDelta < 0 ? ` ARM64 also reduces embodied (Scope 3) carbon by ${Math.abs(Math.round(embodiedDelta))}g CO2e/month.` : "";
         candidates.push({
           suggestedInstanceType: armAlternative,
           co2eDeltaGramsPerMonth: co2Delta,
           costDeltaUsdPerMonth: costDelta,
-          rationale: `Switching from ${input.instanceType} (x86_64) to ${armAlternative} (ARM64) provides identical vCPU and memory at lower power draw, reducing carbon by ${Math.abs(Math.round(co2Delta))}g CO2e/month and cost by $${Math.abs(costDelta).toFixed(2)}/month.`
+          rationale: `Switching from ${input.instanceType} (x86_64) to ${armAlternative} (ARM64) provides identical vCPU and memory at lower power draw, reducing Scope 2 carbon by ${Math.abs(Math.round(co2Delta))}g CO2e/month and cost by $${Math.abs(costDelta).toFixed(2)}/month.${embodiedNote}`
         });
       }
     }
   }
   const cleanerRegion = getCleanerRegion(input.region, input.instanceType, ledger);
   if (cleanerRegion) {
-    const regionEstimate = calculateBaseline(
-      { ...input, region: cleanerRegion },
-      ledger
-    );
+    const regionEstimate = calculateBaseline({ ...input, region: cleanerRegion }, ledger);
     if (regionEstimate.confidence !== "LOW_ASSUMED_DEFAULT") {
       const co2Delta = regionEstimate.totalCo2eGramsPerMonth - baseline.totalCo2eGramsPerMonth;
       const costDelta = regionEstimate.totalCostUsdPerMonth - baseline.totalCostUsdPerMonth;
@@ -1184,11 +1365,13 @@ function generateRecommendation(input, baseline, ledger = factors_default) {
       if (co2Delta < 0 && co2ReductionPct > 0.15) {
         const regionName = ledger.regions[cleanerRegion]?.location ?? cleanerRegion;
         const costNote = costDelta > 0 ? ` (note: cost increases by $${costDelta.toFixed(2)}/month)` : ` saving $${Math.abs(costDelta).toFixed(2)}/month`;
+        const waterDelta = regionEstimate.waterLitresPerMonth - baseline.waterLitresPerMonth;
+        const waterNote = waterDelta < -0.1 ? ` Water consumption also decreases by ${Math.abs(waterDelta).toFixed(1)}L/month.` : "";
         candidates.push({
           suggestedRegion: cleanerRegion,
           co2eDeltaGramsPerMonth: co2Delta,
           costDeltaUsdPerMonth: costDelta,
-          rationale: `Moving ${input.instanceType} from ${input.region} to ${regionName} (${cleanerRegion}) reduces grid carbon intensity from ${ledger.regions[input.region]?.grid_intensity_gco2e_per_kwh}g to ${ledger.regions[cleanerRegion]?.grid_intensity_gco2e_per_kwh}g CO2e/kWh, saving ${Math.abs(Math.round(co2Delta))}g CO2e/month${costNote}.`
+          rationale: `Moving ${input.instanceType} from ${input.region} to ${regionName} (${cleanerRegion}) reduces Scope 2 grid carbon intensity from ${ledger.regions[input.region]?.grid_intensity_gco2e_per_kwh}g to ${ledger.regions[cleanerRegion]?.grid_intensity_gco2e_per_kwh}g CO2e/kWh, saving ${Math.abs(Math.round(co2Delta))}g CO2e/month${costNote}.${waterNote}`
         });
       }
     }
@@ -1212,19 +1395,21 @@ function analysePlan(resources, skipped, planFile2, ledger = factors_default, un
   const totals = analysedResources.reduce(
     (acc, { baseline, recommendation }) => {
       acc.currentCo2eGramsPerMonth += baseline.totalCo2eGramsPerMonth;
+      acc.currentEmbodiedCo2eGramsPerMonth += baseline.embodiedCo2eGramsPerMonth;
+      acc.currentLifecycleCo2eGramsPerMonth += baseline.totalLifecycleCo2eGramsPerMonth;
+      acc.currentWaterLitresPerMonth += baseline.waterLitresPerMonth;
       acc.currentCostUsdPerMonth += baseline.totalCostUsdPerMonth;
       if (recommendation) {
-        acc.potentialCo2eSavingGramsPerMonth += Math.abs(
-          recommendation.co2eDeltaGramsPerMonth
-        );
-        acc.potentialCostSavingUsdPerMonth += Math.abs(
-          recommendation.costDeltaUsdPerMonth
-        );
+        acc.potentialCo2eSavingGramsPerMonth += Math.abs(recommendation.co2eDeltaGramsPerMonth);
+        acc.potentialCostSavingUsdPerMonth += Math.abs(recommendation.costDeltaUsdPerMonth);
       }
       return acc;
     },
     {
       currentCo2eGramsPerMonth: 0,
+      currentEmbodiedCo2eGramsPerMonth: 0,
+      currentLifecycleCo2eGramsPerMonth: 0,
+      currentWaterLitresPerMonth: 0,
       currentCostUsdPerMonth: 0,
       potentialCo2eSavingGramsPerMonth: 0,
       potentialCostSavingUsdPerMonth: 0
@@ -1588,36 +1773,59 @@ function formatGrams(grams) {
 }
 
 // formatters/markdown.ts
+function formatWater(litres) {
+  if (litres >= 1e3)
+    return `${(litres / 1e3).toFixed(2)}m\xB3`;
+  return `${litres.toFixed(1)}L`;
+}
 function formatMarkdown(result2, options = {}) {
   const METHODOLOGY_URL = options.repositoryUrl || "https://github.com/omrdev1/greenops-cli/blob/main/METHODOLOGY.md";
   const recsCount = result2.resources.filter((r) => r.recommendation).length;
   let out = `## \u{1F331} GreenOps Infrastructure Impact
 
 `;
-  out += `> **Total Current Footprint:** ${formatGrams(result2.totals.currentCo2eGramsPerMonth)} CO2e/month | **$${result2.totals.currentCostUsdPerMonth.toFixed(2)}**/month
+  const scope2 = formatGrams(result2.totals.currentCo2eGramsPerMonth);
+  const scope3 = formatGrams(result2.totals.currentEmbodiedCo2eGramsPerMonth);
+  const lifecycle = formatGrams(result2.totals.currentLifecycleCo2eGramsPerMonth);
+  const water = formatWater(result2.totals.currentWaterLitresPerMonth);
+  const cost = result2.totals.currentCostUsdPerMonth.toFixed(2);
+  out += `> | Metric | Monthly Total |
+`;
+  out += `> |---|---|
+`;
+  out += `> | \u{1F50B} Scope 2 \u2014 Operational CO2e | **${scope2}** |
+`;
+  out += `> | \u{1F3ED} Scope 3 \u2014 Embodied CO2e | **${scope3}** |
+`;
+  out += `> | \u{1F30D} Total Lifecycle CO2e | **${lifecycle}** |
+`;
+  out += `> | \u{1F4A7} Water Consumption | **${water}** |
+`;
+  out += `> | \u{1F4B0} Infrastructure Cost | **$${cost}/month** |
+
 `;
   if (recsCount > 0) {
     const pct = result2.totals.currentCo2eGramsPerMonth > 0 ? (result2.totals.potentialCo2eSavingGramsPerMonth / result2.totals.currentCo2eGramsPerMonth * 100).toFixed(1) : "0.0";
-    out += `> **Potential Savings:** -${formatGrams(result2.totals.potentialCo2eSavingGramsPerMonth)} CO2e/month (${pct}%) | -$${result2.totals.potentialCostSavingUsdPerMonth.toFixed(2)}/month
+    out += `> **Potential Scope 2 Savings:** -${formatGrams(result2.totals.potentialCo2eSavingGramsPerMonth)} CO2e/month (${pct}%) | -$${result2.totals.potentialCostSavingUsdPerMonth.toFixed(2)}/month
 `;
     out += `> \u{1F4A1} Found **${recsCount}** optimization ${recsCount === 1 ? "recommendation" : "recommendations"}.
 
 `;
   } else {
-    out += `> \u2705 **Already optimally configured!** No upgrades recommended.
+    out += `> \u2705 **Already optimally configured.** No upgrades recommended.
 
 `;
   }
   out += `### Resource Breakdown
 
 `;
-  out += `| Resource | Type | Region | CO2e/month | Cost/month | Action |
+  out += `| Resource | Type | Region | Scope 2 CO2e | Scope 3 CO2e | Water | Cost/mo | Action |
 `;
-  out += `|---|---|---|---|---|---|
+  out += `|---|---|---|---|---|---|---|---|
 `;
   for (const r of result2.resources) {
-    const action = r.recommendation ? `\u{1F4A1} [View Recommendation](#recommendations)` : `\u2705 No change needed`;
-    out += `| \`${r.input.resourceId}\` | \`${r.input.instanceType}\` | \`${r.input.region}\` | ${formatGrams(r.baseline.totalCo2eGramsPerMonth)} | $${r.baseline.totalCostUsdPerMonth.toFixed(2)} | ${action} |
+    const action = r.recommendation ? `\u{1F4A1} [View Recommendation](#recommendations)` : `\u2705 Optimal`;
+    out += `| \`${r.input.resourceId}\` | \`${r.input.instanceType}\` | \`${r.input.region}\` | ${formatGrams(r.baseline.totalCo2eGramsPerMonth)} | ${formatGrams(r.baseline.embodiedCo2eGramsPerMonth)} | ${formatWater(r.baseline.waterLitresPerMonth)} | $${r.baseline.totalCostUsdPerMonth.toFixed(2)} | ${action} |
 `;
   }
   out += `
@@ -1626,7 +1834,7 @@ function formatMarkdown(result2, options = {}) {
     out += `<details><summary>\u26A0\uFE0F <b>${result2.skipped.length} Skipped Resources</b></summary>
 
 `;
-    out += `The following resources were skipped from calculation (usually due to runtime abstractions). The actual footprint may be higher.
+    out += `The following resources were excluded from analysis (typically due to runtime-resolved attributes). The actual footprint may be higher.
 
 `;
     out += `| Resource | Reason |
@@ -1655,7 +1863,7 @@ function formatMarkdown(result2, options = {}) {
         const sugInst = r.recommendation.suggestedInstanceType || r.input.instanceType;
         out += `- **Suggested:** \`${sugInst}\` in \`${sugRegion}\`
 `;
-        out += `- **Impact:** ${formatDelta2(r.recommendation.co2eDeltaGramsPerMonth)} CO2e/month | ${formatCostDelta2(r.recommendation.costDeltaUsdPerMonth)}/month
+        out += `- **Scope 2 Impact:** ${formatDelta2(r.recommendation.co2eDeltaGramsPerMonth)} CO2e/month | ${formatCostDelta2(r.recommendation.costDeltaUsdPerMonth)}/month
 `;
         out += `- **Rationale:** ${r.recommendation.rationale}
 
@@ -1663,19 +1871,22 @@ function formatMarkdown(result2, options = {}) {
       }
     }
   }
-  out += `---
-`;
-  out += `*Emissions calculated using the Open GreenOps Methodology Ledger (v${result2.ledgerVersion}). Scope 2 operational emissions only \u2014 embodied carbon and water are not tracked. Math is MIT-licensed and auditable. Analysed at ${result2.analysedAt}. [Learn more](${METHODOLOGY_URL}).*
-`;
   if (result2.unsupportedTypes.length > 0) {
     const typeList = result2.unsupportedTypes.map((t) => `\`${t}\``).join(", ");
-    out += `
-> \u26A0\uFE0F **Coverage note:** This analysis covers \`aws_instance\` and \`aws_db_instance\` resources only. The following compute-relevant types were detected but are not yet supported: ${typeList}. Their footprint is not reflected above.
+    out += `> \u26A0\uFE0F **Coverage note:** The following compute-relevant types were detected but are not yet supported: ${typeList}. Their footprint is not reflected above.
+
 `;
   }
+  out += `---
+`;
+  out += `*Emissions calculated using the [Open GreenOps Methodology Ledger v${result2.ledgerVersion}](${METHODOLOGY_URL}). `;
+  out += `Scope 2 (operational) and Scope 3 (embodied) emissions tracked. `;
+  out += `Water consumption estimated from AWS 2023 WUE data. `;
+  out += `Math is MIT-licensed and auditable. Analysed at ${result2.analysedAt}.*
+`;
   if (options.showUpgradePrompt) {
     out += `
-> \u{1F3E2} **Managing green-ops across dozens of repositories?** [Upgrade to GreenOps Dashboard](https://greenops-cli.dev/upgrade) to aggregate CI/CD carbon data natively.
+> \u{1F3E2} **GreenOps Dashboard** \u2014 aggregate carbon data across all your repositories, set team budgets, and export ESG reports. [Join the waitlist](https://greenops-cli.dev) \xB7 Coming soon.
 `;
   }
   return out;
@@ -1688,6 +1899,11 @@ function truncate(str, len) {
     return visible.substring(0, len - 3) + "...";
   return visible + " ".repeat(len - visible.length);
 }
+function formatWater2(litres) {
+  if (litres >= 1e3)
+    return `${(litres / 1e3).toFixed(1)}m\xB3`;
+  return `${litres.toFixed(1)}L`;
+}
 function formatTable(result2) {
   let out = `
 \x1B[1m\u{1F331} GreenOps Infrastructure Impact\x1B[0m
@@ -1697,29 +1913,33 @@ function formatTable(result2) {
     return out + `No compatible infrastructure detected.
 `;
   }
-  out += `\u250C${"\u2500".repeat(40)}\u252C${"\u2500".repeat(15)}\u252C${"\u2500".repeat(15)}\u252C${"\u2500".repeat(15)}\u252C${"\u2500".repeat(15)}\u2510
+  out += `\u250C${"\u2500".repeat(38)}\u252C${"\u2500".repeat(13)}\u252C${"\u2500".repeat(13)}\u252C${"\u2500".repeat(11)}\u252C${"\u2500".repeat(11)}\u252C${"\u2500".repeat(9)}\u252C${"\u2500".repeat(13)}\u2510
 `;
-  out += `\u2502 ${truncate("Resource", 38)} \u2502 ${truncate("Instance", 13)} \u2502 ${truncate("Region", 13)} \u2502 ${truncate("CO2e/mo", 13)} \u2502 ${truncate("Action", 13)} \u2502
+  out += `\u2502 ${truncate("Resource", 36)} \u2502 ${truncate("Instance", 11)} \u2502 ${truncate("Region", 11)} \u2502 ${truncate("Scope 2", 9)} \u2502 ${truncate("Scope 3", 9)} \u2502 ${truncate("Water", 7)} \u2502 ${truncate("Action", 11)} \u2502
 `;
-  out += `\u251C${"\u2500".repeat(40)}\u253C${"\u2500".repeat(15)}\u253C${"\u2500".repeat(15)}\u253C${"\u2500".repeat(15)}\u253C${"\u2500".repeat(15)}\u2524
+  out += `\u251C${"\u2500".repeat(38)}\u253C${"\u2500".repeat(13)}\u253C${"\u2500".repeat(13)}\u253C${"\u2500".repeat(11)}\u253C${"\u2500".repeat(11)}\u253C${"\u2500".repeat(9)}\u253C${"\u2500".repeat(13)}\u2524
 `;
   for (const r of result2.resources) {
-    const c = formatGrams(r.baseline.totalCo2eGramsPerMonth);
+    const scope2 = formatGrams(r.baseline.totalCo2eGramsPerMonth);
+    const scope3 = formatGrams(r.baseline.embodiedCo2eGramsPerMonth);
+    const water = formatWater2(r.baseline.waterLitresPerMonth);
     const action = r.recommendation ? `\x1B[33mUPGRADE\x1B[0m` : `\x1B[32mOK\x1B[0m`;
-    out += `\u2502 ${truncate(r.input.resourceId, 38)} \u2502 ${truncate(r.input.instanceType, 13)} \u2502 ${truncate(r.input.region, 13)} \u2502 ${truncate(c, 13)} \u2502 ${truncate(action, 13)} \u2502
+    out += `\u2502 ${truncate(r.input.resourceId, 36)} \u2502 ${truncate(r.input.instanceType, 11)} \u2502 ${truncate(r.input.region, 11)} \u2502 ${truncate(scope2, 9)} \u2502 ${truncate(scope3, 9)} \u2502 ${truncate(water, 7)} \u2502 ${truncate(action, 11)} \u2502
 `;
   }
   for (const s of result2.skipped) {
-    out += `\u2502 \x1B[90m${truncate(s.resourceId, 38)}\x1B[0m \u2502 \x1B[90m${truncate("---", 13)}\x1B[0m \u2502 \x1B[90m${truncate("---", 13)}\x1B[0m \u2502 \x1B[90m${truncate("---", 13)}\x1B[0m \u2502 \x1B[33m${truncate("\u26A0 SKIPPED", 13)}\x1B[0m \u2502
+    out += `\u2502 \x1B[90m${truncate(s.resourceId, 36)}\x1B[0m \u2502 \x1B[90m${truncate("---", 11)}\x1B[0m \u2502 \x1B[90m${truncate("---", 11)}\x1B[0m \u2502 \x1B[90m${truncate("---", 9)}\x1B[0m \u2502 \x1B[90m${truncate("---", 9)}\x1B[0m \u2502 \x1B[90m${truncate("---", 7)}\x1B[0m \u2502 \x1B[33m${truncate("\u26A0 SKIPPED", 11)}\x1B[0m \u2502
 `;
   }
-  out += `\u2514${"\u2500".repeat(40)}\u2534${"\u2500".repeat(15)}\u2534${"\u2500".repeat(15)}\u2534${"\u2500".repeat(15)}\u2534${"\u2500".repeat(15)}\u2518
+  out += `\u2514${"\u2500".repeat(38)}\u2534${"\u2500".repeat(13)}\u2534${"\u2500".repeat(13)}\u2534${"\u2500".repeat(11)}\u2534${"\u2500".repeat(11)}\u2534${"\u2500".repeat(9)}\u2534${"\u2500".repeat(13)}\u2518
 
 `;
-  out += `Current: ${formatGrams(result2.totals.currentCo2eGramsPerMonth)} | $${result2.totals.currentCostUsdPerMonth.toFixed(2)}
+  out += `Scope 2: ${formatGrams(result2.totals.currentCo2eGramsPerMonth)} | Scope 3: ${formatGrams(result2.totals.currentEmbodiedCo2eGramsPerMonth)} | Lifecycle: ${formatGrams(result2.totals.currentLifecycleCo2eGramsPerMonth)}
+`;
+  out += `Water: ${formatWater2(result2.totals.currentWaterLitresPerMonth)} | Cost: $${result2.totals.currentCostUsdPerMonth.toFixed(2)}/month
 `;
   if (result2.totals.potentialCo2eSavingGramsPerMonth > 0) {
-    out += `\x1B[32mSavings: ${formatDelta2(-result2.totals.potentialCo2eSavingGramsPerMonth)} | ${formatCostDelta2(-result2.totals.potentialCostSavingUsdPerMonth)}\x1B[0m
+    out += `\x1B[32mScope 2 Savings: ${formatDelta2(-result2.totals.potentialCo2eSavingGramsPerMonth)} | ${formatCostDelta2(-result2.totals.potentialCostSavingUsdPerMonth)}\x1B[0m
 `;
   }
   if (result2.skipped.length > 0) {
