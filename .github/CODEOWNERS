@@ -1,0 +1,15 @@
+# CODEOWNERS
+# All files require review from the maintainer before merging.
+# See: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+* @omrdev1
+
+# Core engine and methodology — extra scrutiny
+/factors.json @omrdev1
+/engine.ts @omrdev1
+/extractor.ts @omrdev1
+/METHODOLOGY.md @omrdev1
+
+# Action and distribution
+/action.yml @omrdev1
+/dist/ @omrdev1
