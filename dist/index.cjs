@@ -1968,7 +1968,7 @@ var factors_default = {
 // package.json
 var package_default = {
   name: "greenops-cli",
-  version: "0.5.3",
+  version: "0.5.4",
   description: "Carbon footprint linting for Terraform plans \u2014 AWS, Azure, and GCP. Analyses infrastructure changes for Scope 2, Scope 3, and water impact. Posts recommendations directly on GitHub PRs.",
   main: "dist/index.cjs",
   bin: {
@@ -3170,6 +3170,7 @@ if (values["post-suggestions"]) {
     process.stderr.write(
       "[WARN] --post-suggestions requires --github-token, --repo, --pr-number, and --commit-sha. Skipping.\n"
     );
+    process.exit(policyExitCode);
   } else {
     postSuggestions(result, {
       token,
@@ -3193,7 +3194,10 @@ if (values["post-suggestions"]) {
         `[WARN] GreenOps suggestion engine error: ${err instanceof Error ? err.message : String(err)}. Continuing.
 `
       );
+    }).finally(() => {
+      process.exit(policyExitCode);
     });
   }
+} else {
+  process.exit(policyExitCode);
 }
-process.exit(policyExitCode);
