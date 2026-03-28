@@ -20,22 +20,27 @@ jobs:
             target: linux-x64
             bun-target: bun-linux-x64
             artifact: greenops-cli-linux-x64
+            native: true
           - os: ubuntu-latest
             target: linux-arm64
             bun-target: bun-linux-arm64
             artifact: greenops-cli-linux-arm64
+            native: false
           - os: macos-latest
             target: darwin-arm64
             bun-target: bun-darwin-arm64
             artifact: greenops-cli-darwin-arm64
+            native: true
           - os: macos-latest
             target: darwin-x64
             bun-target: bun-darwin-x64
             artifact: greenops-cli-darwin-x64
+            native: false
           - os: windows-latest
             target: windows-x64
             bun-target: bun-windows-x64
             artifact: greenops-cli-windows-x64.exe
+            native: true
 
     steps:
       - uses: actions/checkout@v4
@@ -51,14 +56,14 @@ jobs:
       - name: Build binary
         run: bun build cli.ts --compile --target=${{ matrix.bun-target }} --outfile=${{ matrix.artifact }}
 
-      - name: Smoke test (non-Windows)
-        if: runner.os != 'Windows'
+      - name: Smoke test (non-Windows, native only)
+        if: matrix.native == true && runner.os != 'Windows'
         run: |
           ./${{ matrix.artifact }} --version
           ./${{ matrix.artifact }} --coverage
 
-      - name: Smoke test (Windows)
-        if: runner.os == 'Windows'
+      - name: Smoke test (Windows, native only)
+        if: matrix.native == true && runner.os == 'Windows'
         run: |
           .\${{ matrix.artifact }} --version
           .\${{ matrix.artifact }} --coverage
