@@ -172,11 +172,19 @@ PUE differs by provider: AWS 1.13, Azure 1.125, GCP 1.10. All other coefficients
 
 ## 🧪 E2E Testing
 
-The `fixtures/` directory contains real Terraform plan files generated against live cloud accounts with credentials stripped. The `.github/workflows/greenops-e2e.yml` workflow runs these fixtures on every PR.
+The `fixtures/` directory contains Terraform plan files for all three providers. The `.github/workflows/greenops-e2e.yml` workflow runs all three on every PR.
 
 ```bash
 npm run build
+
+# AWS
 node dist/index.cjs diff fixtures/tfplan.e2e.json --format table
+
+# Azure
+node dist/index.cjs diff fixtures/tfplan.azure.e2e.json --format table
+
+# GCP
+node dist/index.cjs diff fixtures/tfplan.gcp.e2e.json --format table
 ```
 
 ---
