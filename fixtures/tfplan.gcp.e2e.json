@@ -1,0 +1,129 @@
+{
+  "format_version": "1.2",
+  "terraform_version": "1.7.5",
+  "planned_values": {
+    "root_module": {
+      "resources": [
+        {
+          "address": "google_compute_instance.api",
+          "mode": "managed",
+          "type": "google_compute_instance",
+          "name": "api",
+          "provider_name": "registry.terraform.io/hashicorp/google",
+          "schema_version": 6,
+          "values": {
+            "name": "greenops-e2e-api",
+            "machine_type": "n2-standard-2",
+            "zone": "us-central1-a",
+            "tags": ["e2e"],
+            "labels": { "environment": "e2e" }
+          }
+        },
+        {
+          "address": "google_compute_instance.worker",
+          "mode": "managed",
+          "type": "google_compute_instance",
+          "name": "worker",
+          "provider_name": "registry.terraform.io/hashicorp/google",
+          "schema_version": 6,
+          "values": {
+            "name": "greenops-e2e-worker",
+            "machine_type": "t2a-standard-2",
+            "zone": "europe-north1-a",
+            "tags": ["e2e"],
+            "labels": { "environment": "e2e" }
+          }
+        }
+      ]
+    }
+  },
+  "resource_changes": [
+    {
+      "address": "google_compute_instance.api",
+      "mode": "managed",
+      "type": "google_compute_instance",
+      "name": "api",
+      "provider_name": "registry.terraform.io/hashicorp/google",
+      "change": {
+        "actions": ["create"],
+        "before": null,
+        "after": {
+          "name": "greenops-e2e-api",
+          "machine_type": "n2-standard-2",
+          "zone": "us-central1-a",
+          "tags": ["e2e"],
+          "labels": { "environment": "e2e" }
+        },
+        "after_unknown": { "id": true, "instance_id": true, "network_interface": true, "self_link": true },
+        "before_sensitive": false,
+        "after_sensitive": {}
+      }
+    },
+    {
+      "address": "google_compute_instance.worker",
+      "mode": "managed",
+      "type": "google_compute_instance",
+      "name": "worker",
+      "provider_name": "registry.terraform.io/hashicorp/google",
+      "change": {
+        "actions": ["create"],
+        "before": null,
+        "after": {
+          "name": "greenops-e2e-worker",
+          "machine_type": "t2a-standard-2",
+          "zone": "europe-north1-a",
+          "tags": ["e2e"],
+          "labels": { "environment": "e2e" }
+        },
+        "after_unknown": { "id": true, "instance_id": true, "network_interface": true, "self_link": true },
+        "before_sensitive": false,
+        "after_sensitive": {}
+      }
+    }
+  ],
+  "configuration": {
+    "provider_config": {
+      "google": {
+        "name": "google",
+        "full_name": "registry.terraform.io/hashicorp/google",
+        "version_constraint": "~> 5.0",
+        "expressions": {
+          "project": { "constant_value": "greenops-e2e-project" },
+          "region": { "constant_value": "us-central1" }
+        }
+      }
+    },
+    "root_module": {
+      "resources": [
+        {
+          "address": "google_compute_instance.api",
+          "mode": "managed",
+          "type": "google_compute_instance",
+          "name": "api",
+          "provider_config_key": "google",
+          "expressions": {
+            "name": { "constant_value": "greenops-e2e-api" },
+            "machine_type": { "constant_value": "n2-standard-2" },
+            "zone": { "constant_value": "us-central1-a" }
+          },
+          "schema_version": 6
+        },
+        {
+          "address": "google_compute_instance.worker",
+          "mode": "managed",
+          "type": "google_compute_instance",
+          "name": "worker",
+          "provider_config_key": "google",
+          "expressions": {
+            "name": { "constant_value": "greenops-e2e-worker" },
+            "machine_type": { "constant_value": "t2a-standard-2" },
+            "zone": { "constant_value": "europe-north1-a" }
+          },
+          "schema_version": 6
+        }
+      ]
+    }
+  },
+  "timestamp": "2026-03-28T12:00:00Z",
+  "errored": false
+}
