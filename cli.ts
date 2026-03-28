@@ -141,6 +141,10 @@ if (values.format === 'table') {
 }
 
 // --- Post GitHub suggestion comments (async, fail-open) ---
+// IMPORTANT: process.exit must be deferred until after async suggestion posting
+// completes. Calling process.exit() synchronously would terminate the Node.js
+// process before unresolved HTTP requests to the GitHub API resolve, causing
+// suggestions to be silently dropped on policy violation builds.
 if (values['post-suggestions']) {
   const token = values['github-token'];
   const repo = values['repo'];
@@ -151,6 +155,7 @@ if (values['post-suggestions']) {
     process.stderr.write(
       '[WARN] --post-suggestions requires --github-token, --repo, --pr-number, and --commit-sha. Skipping.\n'
     );
+    process.exit(policyExitCode);
   } else {
     postSuggestions(result, {
       token,
@@ -172,8 +177,11 @@ if (values['post-suggestions']) {
       process.stderr.write(
         `[WARN] GreenOps suggestion engine error: ${err instanceof Error ? err.message : String(err)}. Continuing.\n`
       );
+    }).finally(() => {
+      // Exit only after suggestions have been posted (or failed gracefully)
+      process.exit(policyExitCode);
     });
   }
+} else {
+  process.exit(policyExitCode);
 }
-
-process.exit(policyExitCode);
