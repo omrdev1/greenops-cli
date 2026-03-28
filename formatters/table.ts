@@ -19,9 +19,9 @@ export function formatTable(result: PlanAnalysisResult): string {
     return out + `No compatible infrastructure detected.\n`;
   }
 
-  out += `┌${'─'.repeat(38)}┬${'─'.repeat(13)}┬${'─'.repeat(13)}┬${'─'.repeat(11)}┬${'─'.repeat(11)}┬${'─'.repeat(9)}┬${'─'.repeat(13)}┐\n`;
-  out += `│ ${truncate('Resource', 36)} │ ${truncate('Instance', 11)} │ ${truncate('Region', 11)} │ ${truncate('Scope 2', 9)} │ ${truncate('Scope 3', 9)} │ ${truncate('Water', 7)} │ ${truncate('Action', 11)} │\n`;
-  out += `├${'─'.repeat(38)}┼${'─'.repeat(13)}┼${'─'.repeat(13)}┼${'─'.repeat(11)}┼${'─'.repeat(11)}┼${'─'.repeat(9)}┼${'─'.repeat(13)}┤\n`;
+  out += `┌${'─'.repeat(38)}┬${'─'.repeat(20)}┬${'─'.repeat(16)}┬${'─'.repeat(11)}┬${'─'.repeat(11)}┬${'─'.repeat(9)}┬${'─'.repeat(13)}┐\n`;
+  out += `│ ${truncate('Resource', 36)} │ ${truncate('Instance', 18)} │ ${truncate('Region', 14)} │ ${truncate('Scope 2', 9)} │ ${truncate('Scope 3', 9)} │ ${truncate('Water', 7)} │ ${truncate('Action', 11)} │\n`;
+  out += `├${'─'.repeat(38)}┼${'─'.repeat(20)}┼${'─'.repeat(16)}┼${'─'.repeat(11)}┼${'─'.repeat(11)}┼${'─'.repeat(9)}┼${'─'.repeat(13)}┤\n`;
 
   // Separate analysed resources from LOW_ASSUMED_DEFAULT (unsupported instance/region)
   const analysed = result.resources.filter(r => r.baseline.confidence !== 'LOW_ASSUMED_DEFAULT');
@@ -32,17 +32,17 @@ export function formatTable(result: PlanAnalysisResult): string {
     const scope3 = formatGrams(r.baseline.embodiedCo2eGramsPerMonth);
     const water = formatWater(r.baseline.waterLitresPerMonth);
     const action = r.recommendation ? `\x1b[33mUPGRADE\x1b[0m` : `\x1b[32mOK\x1b[0m`;
-    out += `│ ${truncate(r.input.resourceId, 36)} │ ${truncate(r.input.instanceType, 11)} │ ${truncate(r.input.region, 11)} │ ${truncate(scope2, 9)} │ ${truncate(scope3, 9)} │ ${truncate(water, 7)} │ ${truncate(action, 11)} │\n`;
+    out += `│ ${truncate(r.input.resourceId, 36)} │ ${truncate(r.input.instanceType, 18)} │ ${truncate(r.input.region, 14)} │ ${truncate(scope2, 9)} │ ${truncate(scope3, 9)} │ ${truncate(water, 7)} │ ${truncate(action, 11)} │\n`;
   }
   // Skipped: known_after_apply and other runtime-unresolvable resources
   for (const s of result.skipped) {
-    out += `│ \x1b[90m${truncate(s.resourceId, 36)}\x1b[0m │ \x1b[90m${truncate('---', 11)}\x1b[0m │ \x1b[90m${truncate('---', 11)}\x1b[0m │ \x1b[90m${truncate('---', 9)}\x1b[0m │ \x1b[90m${truncate('---', 9)}\x1b[0m │ \x1b[90m${truncate('---', 7)}\x1b[0m │ \x1b[33m${truncate('⚠ SKIPPED', 11)}\x1b[0m │\n`;
+    out += `│ \x1b[90m${truncate(s.resourceId, 36)}\x1b[0m │ \x1b[90m${truncate('---', 18)}\x1b[0m │ \x1b[90m${truncate('---', 14)}\x1b[0m │ \x1b[90m${truncate('---', 9)}\x1b[0m │ \x1b[90m${truncate('---', 9)}\x1b[0m │ \x1b[90m${truncate('---', 7)}\x1b[0m │ \x1b[33m${truncate('⚠ SKIPPED', 11)}\x1b[0m │\n`;
   }
   // Skipped: unsupported instance types not in the ledger
   for (const r of unsupportedResources) {
-    out += `│ \x1b[90m${truncate(r.input.resourceId, 36)}\x1b[0m │ \x1b[90m${truncate(r.input.instanceType, 11)}\x1b[0m │ \x1b[90m${truncate(r.input.region, 11)}\x1b[0m │ \x1b[90m${truncate('---', 9)}\x1b[0m │ \x1b[90m${truncate('---', 9)}\x1b[0m │ \x1b[90m${truncate('---', 7)}\x1b[0m │ \x1b[33m${truncate('⚠ UNKNOWN', 11)}\x1b[0m │\n`;
+    out += `│ \x1b[90m${truncate(r.input.resourceId, 36)}\x1b[0m │ \x1b[90m${truncate(r.input.instanceType, 18)}\x1b[0m │ \x1b[90m${truncate(r.input.region, 14)}\x1b[0m │ \x1b[90m${truncate('---', 9)}\x1b[0m │ \x1b[90m${truncate('---', 9)}\x1b[0m │ \x1b[90m${truncate('---', 7)}\x1b[0m │ \x1b[33m${truncate('⚠ UNKNOWN', 11)}\x1b[0m │\n`;
   }
-  out += `└${'─'.repeat(38)}┴${'─'.repeat(13)}┴${'─'.repeat(13)}┴${'─'.repeat(11)}┴${'─'.repeat(11)}┴${'─'.repeat(9)}┴${'─'.repeat(13)}┘\n\n`;
+  out += `└${'─'.repeat(38)}┴${'─'.repeat(20)}┴${'─'.repeat(16)}┴${'─'.repeat(11)}┴${'─'.repeat(11)}┴${'─'.repeat(9)}┴${'─'.repeat(13)}┘\n\n`;
 
   out += `Scope 2: ${formatGrams(result.totals.currentCo2eGramsPerMonth)} | Scope 3: ${formatGrams(result.totals.currentEmbodiedCo2eGramsPerMonth)} | Lifecycle: ${formatGrams(result.totals.currentLifecycleCo2eGramsPerMonth)}\n`;
   out += `Water: ${formatWater(result.totals.currentWaterLitresPerMonth)} | Cost: $${result.totals.currentCostUsdPerMonth.toFixed(2)}/month\n`;

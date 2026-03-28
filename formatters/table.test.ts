@@ -81,6 +81,20 @@ describe('formatTable', () => {
     assert.ok(table.includes('SKIPPED'), 'Should show SKIPPED for skipped resources');
   });
 
+  it('shows Azure instance names without truncation (Standard_D2s_v3 fits in 18-char column)', () => {
+    const result = makeMockResult({
+      resources: [{
+        input: { resourceId: 'azurerm_linux_virtual_machine.api', instanceType: 'Standard_D2s_v3', region: 'eastus', provider: 'azure' as const },
+        baseline: makeMockBaseline(),
+        recommendation: null,
+      }],
+      totals: makeMockTotals({ currentCo2eGramsPerMonth: 1000 }),
+    });
+    const table = formatTable(result);
+    assert.ok(table.includes('Standard_D2s_v3'), 'Standard_D2s_v3 should not be truncated in the 18-char column');
+    assert.ok(!table.includes('Standard_...'), 'Should not truncate Standard_ names to Standard_...');
+  });
+
   it('shows UNKNOWN marker for LOW_ASSUMED_DEFAULT resources instead of OK/UPGRADE', () => {
     const result = makeMockResult({
       resources: [
