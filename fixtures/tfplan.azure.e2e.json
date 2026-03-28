@@ -1,0 +1,134 @@
+{
+  "format_version": "1.2",
+  "terraform_version": "1.7.5",
+  "planned_values": {
+    "root_module": {
+      "resources": [
+        {
+          "address": "azurerm_linux_virtual_machine.api",
+          "mode": "managed",
+          "type": "azurerm_linux_virtual_machine",
+          "name": "api",
+          "provider_name": "registry.terraform.io/hashicorp/azurerm",
+          "schema_version": 0,
+          "values": {
+            "admin_username": "adminuser",
+            "location": "eastus",
+            "name": "greenops-e2e-api",
+            "resource_group_name": "greenops-e2e-rg",
+            "size": "Standard_D2s_v3",
+            "tags": { "environment": "e2e" }
+          }
+        },
+        {
+          "address": "azurerm_linux_virtual_machine.worker",
+          "mode": "managed",
+          "type": "azurerm_linux_virtual_machine",
+          "name": "worker",
+          "provider_name": "registry.terraform.io/hashicorp/azurerm",
+          "schema_version": 0,
+          "values": {
+            "admin_username": "adminuser",
+            "location": "swedencentral",
+            "name": "greenops-e2e-worker",
+            "resource_group_name": "greenops-e2e-rg",
+            "size": "Standard_D4s_v3",
+            "tags": { "environment": "e2e" }
+          }
+        }
+      ]
+    }
+  },
+  "resource_changes": [
+    {
+      "address": "azurerm_linux_virtual_machine.api",
+      "mode": "managed",
+      "type": "azurerm_linux_virtual_machine",
+      "name": "api",
+      "provider_name": "registry.terraform.io/hashicorp/azurerm",
+      "change": {
+        "actions": ["create"],
+        "before": null,
+        "after": {
+          "admin_username": "adminuser",
+          "location": "eastus",
+          "name": "greenops-e2e-api",
+          "resource_group_name": "greenops-e2e-rg",
+          "size": "Standard_D2s_v3",
+          "tags": { "environment": "e2e" }
+        },
+        "after_unknown": { "id": true, "private_ip_address": true, "public_ip_address": true, "virtual_machine_id": true },
+        "before_sensitive": false,
+        "after_sensitive": { "admin_password": true }
+      }
+    },
+    {
+      "address": "azurerm_linux_virtual_machine.worker",
+      "mode": "managed",
+      "type": "azurerm_linux_virtual_machine",
+      "name": "worker",
+      "provider_name": "registry.terraform.io/hashicorp/azurerm",
+      "change": {
+        "actions": ["create"],
+        "before": null,
+        "after": {
+          "admin_username": "adminuser",
+          "location": "swedencentral",
+          "name": "greenops-e2e-worker",
+          "resource_group_name": "greenops-e2e-rg",
+          "size": "Standard_D4s_v3",
+          "tags": { "environment": "e2e" }
+        },
+        "after_unknown": { "id": true, "private_ip_address": true, "public_ip_address": true, "virtual_machine_id": true },
+        "before_sensitive": false,
+        "after_sensitive": { "admin_password": true }
+      }
+    }
+  ],
+  "configuration": {
+    "provider_config": {
+      "azurerm": {
+        "name": "azurerm",
+        "full_name": "registry.terraform.io/hashicorp/azurerm",
+        "version_constraint": "~> 3.0",
+        "expressions": {}
+      }
+    },
+    "root_module": {
+      "resources": [
+        {
+          "address": "azurerm_linux_virtual_machine.api",
+          "mode": "managed",
+          "type": "azurerm_linux_virtual_machine",
+          "name": "api",
+          "provider_config_key": "azurerm",
+          "expressions": {
+            "admin_username": { "constant_value": "adminuser" },
+            "location": { "constant_value": "eastus" },
+            "name": { "constant_value": "greenops-e2e-api" },
+            "resource_group_name": { "constant_value": "greenops-e2e-rg" },
+            "size": { "constant_value": "Standard_D2s_v3" }
+          },
+          "schema_version": 0
+        },
+        {
+          "address": "azurerm_linux_virtual_machine.worker",
+          "mode": "managed",
+          "type": "azurerm_linux_virtual_machine",
+          "name": "worker",
+          "provider_config_key": "azurerm",
+          "expressions": {
+            "admin_username": { "constant_value": "adminuser" },
+            "location": { "constant_value": "swedencentral" },
+            "name": { "constant_value": "greenops-e2e-worker" },
+            "resource_group_name": { "constant_value": "greenops-e2e-rg" },
+            "size": { "constant_value": "Standard_D4s_v3" }
+          },
+          "schema_version": 0
+        }
+      ]
+    }
+  },
+  "timestamp": "2026-03-28T12:00:00Z",
+  "errored": false
+}
