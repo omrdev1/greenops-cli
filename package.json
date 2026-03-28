@@ -1,6 +1,6 @@
 {
   "name": "greenops-cli",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "description": "Carbon footprint linting for Terraform plans — AWS, Azure, and GCP. Analyses infrastructure changes for Scope 2, Scope 3, and water impact. Posts recommendations directly on GitHub PRs.",
   "main": "dist/index.cjs",
   "bin": {
