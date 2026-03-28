@@ -1968,7 +1968,7 @@ var factors_default = {
 // package.json
 var package_default = {
   name: "greenops-cli",
-  version: "0.5.0",
+  version: "0.5.2",
   description: "Carbon footprint linting for Terraform plans \u2014 AWS, Azure, and GCP. Analyses infrastructure changes for Scope 2, Scope 3, and water impact. Posts recommendations directly on GitHub PRs.",
   main: "dist/index.cjs",
   bin: {
@@ -2745,8 +2745,9 @@ async function postSuggestions(result2, ctx) {
   for (const { input, recommendation } of resourcesWithRecs) {
     if (!recommendation)
       continue;
-    const isDb = input.resourceId.includes("aws_db_instance") || input.instanceType.startsWith("db.");
-    const attributeKey = isDb ? "instance_class" : "instance_type";
+    const provider = input.provider ?? "aws";
+    const isDb = provider === "aws" && (input.resourceId.includes("aws_db_instance") || input.instanceType.startsWith("db."));
+    const attributeKey = provider === "azure" ? "size" : provider === "gcp" ? "machine_type" : isDb ? "instance_class" : "instance_type";
     const currentValue = isDb ? `db.${input.instanceType}` : input.instanceType;
     const newValue = recommendation.suggestedInstanceType ? isDb ? `db.${recommendation.suggestedInstanceType}` : recommendation.suggestedInstanceType : input.instanceType;
     if (!recommendation.suggestedInstanceType) {
@@ -2843,7 +2844,8 @@ function formatWater(litres) {
 }
 function formatMarkdown(result2, options = {}) {
   const METHODOLOGY_URL = options.repositoryUrl || "https://github.com/omrdev1/greenops-cli/blob/main/METHODOLOGY.md";
-  const recsCount = result2.resources.filter((r) => r.recommendation).length;
+  const analysedForCount = result2.resources.filter((r) => r.baseline.confidence !== "LOW_ASSUMED_DEFAULT");
+  const recsCount = analysedForCount.filter((r) => r.recommendation).length;
   let out = `## \u{1F331} GreenOps Infrastructure Impact
 
 `;
@@ -2879,6 +2881,8 @@ function formatMarkdown(result2, options = {}) {
 
 `;
   }
+  const analysed = result2.resources.filter((r) => r.baseline.confidence !== "LOW_ASSUMED_DEFAULT");
+  const unsupportedResources = result2.resources.filter((r) => r.baseline.confidence === "LOW_ASSUMED_DEFAULT");
   out += `### Resource Breakdown
 
 `;
@@ -2886,25 +2890,31 @@ function formatMarkdown(result2, options = {}) {
 `;
   out += `|---|---|---|---|---|---|---|---|
 `;
-  for (const r of result2.resources) {
+  for (const r of analysed) {
     const action = r.recommendation ? `\u{1F4A1} [View Recommendation](#recommendations)` : `\u2705 Optimal`;
-    out += `| \`${r.input.resourceId}\` | \`${r.input.instanceType}\` | \`${r.input.region}\` | ${formatGrams(r.baseline.totalCo2eGramsPerMonth)} | ${formatGrams(r.baseline.embodiedCo2eGramsPerMonth)} | ${formatWater(r.baseline.waterLitresPerMonth)} | $${r.baseline.totalCostUsdPerMonth.toFixed(2)} | ${action} |
+    out += `| \`${r.input.resourceId}\` | \`${r.input.instanceType}\` | \`${r.input.region}\` | ${formatGrams(r.baseline.totalCo2eGramsPerMonth)} | ${formatGrams(r.baseline.embodiedCo2eGramsPerMonth)} | ${formatWater(r.baseline.waterLitresPerMonth)} | ${r.baseline.totalCostUsdPerMonth.toFixed(2)} | ${action} |
 `;
   }
   out += `
 `;
-  if (result2.skipped.length > 0) {
-    out += `<details><summary>\u26A0\uFE0F <b>${result2.skipped.length} Skipped Resources</b></summary>
+  const totalSkipped = result2.skipped.length + unsupportedResources.length;
+  if (totalSkipped > 0) {
+    out += `<details><summary>\u26A0\uFE0F <b>${totalSkipped} Skipped Resource${totalSkipped !== 1 ? "s" : ""}</b></summary>
 
 `;
-    out += `The following resources were excluded from analysis (typically due to runtime-resolved attributes). The actual footprint may be higher.
+    out += `The following resources were excluded from analysis. The actual footprint may be higher.
 
 `;
-    out += `| Resource | Reason |
-|---|---|
+    out += `| Resource | Instance | Reason |
+|---|---|---|
 `;
     for (const s of result2.skipped) {
-      out += `| \`${s.resourceId}\` | \`${s.reason}\` |
+      out += `| \`${s.resourceId}\` | \u2014 | \`${s.reason}\` |
+`;
+    }
+    for (const r of unsupportedResources) {
+      const reason = r.baseline.unsupportedReason ?? "Instance type not in ledger";
+      out += `| \`${r.input.resourceId}\` | \`${r.input.instanceType}\` | ${reason} |
 `;
     }
     out += `
@@ -2944,7 +2954,7 @@ function formatMarkdown(result2, options = {}) {
 `;
   out += `*Emissions calculated using the [Open GreenOps Methodology Ledger v${result2.ledgerVersion}](${METHODOLOGY_URL}). `;
   out += `Scope 2 (operational) and Scope 3 (embodied) emissions tracked. `;
-  out += `Water consumption estimated from AWS 2023 WUE data. `;
+  out += `Water consumption estimated from provider sustainability reports (AWS 2023, Microsoft 2023, Google 2023). `;
   out += `Math is MIT-licensed and auditable. Analysed at ${result2.analysedAt}.*
 `;
   if (options.showUpgradePrompt) {
@@ -2982,7 +2992,9 @@ function formatTable(result2) {
 `;
   out += `\u251C${"\u2500".repeat(38)}\u253C${"\u2500".repeat(13)}\u253C${"\u2500".repeat(13)}\u253C${"\u2500".repeat(11)}\u253C${"\u2500".repeat(11)}\u253C${"\u2500".repeat(9)}\u253C${"\u2500".repeat(13)}\u2524
 `;
-  for (const r of result2.resources) {
+  const analysed = result2.resources.filter((r) => r.baseline.confidence !== "LOW_ASSUMED_DEFAULT");
+  const unsupportedResources = result2.resources.filter((r) => r.baseline.confidence === "LOW_ASSUMED_DEFAULT");
+  for (const r of analysed) {
     const scope2 = formatGrams(r.baseline.totalCo2eGramsPerMonth);
     const scope3 = formatGrams(r.baseline.embodiedCo2eGramsPerMonth);
     const water = formatWater2(r.baseline.waterLitresPerMonth);
@@ -2992,6 +3004,10 @@ function formatTable(result2) {
   }
   for (const s of result2.skipped) {
     out += `\u2502 \x1B[90m${truncate(s.resourceId, 36)}\x1B[0m \u2502 \x1B[90m${truncate("---", 11)}\x1B[0m \u2502 \x1B[90m${truncate("---", 11)}\x1B[0m \u2502 \x1B[90m${truncate("---", 9)}\x1B[0m \u2502 \x1B[90m${truncate("---", 9)}\x1B[0m \u2502 \x1B[90m${truncate("---", 7)}\x1B[0m \u2502 \x1B[33m${truncate("\u26A0 SKIPPED", 11)}\x1B[0m \u2502
+`;
+  }
+  for (const r of unsupportedResources) {
+    out += `\u2502 \x1B[90m${truncate(r.input.resourceId, 36)}\x1B[0m \u2502 \x1B[90m${truncate(r.input.instanceType, 11)}\x1B[0m \u2502 \x1B[90m${truncate(r.input.region, 11)}\x1B[0m \u2502 \x1B[90m${truncate("---", 9)}\x1B[0m \u2502 \x1B[90m${truncate("---", 9)}\x1B[0m \u2502 \x1B[90m${truncate("---", 7)}\x1B[0m \u2502 \x1B[33m${truncate("\u26A0 UNKNOWN", 11)}\x1B[0m \u2502
 `;
   }
   out += `\u2514${"\u2500".repeat(38)}\u2534${"\u2500".repeat(13)}\u2534${"\u2500".repeat(13)}\u2534${"\u2500".repeat(11)}\u2534${"\u2500".repeat(11)}\u2534${"\u2500".repeat(9)}\u2534${"\u2500".repeat(13)}\u2518
@@ -3005,9 +3021,13 @@ function formatTable(result2) {
     out += `\x1B[32mScope 2 Savings: ${formatDelta2(-result2.totals.potentialCo2eSavingGramsPerMonth)} | ${formatCostDelta2(-result2.totals.potentialCostSavingUsdPerMonth)}\x1B[0m
 `;
   }
-  if (result2.skipped.length > 0) {
+  const totalSkipped = result2.skipped.length + unsupportedResources.length;
+  if (totalSkipped > 0) {
+    const skippedNote = result2.skipped.length > 0 ? `${result2.skipped.length} unresolvable at plan time` : "";
+    const unknownNote = unsupportedResources.length > 0 ? `${unsupportedResources.length} instance type(s) not yet in ledger` : "";
+    const parts = [skippedNote, unknownNote].filter(Boolean).join(", ");
     out += `
-\x1B[90mNote: ${result2.skipped.length} resource(s) were skipped due to runtime abstractions.\x1B[0m
+\x1B[90mNote: ${parts}. Actual footprint may be higher.\x1B[0m
 `;
   }
   return out;

@@ -8,7 +8,8 @@
  * Design principles:
  * - Zero runtime dependencies: uses Node 20's built-in fetch API exclusively.
  * - Precise targeting: suggestions are posted on the exact line that contains
- *   the attribute being changed (instance_type, instance_class).
+ *   the attribute being changed (instance_type/instance_class for AWS,
+ *   size for Azure, machine_type for GCP).
  * - Idempotent: existing GreenOps suggestion comments are updated, not duplicated.
  * - Fail-open: if the GitHub API is unreachable or the plan file cannot be mapped
  *   to a source file, the CLI exits 0 with a warning. Never blocks a deployment.
@@ -254,10 +255,16 @@ export async function postSuggestions(
   for (const { input, recommendation } of resourcesWithRecs) {
     if (!recommendation) continue;
 
-    // Determine which attribute and value we're targeting
-    const isDb = input.resourceId.includes('aws_db_instance') ||
-                 input.instanceType.startsWith('db.');
-    const attributeKey = isDb ? 'instance_class' : 'instance_type';
+    // Determine which attribute and value we're targeting — provider-aware
+    const provider = input.provider ?? 'aws';
+    const isDb = provider === 'aws' && (
+      input.resourceId.includes('aws_db_instance') ||
+      input.instanceType.startsWith('db.')
+    );
+    const attributeKey =
+      provider === 'azure' ? 'size' :
+      provider === 'gcp'   ? 'machine_type' :
+      isDb                 ? 'instance_class' : 'instance_type';
     const currentValue = isDb ? `db.${input.instanceType}` : input.instanceType;
     const newValue = recommendation.suggestedInstanceType
       ? (isDb ? `db.${recommendation.suggestedInstanceType}` : recommendation.suggestedInstanceType)

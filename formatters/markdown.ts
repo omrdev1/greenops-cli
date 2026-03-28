@@ -13,7 +13,8 @@ function formatWater(litres: number): string {
 
 export function formatMarkdown(result: PlanAnalysisResult, options: FormatterOptions = {}): string {
   const METHODOLOGY_URL = options.repositoryUrl || 'https://github.com/omrdev1/greenops-cli/blob/main/METHODOLOGY.md';
-  const recsCount = result.resources.filter(r => r.recommendation).length;
+  const analysedForCount = result.resources.filter(r => r.baseline.confidence !== 'LOW_ASSUMED_DEFAULT');
+  const recsCount = analysedForCount.filter(r => r.recommendation).length;
 
   let out = `## 🌱 GreenOps Infrastructure Impact\n\n`;
 
@@ -41,21 +42,30 @@ export function formatMarkdown(result: PlanAnalysisResult, options: FormatterOpt
     out += `> ✅ **Already optimally configured.** No upgrades recommended.\n\n`;
   }
 
+  // Separate fully-analysed resources from unsupported (LOW_ASSUMED_DEFAULT)
+  const analysed = result.resources.filter(r => r.baseline.confidence !== 'LOW_ASSUMED_DEFAULT');
+  const unsupportedResources = result.resources.filter(r => r.baseline.confidence === 'LOW_ASSUMED_DEFAULT');
+
   out += `### Resource Breakdown\n\n`;
   out += `| Resource | Type | Region | Scope 2 CO2e | Scope 3 CO2e | Water | Cost/mo | Action |\n`;
   out += `|---|---|---|---|---|---|---|---|\n`;
-  for (const r of result.resources) {
+  for (const r of analysed) {
     const action = r.recommendation ? `💡 [View Recommendation](#recommendations)` : `✅ Optimal`;
-    out += `| \`${r.input.resourceId}\` | \`${r.input.instanceType}\` | \`${r.input.region}\` | ${formatGrams(r.baseline.totalCo2eGramsPerMonth)} | ${formatGrams(r.baseline.embodiedCo2eGramsPerMonth)} | ${formatWater(r.baseline.waterLitresPerMonth)} | $${r.baseline.totalCostUsdPerMonth.toFixed(2)} | ${action} |\n`;
+    out += `| \`${r.input.resourceId}\` | \`${r.input.instanceType}\` | \`${r.input.region}\` | ${formatGrams(r.baseline.totalCo2eGramsPerMonth)} | ${formatGrams(r.baseline.embodiedCo2eGramsPerMonth)} | ${formatWater(r.baseline.waterLitresPerMonth)} | ${r.baseline.totalCostUsdPerMonth.toFixed(2)} | ${action} |\n`;
   }
   out += `\n`;
 
-  if (result.skipped.length > 0) {
-    out += `<details><summary>⚠️ <b>${result.skipped.length} Skipped Resources</b></summary>\n\n`;
-    out += `The following resources were excluded from analysis (typically due to runtime-resolved attributes). The actual footprint may be higher.\n\n`;
-    out += `| Resource | Reason |\n|---|---|\n`;
+  const totalSkipped = result.skipped.length + unsupportedResources.length;
+  if (totalSkipped > 0) {
+    out += `<details><summary>⚠️ <b>${totalSkipped} Skipped Resource${totalSkipped !== 1 ? 's' : ''}</b></summary>\n\n`;
+    out += `The following resources were excluded from analysis. The actual footprint may be higher.\n\n`;
+    out += `| Resource | Instance | Reason |\n|---|---|---|\n`;
     for (const s of result.skipped) {
-      out += `| \`${s.resourceId}\` | \`${s.reason}\` |\n`;
+      out += `| \`${s.resourceId}\` | — | \`${s.reason}\` |\n`;
+    }
+    for (const r of unsupportedResources) {
+      const reason = r.baseline.unsupportedReason ?? 'Instance type not in ledger';
+      out += `| \`${r.input.resourceId}\` | \`${r.input.instanceType}\` | ${reason} |\n`;
     }
     out += `\n</details>\n\n`;
   }
@@ -83,7 +93,7 @@ export function formatMarkdown(result: PlanAnalysisResult, options: FormatterOpt
   out += `---\n`;
   out += `*Emissions calculated using the [Open GreenOps Methodology Ledger v${result.ledgerVersion}](${METHODOLOGY_URL}). `;
   out += `Scope 2 (operational) and Scope 3 (embodied) emissions tracked. `;
-  out += `Water consumption estimated from AWS 2023 WUE data. `;
+  out += `Water consumption estimated from provider sustainability reports (AWS 2023, Microsoft 2023, Google 2023). `;
   out += `Math is MIT-licensed and auditable. Analysed at ${result.analysedAt}.*\n`;
 
   if (options.showUpgradePrompt) {

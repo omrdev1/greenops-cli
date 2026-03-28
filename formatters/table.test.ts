@@ -81,6 +81,29 @@ describe('formatTable', () => {
     assert.ok(table.includes('SKIPPED'), 'Should show SKIPPED for skipped resources');
   });
 
+  it('shows UNKNOWN marker for LOW_ASSUMED_DEFAULT resources instead of OK/UPGRADE', () => {
+    const result = makeMockResult({
+      resources: [
+        {
+          input: { resourceId: 'azurerm_linux_virtual_machine.big', instanceType: 'Standard_M96ms_v3', region: 'eastus', provider: 'azure' as const },
+          baseline: makeMockBaseline({
+            confidence: 'LOW_ASSUMED_DEFAULT' as const,
+            totalCo2eGramsPerMonth: 0,
+            embodiedCo2eGramsPerMonth: 0,
+            totalCostUsdPerMonth: 0,
+            unsupportedReason: 'Instance type "Standard_M96ms_v3" is not present in the AZURE ledger.',
+          }),
+          recommendation: null,
+        },
+      ],
+      totals: makeMockTotals(),
+    });
+    const table = formatTable(result);
+    assert.ok(table.includes('UNKNOWN'), 'Should show UNKNOWN for unsupported instance types');
+    assert.ok(!table.includes('OK'), 'Should NOT show OK for unsupported resources');
+    assert.ok(table.includes('not yet in ledger'), 'Footer should mention ledger gap');
+  });
+
   it('shows Scope 2 and Scope 3 columns', () => {
     const result = makeMockResult({
       resources: [{
