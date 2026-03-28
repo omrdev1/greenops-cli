@@ -1968,7 +1968,7 @@ var factors_default = {
 // package.json
 var package_default = {
   name: "greenops-cli",
-  version: "0.5.4",
+  version: "0.6.0",
   description: "Carbon footprint linting for Terraform plans \u2014 AWS, Azure, and GCP. Analyses infrastructure changes for Scope 2, Scope 3, and water impact. Posts recommendations directly on GitHub PRs.",
   main: "dist/index.cjs",
   bin: {
@@ -2581,7 +2581,8 @@ function loadPolicy(repoRoot = process.cwd()) {
     const numericFields = [
       "max_pr_co2e_increase_kg",
       "max_pr_cost_increase_usd",
-      "max_total_co2e_kg"
+      "max_total_co2e_kg",
+      "max_lifecycle_co2e_kg"
     ];
     for (const field of numericFields) {
       if (budgets[field] !== void 0) {
@@ -2609,7 +2610,7 @@ function evaluatePolicy(result2, policy) {
         actual: Math.round(actualKg * 100) / 100,
         limit: b.max_pr_co2e_increase_kg,
         unit: "kg CO2e/month",
-        message: `This PR introduces ${actualKg.toFixed(2)}kg CO2e/month, exceeding the ${b.max_pr_co2e_increase_kg}kg limit defined in .greenops.yml.`
+        message: `This PR introduces ${actualKg.toFixed(2)}kg Scope 2 CO2e/month, exceeding the ${b.max_pr_co2e_increase_kg}kg limit defined in .greenops.yml.`
       });
     }
   }
@@ -2633,7 +2634,19 @@ function evaluatePolicy(result2, policy) {
         actual: Math.round(actualKg * 100) / 100,
         limit: b.max_total_co2e_kg,
         unit: "kg CO2e/month",
-        message: `Total analysed footprint is ${actualKg.toFixed(2)}kg CO2e/month, exceeding the ${b.max_total_co2e_kg}kg ceiling defined in .greenops.yml.`
+        message: `Total Scope 2 footprint is ${actualKg.toFixed(2)}kg CO2e/month, exceeding the ${b.max_total_co2e_kg}kg ceiling defined in .greenops.yml.`
+      });
+    }
+  }
+  if (b.max_lifecycle_co2e_kg !== void 0) {
+    const actualKg = totals.currentLifecycleCo2eGramsPerMonth / 1e3;
+    if (actualKg > b.max_lifecycle_co2e_kg) {
+      violations.push({
+        constraint: "max_lifecycle_co2e_kg",
+        actual: Math.round(actualKg * 100) / 100,
+        limit: b.max_lifecycle_co2e_kg,
+        unit: "kg lifecycle CO2e/month",
+        message: `Total lifecycle footprint (Scope 2 + Scope 3) is ${actualKg.toFixed(2)}kg CO2e/month, exceeding the ${b.max_lifecycle_co2e_kg}kg limit defined in .greenops.yml.`
       });
     }
   }
@@ -2659,6 +2672,16 @@ async function githubRequest(method, path, token, body) {
   });
   if (!response.ok) {
     const text = await response.text().catch(() => "");
+    if (response.status === 403 || response.status === 401) {
+      throw new Error(
+        `GitHub API ${method} ${path} \u2192 ${response.status}. Ensure your workflow has "permissions: pull-requests: write" and that the provided github-token has not expired. Raw: ${text.slice(0, 200)}`
+      );
+    }
+    if (response.status === 422) {
+      throw new Error(
+        `GitHub API ${method} ${path} \u2192 422 Unprocessable Entity. The line number may not exist in the PR diff \u2014 the file may not have been modified in this PR, or the diff context is too small. Raw: ${text.slice(0, 200)}`
+      );
+    }
     throw new Error(`GitHub API ${method} ${path} \u2192 ${response.status}: ${text.slice(0, 200)}`);
   }
   if (response.status === 204)
@@ -2666,11 +2689,33 @@ async function githubRequest(method, path, token, body) {
   return response.json();
 }
 async function getPRFiles(token, repoFullName, pullNumber) {
-  return githubRequest(
-    "GET",
-    `/repos/${repoFullName}/pulls/${pullNumber}/files?per_page=100`,
-    token
-  );
+  const allFiles = [];
+  let url = `${GITHUB_API}/repos/${repoFullName}/pulls/${pullNumber}/files?per_page=100`;
+  while (url) {
+    const response = await fetch(url, {
+      headers: {
+        "Authorization": `Bearer ${token}`,
+        "Accept": "application/vnd.github+json",
+        "X-GitHub-Api-Version": "2022-11-28",
+        "User-Agent": "greenops-cli"
+      }
+    });
+    if (!response.ok) {
+      const text = await response.text().catch(() => "");
+      if (response.status === 403 || response.status === 401) {
+        throw new Error(
+          `GitHub API GET /pulls/${pullNumber}/files \u2192 ${response.status}. Ensure your workflow has "permissions: pull-requests: write". Raw: ${text.slice(0, 200)}`
+        );
+      }
+      throw new Error(`GitHub API GET /pulls files \u2192 ${response.status}: ${text.slice(0, 200)}`);
+    }
+    const page = await response.json();
+    allFiles.push(...page);
+    const linkHeader = response.headers.get("link") ?? "";
+    const nextMatch = linkHeader.match(/<([^>]+)>;\s*rel="next"/);
+    url = nextMatch ? nextMatch[1] : null;
+  }
+  return allFiles;
 }
 function buildLineMap(patch) {
   const map = /* @__PURE__ */ new Map();
@@ -2688,6 +2733,49 @@ function buildLineMap(patch) {
     map.set(content.trim(), lineNum);
   }
   return map;
+}
+function buildAddressFileMap(planFilePath) {
+  const map = /* @__PURE__ */ new Map();
+  try {
+    const { readFileSync: readFileSync3 } = require("node:fs");
+    const { resolve: resolve3, isAbsolute: isAbsolute2 } = require("node:path");
+    const resolvedPath = isAbsolute2(planFilePath) ? planFilePath : resolve3(process.cwd(), planFilePath);
+    const raw = readFileSync3(resolvedPath, "utf8");
+    const plan = JSON.parse(raw);
+    const rootModule = plan?.configuration?.root_module;
+    if (!rootModule)
+      return map;
+    extractAddressFileEntries(rootModule?.resources ?? [], map);
+    for (const [, mod] of Object.entries(rootModule?.module_calls ?? {})) {
+      extractModuleResources(mod?.module ?? {}, map, "");
+    }
+  } catch {
+  }
+  return map;
+}
+function extractAddressFileEntries(resources, map) {
+  for (const res of resources) {
+    const r = res;
+    if (r.address && r.pos) {
+      const filename = r.pos.filename;
+      if (filename)
+        map.set(r.address, filename);
+    }
+  }
+}
+function extractModuleResources(mod, map, prefix) {
+  for (const res of mod.resources ?? []) {
+    const r = res;
+    if (r.address && r.pos) {
+      const filename = r.pos.filename;
+      const fullAddress = prefix ? `${prefix}.${r.address}` : r.address;
+      if (filename)
+        map.set(fullAddress, filename);
+    }
+  }
+  for (const [, child] of Object.entries(mod.module_calls ?? {})) {
+    extractModuleResources(child?.module ?? {}, map, prefix);
+  }
 }
 function buildSuggestionBody(resourceId, recommendation, originalLine, attributeKey, newValue) {
   const indent = originalLine.match(/^(\s*)/)?.[1] ?? "";
@@ -2718,18 +2806,42 @@ function formatCostDelta(usd) {
   return `${sign}$${Math.abs(usd).toFixed(2)}`;
 }
 async function getExistingSuggestionComments(token, repoFullName, pullNumber) {
-  const comments = await githubRequest(
-    "GET",
-    `/repos/${repoFullName}/pulls/${pullNumber}/comments?per_page=100`,
-    token
-  );
-  return comments.filter((c) => c.body.includes(GREENOPS_MARKER));
+  const allComments = [];
+  let url = `${GITHUB_API}/repos/${repoFullName}/pulls/${pullNumber}/comments?per_page=100`;
+  while (url) {
+    const response = await fetch(url, {
+      headers: {
+        "Authorization": `Bearer ${token}`,
+        "Accept": "application/vnd.github+json",
+        "X-GitHub-Api-Version": "2022-11-28",
+        "User-Agent": "greenops-cli"
+      }
+    });
+    if (!response.ok) {
+      const text = await response.text().catch(() => "");
+      throw new Error(`GitHub API GET comments \u2192 ${response.status}: ${text.slice(0, 200)}`);
+    }
+    const page = await response.json();
+    allComments.push(...page);
+    const linkHeader = response.headers.get("link") ?? "";
+    const nextMatch = linkHeader.match(/<([^>]+)>;\s*rel="next"/);
+    url = nextMatch ? nextMatch[1] : null;
+  }
+  return allComments.filter((c) => c.body.includes(GREENOPS_MARKER));
+}
+function resolveAttributeKey(provider, isDb) {
+  if (provider === "azure")
+    return "size";
+  if (provider === "gcp")
+    return "machine_type";
+  return isDb ? "instance_class" : "instance_type";
 }
 async function postSuggestions(result2, ctx) {
   const output = { posted: 0, updated: 0, skipped: 0, warnings: [] };
   const resourcesWithRecs = result2.resources.filter((r) => r.recommendation !== null);
   if (resourcesWithRecs.length === 0)
     return output;
+  const addressFileMap = buildAddressFileMap(ctx.planFilePath);
   let prFiles;
   let existingComments;
   try {
@@ -2742,12 +2854,13 @@ async function postSuggestions(result2, ctx) {
     return output;
   }
   const tfFiles = prFiles.filter((f) => f.filename.endsWith(".tf") && f.patch);
+  const tfFileMap = new Map(tfFiles.map((f) => [f.filename, f]));
   for (const { input, recommendation } of resourcesWithRecs) {
     if (!recommendation)
       continue;
-    const provider = input.provider ?? "aws";
+    const provider = input.provider;
     const isDb = provider === "aws" && (input.resourceId.includes("aws_db_instance") || input.instanceType.startsWith("db."));
-    const attributeKey = provider === "azure" ? "size" : provider === "gcp" ? "machine_type" : isDb ? "instance_class" : "instance_type";
+    const attributeKey = resolveAttributeKey(provider, isDb);
     const currentValue = isDb ? `db.${input.instanceType}` : input.instanceType;
     const newValue = recommendation.suggestedInstanceType ? isDb ? `db.${recommendation.suggestedInstanceType}` : recommendation.suggestedInstanceType : input.instanceType;
     if (!recommendation.suggestedInstanceType) {
@@ -2758,12 +2871,25 @@ async function postSuggestions(result2, ctx) {
       continue;
     }
     const searchPattern = `${attributeKey} = "${currentValue}"`;
+    const knownFile = addressFileMap.get(input.resourceId);
+    const filesToSearch = knownFile && tfFileMap.has(knownFile) ? [tfFileMap.get(knownFile), ...tfFiles.filter((f) => f.filename !== knownFile)] : tfFiles;
     let matched = false;
-    for (const file of tfFiles) {
+    for (const file of filesToSearch) {
       if (!file.patch)
         continue;
       const lineMap = buildLineMap(file.patch);
-      const lineNumber = lineMap.get(searchPattern);
+      const resourceType = input.resourceId.split(".")[0] ?? "";
+      const resourceName = input.resourceId.split(".").slice(1).join(".") ?? "";
+      const lastDotParts = input.resourceId.split(".");
+      const bareType = lastDotParts.length >= 2 ? lastDotParts[lastDotParts.length - 2] : resourceType;
+      const bareName = lastDotParts[lastDotParts.length - 1] ?? resourceName;
+      const resourceHeaderPattern = `resource "${bareType}" "${bareName}"`;
+      const lineNumber = findAttributeLineAfterHeader(
+        file.patch,
+        resourceHeaderPattern,
+        searchPattern,
+        lineMap
+      );
       if (!lineNumber)
         continue;
       const originalLine = `  ${attributeKey} = "${currentValue}"`;
@@ -2815,11 +2941,45 @@ async function postSuggestions(result2, ctx) {
     if (!matched) {
       output.skipped++;
       output.warnings.push(
-        `[${input.resourceId}] Could not locate \`${searchPattern}\` in PR diff. Suggestion not posted \u2014 resource may be in a file not modified in this PR.`
+        `[${input.resourceId}] Could not locate \`${searchPattern}\` in PR diff. Suggestion not posted \u2014 the attribute may use a variable reference, or the file containing this resource was not modified in this PR.`
       );
     }
   }
   return output;
+}
+function findAttributeLineAfterHeader(patch, resourceHeaderPattern, attributePattern, lineMap) {
+  const lines = patch.split("\n");
+  let lineNum = 0;
+  let inTargetBlock = false;
+  let blockDepth = 0;
+  for (const line of lines) {
+    const hunkMatch = line.match(/^@@ -\d+(?:,\d+)? \+(\d+)(?:,\d+)? @@/);
+    if (hunkMatch) {
+      lineNum = parseInt(hunkMatch[1], 10) - 1;
+      continue;
+    }
+    if (!line.startsWith("-"))
+      lineNum++;
+    const content = (line.startsWith("+") ? line.slice(1) : line).trim();
+    if (!inTargetBlock) {
+      if (content.includes(resourceHeaderPattern)) {
+        inTargetBlock = true;
+        blockDepth = 1;
+      }
+    } else {
+      blockDepth += (content.match(/\{/g) ?? []).length;
+      blockDepth -= (content.match(/\}/g) ?? []).length;
+      if (blockDepth <= 0) {
+        inTargetBlock = false;
+        blockDepth = 0;
+        continue;
+      }
+      if (content === attributePattern && !line.startsWith("-")) {
+        return lineNum;
+      }
+    }
+  }
+  return lineMap.get(attributePattern) ?? null;
 }
 
 // formatters/util.ts

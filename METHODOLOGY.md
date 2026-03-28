@@ -217,6 +217,43 @@ Carbon reduction is weighted at 60%, cost at 40%, both normalised to percentage-
 
 ---
 
+## Coverage Boundaries and LOW_ASSUMED_DEFAULT
+
+GreenOps only applies emission formulas to instance types explicitly present in `factors.json`. When a resource is encountered that is not in the ledger, it is classified as `LOW_ASSUMED_DEFAULT` and **excluded from all calculations**.
+
+### What LOW_ASSUMED_DEFAULT means
+
+`LOW_ASSUMED_DEFAULT` is not an estimate — it is a deliberate null. The resource appears in the output as `⚠ UNKNOWN` in the table formatter and in the skipped section of the markdown PR comment, with the exact `unsupportedReason` explaining which instance type is missing and from which provider's ledger section.
+
+### Why this matters for FinOps auditors
+
+The formula `embodied_gco2e = (1,200,000g / 35,040h / 48 vCPUs) × vcpus × 730h` is validated against the 71 instance types in the current ledger. Applying it blindly to unsupported instances — particularly memory-optimised families (AWS `r6i`, Azure `Standard_M` series, GCP `m2` series) with non-standard vCPU-to-memory ratios — would produce numbers that cannot be defended under CSRD audit.
+
+The boundary is intentional. A tool that shows a wrong number is worse than a tool that shows no number.
+
+### Heuristic ceiling for auditors
+
+If you need a conservative upper-bound estimate for unsupported instances pending a formal ledger update:
+
+```
+Scope 2 upper bound = W_max × PUE × 730h / 1000 × grid_intensity_gco2e_per_kwh
+Scope 3 upper bound = (1,200,000g / 35,040h / 48) × vcpus × 730h
+```
+
+These are the maximum-utilisation values. Actual emissions at typical utilisation (50%) will be lower. Open a PR to `factors.json` to add the instance type formally with validated coefficients.
+
+### Current ledger coverage
+
+| Provider | Instance types | Notable gaps |
+|---|---|---|
+| AWS | 40 | r6i, c6i, m6i (Intel v3), Graviton 4 (m8g, c8g) |
+| Azure | 16 | Standard_M series, Standard_L series, Standard_NC (GPU) |
+| GCP | 15 | n1 series (legacy), m2/m3 memory-optimised, A2 (GPU) |
+
+All gaps are tracked as open issues. Coverage PRs are the fastest to merge.
+
+---
+
 ## Known Limitations
 
 - **CPU-only power model.** Memory power draw is tracked in `factors.json` (`memory_gb`) but not yet included in calculations.
