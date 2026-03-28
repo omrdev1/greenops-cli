@@ -1968,7 +1968,7 @@ var factors_default = {
 // package.json
 var package_default = {
   name: "greenops-cli",
-  version: "0.6.0",
+  version: "0.7.0",
   description: "Carbon footprint linting for Terraform plans \u2014 AWS, Azure, and GCP. Analyses infrastructure changes for Scope 2, Scope 3, and water impact. Posts recommendations directly on GitHub PRs.",
   main: "dist/index.cjs",
   bin: {
@@ -2241,6 +2241,7 @@ function extractResourceInputs(planFilePath) {
 // engine.ts
 var HOURS_PER_MONTH = 730;
 var GRAMS_PER_KWH = 1e3;
+var MEMORY_WATTS_PER_GB = 0.392;
 function resolveUtilization(input, ledger) {
   if (input.avgUtilization !== void 0 && (input.avgUtilization < 0 || input.avgUtilization > 1)) {
     throw new RangeError(`avgUtilization must be between 0 and 1, got ${input.avgUtilization}`);
@@ -2250,8 +2251,10 @@ function resolveUtilization(input, ledger) {
   }
   return input.avgUtilization ?? ledger.metadata.assumptions.default_utilization.value;
 }
-function linearInterpolationWatts(idle, max, utilization) {
-  return idle + (max - idle) * utilization;
+function effectiveTotalWatts(idle, max, utilization, memoryGb) {
+  const cpuWatts = idle + (max - idle) * utilization;
+  const memoryWatts = memoryGb * MEMORY_WATTS_PER_GB;
+  return cpuWatts + memoryWatts;
 }
 function wattsToScope2Carbon(watts, hours, pue, gridIntensity) {
   return watts * pue * hours / GRAMS_PER_KWH * gridIntensity;
@@ -2333,7 +2336,8 @@ function calculateBaseline(input, ledger = factors_default) {
       gridIntensityApplied: gridIntensity,
       powerModelUsed: "LINEAR_INTERPOLATION",
       embodiedCo2ePerVcpuPerMonthApplied: embodied,
-      waterIntensityLitresPerKwhApplied: waterIntensity
+      waterIntensityLitresPerKwhApplied: waterIntensity,
+      memoryWattsApplied: 0
     }
   });
   const regionData = providerLedger.regions[input.region];
@@ -2359,10 +2363,11 @@ function calculateBaseline(input, ledger = factors_default) {
     );
   }
   const powerModel = "LINEAR_INTERPOLATION";
-  const effectiveWatts = linearInterpolationWatts(
+  const effectiveWatts = effectiveTotalWatts(
     instanceData.power_watts.idle,
     instanceData.power_watts.max,
-    utilization
+    utilization,
+    instanceData.memory_gb
   );
   const totalCo2eGramsPerMonth = wattsToScope2Carbon(
     effectiveWatts,
@@ -2388,7 +2393,8 @@ function calculateBaseline(input, ledger = factors_default) {
       gridIntensityApplied: regionData.grid_intensity_gco2e_per_kwh,
       powerModelUsed: powerModel,
       embodiedCo2ePerVcpuPerMonthApplied: instanceData.embodied_co2e_grams_per_month,
-      waterIntensityLitresPerKwhApplied: regionData.water_intensity_litres_per_kwh
+      waterIntensityLitresPerKwhApplied: regionData.water_intensity_litres_per_kwh,
+      memoryWattsApplied: instanceData.memory_gb * MEMORY_WATTS_PER_GB
     }
   };
 }
