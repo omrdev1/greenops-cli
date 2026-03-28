@@ -2986,11 +2986,11 @@ function formatTable(result2) {
     return out + `No compatible infrastructure detected.
 `;
   }
-  out += `\u250C${"\u2500".repeat(38)}\u252C${"\u2500".repeat(13)}\u252C${"\u2500".repeat(13)}\u252C${"\u2500".repeat(11)}\u252C${"\u2500".repeat(11)}\u252C${"\u2500".repeat(9)}\u252C${"\u2500".repeat(13)}\u2510
+  out += `\u250C${"\u2500".repeat(38)}\u252C${"\u2500".repeat(20)}\u252C${"\u2500".repeat(16)}\u252C${"\u2500".repeat(11)}\u252C${"\u2500".repeat(11)}\u252C${"\u2500".repeat(9)}\u252C${"\u2500".repeat(13)}\u2510
 `;
-  out += `\u2502 ${truncate("Resource", 36)} \u2502 ${truncate("Instance", 11)} \u2502 ${truncate("Region", 11)} \u2502 ${truncate("Scope 2", 9)} \u2502 ${truncate("Scope 3", 9)} \u2502 ${truncate("Water", 7)} \u2502 ${truncate("Action", 11)} \u2502
+  out += `\u2502 ${truncate("Resource", 36)} \u2502 ${truncate("Instance", 18)} \u2502 ${truncate("Region", 14)} \u2502 ${truncate("Scope 2", 9)} \u2502 ${truncate("Scope 3", 9)} \u2502 ${truncate("Water", 7)} \u2502 ${truncate("Action", 11)} \u2502
 `;
-  out += `\u251C${"\u2500".repeat(38)}\u253C${"\u2500".repeat(13)}\u253C${"\u2500".repeat(13)}\u253C${"\u2500".repeat(11)}\u253C${"\u2500".repeat(11)}\u253C${"\u2500".repeat(9)}\u253C${"\u2500".repeat(13)}\u2524
+  out += `\u251C${"\u2500".repeat(38)}\u253C${"\u2500".repeat(20)}\u253C${"\u2500".repeat(16)}\u253C${"\u2500".repeat(11)}\u253C${"\u2500".repeat(11)}\u253C${"\u2500".repeat(9)}\u253C${"\u2500".repeat(13)}\u2524
 `;
   const analysed = result2.resources.filter((r) => r.baseline.confidence !== "LOW_ASSUMED_DEFAULT");
   const unsupportedResources = result2.resources.filter((r) => r.baseline.confidence === "LOW_ASSUMED_DEFAULT");
@@ -2999,18 +2999,18 @@ function formatTable(result2) {
     const scope3 = formatGrams(r.baseline.embodiedCo2eGramsPerMonth);
     const water = formatWater2(r.baseline.waterLitresPerMonth);
     const action = r.recommendation ? `\x1B[33mUPGRADE\x1B[0m` : `\x1B[32mOK\x1B[0m`;
-    out += `\u2502 ${truncate(r.input.resourceId, 36)} \u2502 ${truncate(r.input.instanceType, 11)} \u2502 ${truncate(r.input.region, 11)} \u2502 ${truncate(scope2, 9)} \u2502 ${truncate(scope3, 9)} \u2502 ${truncate(water, 7)} \u2502 ${truncate(action, 11)} \u2502
+    out += `\u2502 ${truncate(r.input.resourceId, 36)} \u2502 ${truncate(r.input.instanceType, 18)} \u2502 ${truncate(r.input.region, 14)} \u2502 ${truncate(scope2, 9)} \u2502 ${truncate(scope3, 9)} \u2502 ${truncate(water, 7)} \u2502 ${truncate(action, 11)} \u2502
 `;
   }
   for (const s of result2.skipped) {
-    out += `\u2502 \x1B[90m${truncate(s.resourceId, 36)}\x1B[0m \u2502 \x1B[90m${truncate("---", 11)}\x1B[0m \u2502 \x1B[90m${truncate("---", 11)}\x1B[0m \u2502 \x1B[90m${truncate("---", 9)}\x1B[0m \u2502 \x1B[90m${truncate("---", 9)}\x1B[0m \u2502 \x1B[90m${truncate("---", 7)}\x1B[0m \u2502 \x1B[33m${truncate("\u26A0 SKIPPED", 11)}\x1B[0m \u2502
+    out += `\u2502 \x1B[90m${truncate(s.resourceId, 36)}\x1B[0m \u2502 \x1B[90m${truncate("---", 18)}\x1B[0m \u2502 \x1B[90m${truncate("---", 14)}\x1B[0m \u2502 \x1B[90m${truncate("---", 9)}\x1B[0m \u2502 \x1B[90m${truncate("---", 9)}\x1B[0m \u2502 \x1B[90m${truncate("---", 7)}\x1B[0m \u2502 \x1B[33m${truncate("\u26A0 SKIPPED", 11)}\x1B[0m \u2502
 `;
   }
   for (const r of unsupportedResources) {
-    out += `\u2502 \x1B[90m${truncate(r.input.resourceId, 36)}\x1B[0m \u2502 \x1B[90m${truncate(r.input.instanceType, 11)}\x1B[0m \u2502 \x1B[90m${truncate(r.input.region, 11)}\x1B[0m \u2502 \x1B[90m${truncate("---", 9)}\x1B[0m \u2502 \x1B[90m${truncate("---", 9)}\x1B[0m \u2502 \x1B[90m${truncate("---", 7)}\x1B[0m \u2502 \x1B[33m${truncate("\u26A0 UNKNOWN", 11)}\x1B[0m \u2502
+    out += `\u2502 \x1B[90m${truncate(r.input.resourceId, 36)}\x1B[0m \u2502 \x1B[90m${truncate(r.input.instanceType, 18)}\x1B[0m \u2502 \x1B[90m${truncate(r.input.region, 14)}\x1B[0m \u2502 \x1B[90m${truncate("---", 9)}\x1B[0m \u2502 \x1B[90m${truncate("---", 9)}\x1B[0m \u2502 \x1B[90m${truncate("---", 7)}\x1B[0m \u2502 \x1B[33m${truncate("\u26A0 UNKNOWN", 11)}\x1B[0m \u2502
 `;
   }
-  out += `\u2514${"\u2500".repeat(38)}\u2534${"\u2500".repeat(13)}\u2534${"\u2500".repeat(13)}\u2534${"\u2500".repeat(11)}\u2534${"\u2500".repeat(11)}\u2534${"\u2500".repeat(9)}\u2534${"\u2500".repeat(13)}\u2518
+  out += `\u2514${"\u2500".repeat(38)}\u2534${"\u2500".repeat(20)}\u2534${"\u2500".repeat(16)}\u2534${"\u2500".repeat(11)}\u2534${"\u2500".repeat(11)}\u2534${"\u2500".repeat(9)}\u2534${"\u2500".repeat(13)}\u2518
 
 `;
   out += `Scope 2: ${formatGrams(result2.totals.currentCo2eGramsPerMonth)} | Scope 3: ${formatGrams(result2.totals.currentEmbodiedCo2eGramsPerMonth)} | Lifecycle: ${formatGrams(result2.totals.currentLifecycleCo2eGramsPerMonth)}
