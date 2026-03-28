@@ -148,6 +148,30 @@ describe('formatMarkdown', () => {
     assert.ok(md.includes('aws_ecs_service'), 'Should list the unsupported type');
   });
 
+  it('shows LOW_ASSUMED_DEFAULT resources in skipped section with unsupportedReason', () => {
+    const result = makeMockResult({
+      resources: [
+        {
+          input: { resourceId: 'google_compute_instance.old', instanceType: 'n1-standard-4', region: 'us-central1', provider: 'gcp' as const },
+          baseline: makeMockBaseline({
+            confidence: 'LOW_ASSUMED_DEFAULT' as const,
+            totalCo2eGramsPerMonth: 0,
+            embodiedCo2eGramsPerMonth: 0,
+            totalCostUsdPerMonth: 0,
+            unsupportedReason: 'Instance type "n1-standard-4" is not present in the GCP section of the Open GreenOps Methodology Ledger.',
+          }),
+          recommendation: null,
+        },
+      ],
+      totals: makeMockTotals(),
+    });
+    const md = formatMarkdown(result);
+    assert.ok(md.includes('Skipped Resource'), 'Should show skipped section for unsupported instances');
+    assert.ok(md.includes('n1-standard-4'), 'Should show the unsupported instance type in skipped section');
+    assert.ok(md.includes('not present in the GCP'), 'Should show the unsupportedReason');
+    assert.ok(!md.includes('✅ Optimal'), 'Should NOT show as optimal resource');
+  });
+
   it('does not show coverage note when only known_after_apply resources are skipped', () => {
     const result = makeMockResult({
       skipped: [{ resourceId: 'aws_instance.unknown', reason: 'known_after_apply' }],
