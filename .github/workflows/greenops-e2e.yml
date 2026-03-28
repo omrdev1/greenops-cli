@@ -9,6 +9,7 @@ on:
       - 'cli.ts'
       - 'factors.json'
       - 'dist/index.cjs'
+      - 'fixtures/**'
       - '.github/workflows/greenops-e2e.yml'
 
 jobs:
@@ -20,8 +21,20 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Run GreenOps against fixture plan
+      - name: Run GreenOps — AWS fixture
         uses: ./
         with:
           plan-file: fixtures/tfplan.e2e.json
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Run GreenOps — Azure fixture
+        uses: ./
+        with:
+          plan-file: fixtures/tfplan.azure.e2e.json
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Run GreenOps — GCP fixture
+        uses: ./
+        with:
+          plan-file: fixtures/tfplan.gcp.e2e.json
           github-token: ${{ secrets.GITHUB_TOKEN }}
