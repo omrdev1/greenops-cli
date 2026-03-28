@@ -18,3 +18,4 @@ tsconfig.json
 
 # Research and internal docs
 research.*.md
+upgrade_*.py
