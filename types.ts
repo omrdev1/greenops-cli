@@ -109,9 +109,6 @@ export interface PlanAnalysisResult {
   /** Compute-relevant types in the plan not yet analysable (e.g. aws_lambda_function). */
   unsupportedTypes: string[];
 
-  /** Which cloud providers were detected in this plan. */
-  providers: CloudProvider[];
-
   totals: {
     // Scope 2
     currentCo2eGramsPerMonth: number;
