@@ -16,6 +16,7 @@ tfplan*.json
 # Ad-hoc & Demo Files
 launch_*.md
 research.*.md
+upgrade_*.py
 *.log
 
 # OS generated files

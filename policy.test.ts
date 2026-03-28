@@ -12,6 +12,7 @@ function makeMockResult(overrides: Partial<PlanAnalysisResult['totals']> = {}): 
     planFile: 'plan.json',
     resources: [],
     skipped: [],
+    providers: ['aws' as const],
     unsupportedTypes: [],
     totals: {
       currentCo2eGramsPerMonth: 5000,

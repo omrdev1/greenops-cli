@@ -43,6 +43,7 @@ function makeMockResult(overrides: Partial<PlanAnalysisResult> = {}): PlanAnalys
     planFile: 'plan.json',
     resources: [],
     skipped: [],
+    providers: ['aws' as const],
     unsupportedTypes: [],
     totals: makeMockTotals(),
     ...overrides,

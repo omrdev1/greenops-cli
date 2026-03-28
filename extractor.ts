@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { resolve, isAbsolute } from 'node:path';
-import type { ResourceInput, PlanAnalysisResult } from './types.js';
+import type { ResourceInput, PlanAnalysisResult, CloudProvider } from './types.js';
 
 // ---------------------------------------------------------------------------
 // Internal types for Terraform plan shape
@@ -21,8 +21,10 @@ interface TerraformPlan {
   resource_changes: unknown[];
   configuration?: {
     provider_config?: Record<string, {
+      name?: string;
       expressions?: {
         region?: { constant_value?: string };
+        location?: { constant_value?: string };
         alias?: { constant_value?: string };
       };
     }>;
@@ -40,101 +42,138 @@ interface TerraformPlan {
 export interface ExtractorResult {
   resources: ResourceInput[];
   skipped: PlanAnalysisResult['skipped'];
-  /** Resource types present in the plan but not supported for carbon analysis */
   unsupportedTypes: string[];
   error?: string;
 }
 
-/**
- * Checks if a specific attribute on a Terraform resource change is 'known after apply'
- * or completely absent (which means unresolvable before apply).
- */
-function isKnownAfterApply(change: TerraformResourceChange['change'], fieldPath: string): boolean {
-  if (!change) return true;
-  // If explicitly flagged as unknown by Terraform
-  if (change.after_unknown?.[fieldPath] === true) return true;
-  // If null or undefined in the known values mapping
-  if (change.after?.[fieldPath] === null || change.after?.[fieldPath] === undefined) return true;
-  return false;
+// ---------------------------------------------------------------------------
+// Supported resource types per provider
+// ---------------------------------------------------------------------------
+
+const SUPPORTED_TYPES: Record<CloudProvider, string[]> = {
+  aws:   ['aws_instance', 'aws_db_instance'],
+  azure: ['azurerm_linux_virtual_machine', 'azurerm_windows_virtual_machine', 'azurerm_virtual_machine'],
+  gcp:   ['google_compute_instance'],
+};
+
+const COMPUTE_RELEVANT_TYPES = [
+  'aws_launch_template', 'aws_autoscaling_group', 'aws_ecs_service',
+  'aws_eks_node_group', 'aws_lambda_function',
+  'azurerm_virtual_machine_scale_set', 'azurerm_kubernetes_cluster',
+  'azurerm_function_app',
+  'google_compute_instance_template', 'google_container_cluster',
+  'google_cloudfunctions_function',
+];
+
+function detectProvider(resourceType: string): CloudProvider | null {
+  if (resourceType.startsWith('aws_')) return 'aws';
+  if (resourceType.startsWith('azurerm_')) return 'azure';
+  if (resourceType.startsWith('google_')) return 'gcp';
+  return null;
 }
 
-/**
- * Extracts the default AWS region from the plan's provider configuration block.
- * Handles multi-provider configs by preferring the un-aliased "aws" provider.
- * Returns null if not statically resolvable (e.g. region set via variable).
- */
-function extractProviderRegion(plan: TerraformPlan): string | null {
+function extractProviderRegions(plan: TerraformPlan): Record<CloudProvider, string | null> {
+  const result: Record<CloudProvider, string | null> = { aws: null, azure: null, gcp: null };
   const providerConfig = plan.configuration?.provider_config;
-  if (!providerConfig) return null;
+  if (!providerConfig) return result;
 
-  // First pass: prefer the default (un-aliased) aws provider
   for (const [key, provider] of Object.entries(providerConfig)) {
     if (key === 'aws' || key.startsWith('aws.')) {
       const alias = provider.expressions?.alias?.constant_value;
       if (alias && key !== 'aws') continue;
       const region = provider.expressions?.region?.constant_value;
-      if (region && typeof region === 'string') return region;
+      if (region && !result.aws) result.aws = region;
     }
-  }
-
-  // Second pass: accept any aws provider if no un-aliased one found
-  for (const [key, provider] of Object.entries(providerConfig)) {
-    if (key === 'aws' || key.startsWith('aws.')) {
+    if (key === 'azurerm' || key.startsWith('azurerm.')) {
+      const location = provider.expressions?.location?.constant_value;
+      if (location && !result.azure) result.azure = location;
+    }
+    if (key === 'google' || key.startsWith('google.')) {
       const region = provider.expressions?.region?.constant_value;
-      if (region && typeof region === 'string') return region;
+      if (region && !result.gcp) result.gcp = region;
     }
   }
-
-  return null;
+  return result;
 }
 
-/**
- * Attempts to resolve the AWS region for a resource in the plan.
- * Lookup chain:
- * 1. `change.after.arn` (e.g. arn:aws:ec2:us-east-1:...)
- * 2. `change.after.availability_zone` (strips trailing AZ letter)
- * 3. `change.after.region` (explicit resource-level region attribute)
- * 4. `change.before.region` (for update actions where region is unchanged)
- * 5. `providerRegion` (from configuration.provider_config — handles real-world plans
- *    where region is set on the provider block, not on individual resources)
- *
- * If all fail, returns null → resource will be skipped as known_after_apply.
- */
-function resolveRegion(change: TerraformResourceChange['change'], providerRegion: string | null): string | null {
+function isKnownAfterApply(change: TerraformResourceChange['change'], fieldPath: string): boolean {
+  if (!change) return true;
+  if (change.after_unknown?.[fieldPath] === true) return true;
+  if (change.after?.[fieldPath] === null || change.after?.[fieldPath] === undefined) return true;
+  return false;
+}
+
+function resolveAwsRegion(change: TerraformResourceChange['change'], providerRegion: string | null): string | null {
   if (change?.after?.arn && typeof change.after.arn === 'string') {
-    const parts = change.after.arn.split(':');
+    const parts = (change.after.arn as string).split(':');
     if (parts.length >= 4 && parts[3]) return parts[3];
   }
-  
   if (change?.after?.availability_zone && typeof change.after.availability_zone === 'string') {
-    // Handles Local Zones (e.g. us-east-1-bos-1a) and standard AZs (e.g. us-east-1a)
     const azMatch = (change.after.availability_zone as string).match(/^([a-z]{2}-[a-z]+-\d+)/);
     if (azMatch) return azMatch[1];
   }
-  
-  if (change?.after?.region && typeof change.after.region === 'string') {
-    return change.after.region as string;
-  }
-
-  // For update actions where region is stable and lives in before state
-  if (change?.before?.region && typeof change.before.region === 'string') {
-    return change.before.region as string;
-  }
-
-  // Real-world AWS plans: region lives on the provider block, not the resource.
-  // This is the most common case in practice.
+  if (change?.after?.region && typeof change.after.region === 'string') return change.after.region as string;
+  if (change?.before?.region && typeof change.before.region === 'string') return change.before.region as string;
   if (providerRegion) return providerRegion;
-  
   return null;
+}
+
+function resolveAzureRegion(change: TerraformResourceChange['change'], providerRegion: string | null): string | null {
+  const raw = change?.after?.location ?? change?.before?.location ?? providerRegion;
+  if (!raw || typeof raw !== 'string') return null;
+  return raw.toLowerCase().replace(/\s+/g, '');
+}
+
+function resolveGcpRegion(change: TerraformResourceChange['change'], providerRegion: string | null): string | null {
+  if (change?.after?.region && typeof change.after.region === 'string') return change.after.region as string;
+  if (change?.after?.zone && typeof change.after.zone === 'string') {
+    const zoneMatch = (change.after.zone as string).match(/^([a-z]+-[a-z]+\d+)/);
+    if (zoneMatch) return zoneMatch[1];
+  }
+  if (change?.before?.region && typeof change.before.region === 'string') return change.before.region as string;
+  if (providerRegion) return providerRegion;
+  return null;
+}
+
+function extractAwsInstanceType(res: TerraformResourceChange, plannedValuesMap: Map<string, Record<string, unknown>>): { instanceType: string | null; skipReason?: string } {
+  const isDb = res.type === 'aws_db_instance';
+  const typeField = isDb ? 'instance_class' : 'instance_type';
+
+  if (isKnownAfterApply(res.change, typeField)) {
+    const plannedType = plannedValuesMap.get(res.address)?.[typeField];
+    if (typeof plannedType !== 'string') return { instanceType: null, skipReason: 'known_after_apply' };
+    if (!res.change!.after) res.change!.after = {};
+    res.change!.after[typeField] = plannedType;
+  }
+
+  let instanceType = res.change?.after?.[typeField] as string;
+  if (typeof instanceType !== 'string') return { instanceType: null, skipReason: 'known_after_apply' };
+
+  if (isDb && instanceType.startsWith('db.')) {
+    instanceType = instanceType.replace(/^db\./, '');
+    if (!instanceType.includes('.')) return { instanceType: null, skipReason: 'unsupported_instance' };
+  }
+
+  return { instanceType };
+}
+
+function extractAzureInstanceType(res: TerraformResourceChange): { instanceType: string | null; skipReason?: string } {
+  const size = res.change?.after?.size ?? res.change?.before?.size;
+  if (!size || typeof size !== 'string') return { instanceType: null, skipReason: 'known_after_apply' };
+  return { instanceType: size };
+}
+
+function extractGcpInstanceType(res: TerraformResourceChange): { instanceType: string | null; skipReason?: string } {
+  const machineType = res.change?.after?.machine_type ?? res.change?.before?.machine_type;
+  if (!machineType || typeof machineType !== 'string') return { instanceType: null, skipReason: 'known_after_apply' };
+  return { instanceType: machineType };
 }
 
 export function extractResourceInputs(planFilePath: string): ExtractorResult {
   const result: ExtractorResult = { resources: [], skipped: [], unsupportedTypes: [] };
 
-  // Resolve to absolute path so relative traversal sequences (e.g. ../../) are normalised
   const resolvedPath = isAbsolute(planFilePath)
-    ? planFilePath
-    : resolve(process.cwd(), planFilePath);
+    ? planFilePath : resolve(process.cwd(), planFilePath);
 
   let raw: string;
   try {
@@ -158,89 +197,66 @@ export function extractResourceInputs(planFilePath: string): ExtractorResult {
   }
 
   const typedPlan = plan as TerraformPlan;
+  const providerRegions = extractProviderRegions(typedPlan);
 
-  // Extract provider-level region once — used as final fallback in resolveRegion()
-  const providerRegion = extractProviderRegion(typedPlan);
-
-  // Build a lookup map from planned_values for instance type resolution.
-  // planned_values resolves attributes that are statically known but may not yet
-  // be reflected in change.after (e.g. when the provider populates defaults at plan time).
   const plannedValuesMap = new Map<string, Record<string, unknown>>();
   for (const r of typedPlan.planned_values?.root_module?.resources ?? []) {
     if (r.address && r.values) plannedValuesMap.set(r.address, r.values);
   }
 
+  const allSupportedTypes = Object.values(SUPPORTED_TYPES).flat();
+
   for (const rawRes of typedPlan.resource_changes) {
     const res = rawRes as TerraformResourceChange;
     const actions = res.change?.actions;
-    
-    // Only process resources where change.actions includes "create" or "update"
-    // Deletes represent resources scaling down, so their baseline from today onwards will be zero,
-    // hence we don't calculate future impact or upgrade recommendations on teardowns.
+
     if (!Array.isArray(actions) || (!actions.includes('create') && !actions.includes('update'))) {
-      continue; 
+      continue;
     }
 
-    // Track compute-relevant resource types that we can't yet analyse.
-    // This lets formatters surface a coverage disclaimer.
-    const SUPPORTED_TYPES = ['aws_instance', 'aws_db_instance'];
-    const COMPUTE_RELEVANT_TYPES = ['aws_launch_template', 'aws_autoscaling_group', 'aws_ecs_service', 'aws_eks_node_group', 'aws_lambda_function'];
+    const provider = detectProvider(res.type);
 
-    if (!SUPPORTED_TYPES.includes(res.type)) {
+    if (!allSupportedTypes.includes(res.type)) {
       if (COMPUTE_RELEVANT_TYPES.includes(res.type) && !result.unsupportedTypes.includes(res.type)) {
         result.unsupportedTypes.push(res.type);
       }
-      continue; 
-    }
-
-    const isDb = res.type === 'aws_db_instance';
-    const typeField = isDb ? 'instance_class' : 'instance_type';
-
-    // Verify type isn't unknown_after_apply.
-    // If change.after doesn't have it, check planned_values before giving up —
-    // some providers populate planned_values even when change.after is incomplete.
-    if (isKnownAfterApply(res.change, typeField)) {
-      const plannedType = plannedValuesMap.get(res.address)?.[typeField];
-      if (typeof plannedType !== 'string') {
-        result.skipped.push({ resourceId: res.address, reason: 'known_after_apply' });
-        continue;
-      }
-      // Inject into change.after so downstream logic stays consistent
-      if (!res.change!.after) res.change!.after = {};
-      res.change!.after[typeField] = plannedType;
-    }
-
-    let instanceType: string = res.change!.after![typeField] as string;
-    if (typeof res.change!.after![typeField] !== 'string') {
-      result.skipped.push({ resourceId: res.address, reason: 'known_after_apply' });
       continue;
     }
 
-    // Normalisation step: "db.m5.large" -> "m5.large".
-    // It's vastly superior to isolate this DB normalisation logic entirely out of the Engine, 
-    // so the mathematical formulas handle consistently flat datasets mapped identically to factors.json.
-    if (isDb && instanceType.startsWith('db.')) {
-      instanceType = instanceType.replace(/^db\./, '');
-      // Guard: db.serverless (Aurora Serverless) produces invalid types after stripping
-      if (!instanceType.includes('.')) {
-        result.skipped.push({ resourceId: res.address, reason: 'unsupported_instance' });
-        continue;
-      }
+    if (!provider) continue;
+
+    let instanceType: string | null = null;
+    let skipReason: string | undefined;
+    let region: string | null = null;
+
+    if (provider === 'aws') {
+      const extracted = extractAwsInstanceType(res, plannedValuesMap);
+      instanceType = extracted.instanceType;
+      skipReason = extracted.skipReason;
+      if (instanceType) region = resolveAwsRegion(res.change, providerRegions.aws);
+    } else if (provider === 'azure') {
+      const extracted = extractAzureInstanceType(res);
+      instanceType = extracted.instanceType;
+      skipReason = extracted.skipReason;
+      if (instanceType) region = resolveAzureRegion(res.change, providerRegions.azure);
+    } else if (provider === 'gcp') {
+      const extracted = extractGcpInstanceType(res);
+      instanceType = extracted.instanceType;
+      skipReason = extracted.skipReason;
+      if (instanceType) region = resolveGcpRegion(res.change, providerRegions.gcp);
     }
 
-    const region = resolveRegion(res.change, providerRegion);
+    if (!instanceType || skipReason) {
+      result.skipped.push({ resourceId: res.address, reason: skipReason ?? 'known_after_apply' });
+      continue;
+    }
+
     if (!region) {
-      // If we completely exhausted our lookup heuristics and failed to find a region,
-      // it means we either need it applied dynamically, or the TF configuration leverages entirely external provider abstractions
       result.skipped.push({ resourceId: res.address, reason: 'known_after_apply' });
       continue;
     }
 
-    result.resources.push({
-      resourceId: res.address, // Correctly applies nested addresses as the ID (e.g. module.compute.aws_instance.api)
-      instanceType,
-      region
-    });
+    result.resources.push({ resourceId: res.address, instanceType, region, provider });
   }
 
   return result;

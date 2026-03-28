@@ -7,12 +7,14 @@ var import_node_util = require("node:util");
 // factors.json
 var factors_default = {
   metadata: {
-    ledger_version: "1.3.0",
-    updated_at: "2026-03-27T00:00:00Z",
+    ledger_version: "2.0.0",
+    updated_at: "2026-03-28T00:00:00Z",
     sources: {
       grid: "electricity-maps-2024-avg",
       hardware: "cloud-carbon-footprint-v3",
-      pricing: "aws-public-pricing-api-2026-q1",
+      pricing_aws: "aws-public-pricing-api-2026-q1",
+      pricing_azure: "azure-public-pricing-api-2026-q1",
+      pricing_gcp: "gcp-public-pricing-api-2026-q1",
       embodied: "cloud-carbon-footprint-v3-dell-r740-baseline",
       water: "aws-sustainability-report-2023-wue"
     },
@@ -24,983 +26,1941 @@ var factors_default = {
       }
     }
   },
-  regions: {
-    "us-east-1": {
-      location: "US East (N. Virginia)",
-      grid_intensity_gco2e_per_kwh: 384.5,
-      pue: 1.13,
-      water_intensity_litres_per_kwh: 0.46
+  aws: {
+    regions: {
+      "us-east-1": {
+        location: "US East (N. Virginia)",
+        grid_intensity_gco2e_per_kwh: 384.5,
+        pue: 1.13,
+        water_intensity_litres_per_kwh: 0.46
+      },
+      "us-east-2": {
+        location: "US East (Ohio)",
+        grid_intensity_gco2e_per_kwh: 410,
+        pue: 1.13,
+        water_intensity_litres_per_kwh: 0.52
+      },
+      "us-west-1": {
+        location: "US West (N. California)",
+        grid_intensity_gco2e_per_kwh: 220,
+        pue: 1.13,
+        water_intensity_litres_per_kwh: 0.38
+      },
+      "us-west-2": {
+        location: "US West (Oregon)",
+        grid_intensity_gco2e_per_kwh: 240.1,
+        pue: 1.13,
+        water_intensity_litres_per_kwh: 0.18
+      },
+      "eu-west-1": {
+        location: "Europe (Ireland)",
+        grid_intensity_gco2e_per_kwh: 334,
+        pue: 1.13,
+        water_intensity_litres_per_kwh: 0.22
+      },
+      "eu-west-2": {
+        location: "Europe (London)",
+        grid_intensity_gco2e_per_kwh: 268,
+        pue: 1.13,
+        water_intensity_litres_per_kwh: 0.25
+      },
+      "eu-central-1": {
+        location: "Europe (Frankfurt)",
+        grid_intensity_gco2e_per_kwh: 420.5,
+        pue: 1.13,
+        water_intensity_litres_per_kwh: 0.28
+      },
+      "eu-north-1": {
+        location: "Europe (Stockholm)",
+        grid_intensity_gco2e_per_kwh: 8.8,
+        pue: 1.13,
+        water_intensity_litres_per_kwh: 0.1
+      },
+      "ap-southeast-1": {
+        location: "Asia Pacific (Singapore)",
+        grid_intensity_gco2e_per_kwh: 408,
+        pue: 1.13,
+        water_intensity_litres_per_kwh: 0.58
+      },
+      "ap-southeast-2": {
+        location: "Asia Pacific (Sydney)",
+        grid_intensity_gco2e_per_kwh: 650,
+        pue: 1.13,
+        water_intensity_litres_per_kwh: 0.45
+      },
+      "ap-northeast-1": {
+        location: "Asia Pacific (Tokyo)",
+        grid_intensity_gco2e_per_kwh: 506,
+        pue: 1.13,
+        water_intensity_litres_per_kwh: 0.5
+      },
+      "ap-south-1": {
+        location: "Asia Pacific (Mumbai)",
+        grid_intensity_gco2e_per_kwh: 723,
+        pue: 1.13,
+        water_intensity_litres_per_kwh: 0.72
+      },
+      "ca-central-1": {
+        location: "Canada (Central)",
+        grid_intensity_gco2e_per_kwh: 130,
+        pue: 1.13,
+        water_intensity_litres_per_kwh: 0.2
+      },
+      "sa-east-1": {
+        location: "South America (S\xE3o Paulo)",
+        grid_intensity_gco2e_per_kwh: 74,
+        pue: 1.13,
+        water_intensity_litres_per_kwh: 0.35
+      }
     },
-    "us-east-2": {
-      location: "US East (Ohio)",
-      grid_intensity_gco2e_per_kwh: 410,
-      pue: 1.13,
-      water_intensity_litres_per_kwh: 0.52
+    instances: {
+      "t3.micro": {
+        architecture: "x86_64",
+        vcpus: 2,
+        memory_gb: 1,
+        power_watts: {
+          idle: 1.4,
+          max: 5
+        },
+        embodied_co2e_grams_per_month: 1041.7
+      },
+      "t3.small": {
+        architecture: "x86_64",
+        vcpus: 2,
+        memory_gb: 2,
+        power_watts: {
+          idle: 2,
+          max: 7
+        },
+        embodied_co2e_grams_per_month: 1041.7
+      },
+      "t3.medium": {
+        architecture: "x86_64",
+        vcpus: 2,
+        memory_gb: 4,
+        power_watts: {
+          idle: 3.4,
+          max: 10.2
+        },
+        embodied_co2e_grams_per_month: 1041.7
+      },
+      "t3.large": {
+        architecture: "x86_64",
+        vcpus: 2,
+        memory_gb: 8,
+        power_watts: {
+          idle: 6.8,
+          max: 20.4
+        },
+        embodied_co2e_grams_per_month: 1041.7
+      },
+      "t3.xlarge": {
+        architecture: "x86_64",
+        vcpus: 4,
+        memory_gb: 16,
+        power_watts: {
+          idle: 13.6,
+          max: 40.8
+        },
+        embodied_co2e_grams_per_month: 2083.3
+      },
+      "t3a.medium": {
+        architecture: "x86_64",
+        vcpus: 2,
+        memory_gb: 4,
+        power_watts: {
+          idle: 3.2,
+          max: 9.8
+        },
+        embodied_co2e_grams_per_month: 1041.7
+      },
+      "t3a.large": {
+        architecture: "x86_64",
+        vcpus: 2,
+        memory_gb: 8,
+        power_watts: {
+          idle: 6.4,
+          max: 19.6
+        },
+        embodied_co2e_grams_per_month: 1041.7
+      },
+      "m5.large": {
+        architecture: "x86_64",
+        vcpus: 2,
+        memory_gb: 8,
+        power_watts: {
+          idle: 6.8,
+          max: 20.4
+        },
+        embodied_co2e_grams_per_month: 1041.7
+      },
+      "m5.xlarge": {
+        architecture: "x86_64",
+        vcpus: 4,
+        memory_gb: 16,
+        power_watts: {
+          idle: 13.6,
+          max: 40.8
+        },
+        embodied_co2e_grams_per_month: 2083.3
+      },
+      "m5.2xlarge": {
+        architecture: "x86_64",
+        vcpus: 8,
+        memory_gb: 32,
+        power_watts: {
+          idle: 27.2,
+          max: 81.6
+        },
+        embodied_co2e_grams_per_month: 4166.7
+      },
+      "m5a.large": {
+        architecture: "x86_64",
+        vcpus: 2,
+        memory_gb: 8,
+        power_watts: {
+          idle: 6.5,
+          max: 19.5
+        },
+        embodied_co2e_grams_per_month: 1041.7
+      },
+      "m5a.xlarge": {
+        architecture: "x86_64",
+        vcpus: 4,
+        memory_gb: 16,
+        power_watts: {
+          idle: 13,
+          max: 39
+        },
+        embodied_co2e_grams_per_month: 2083.3
+      },
+      "c5.large": {
+        architecture: "x86_64",
+        vcpus: 2,
+        memory_gb: 4,
+        power_watts: {
+          idle: 6.5,
+          max: 22
+        },
+        embodied_co2e_grams_per_month: 1041.7
+      },
+      "c5.xlarge": {
+        architecture: "x86_64",
+        vcpus: 4,
+        memory_gb: 8,
+        power_watts: {
+          idle: 13,
+          max: 44
+        },
+        embodied_co2e_grams_per_month: 2083.3
+      },
+      "c5.2xlarge": {
+        architecture: "x86_64",
+        vcpus: 8,
+        memory_gb: 16,
+        power_watts: {
+          idle: 26,
+          max: 88
+        },
+        embodied_co2e_grams_per_month: 4166.7
+      },
+      "c5a.large": {
+        architecture: "x86_64",
+        vcpus: 2,
+        memory_gb: 4,
+        power_watts: {
+          idle: 6.2,
+          max: 21
+        },
+        embodied_co2e_grams_per_month: 1041.7
+      },
+      "c5a.xlarge": {
+        architecture: "x86_64",
+        vcpus: 4,
+        memory_gb: 8,
+        power_watts: {
+          idle: 12.4,
+          max: 42
+        },
+        embodied_co2e_grams_per_month: 2083.3
+      },
+      "r5.large": {
+        architecture: "x86_64",
+        vcpus: 2,
+        memory_gb: 16,
+        power_watts: {
+          idle: 8,
+          max: 24
+        },
+        embodied_co2e_grams_per_month: 1041.7
+      },
+      "r5.xlarge": {
+        architecture: "x86_64",
+        vcpus: 4,
+        memory_gb: 32,
+        power_watts: {
+          idle: 16,
+          max: 48
+        },
+        embodied_co2e_grams_per_month: 2083.3
+      },
+      "t4g.micro": {
+        architecture: "arm64",
+        vcpus: 2,
+        memory_gb: 1,
+        power_watts: {
+          idle: 0.9,
+          max: 3.2
+        },
+        embodied_co2e_grams_per_month: 833.3
+      },
+      "t4g.small": {
+        architecture: "arm64",
+        vcpus: 2,
+        memory_gb: 2,
+        power_watts: {
+          idle: 1.4,
+          max: 4.5
+        },
+        embodied_co2e_grams_per_month: 833.3
+      },
+      "t4g.medium": {
+        architecture: "arm64",
+        vcpus: 2,
+        memory_gb: 4,
+        power_watts: {
+          idle: 2.2,
+          max: 6.8
+        },
+        embodied_co2e_grams_per_month: 833.3
+      },
+      "t4g.large": {
+        architecture: "arm64",
+        vcpus: 2,
+        memory_gb: 8,
+        power_watts: {
+          idle: 4.4,
+          max: 13.6
+        },
+        embodied_co2e_grams_per_month: 833.3
+      },
+      "t4g.xlarge": {
+        architecture: "arm64",
+        vcpus: 4,
+        memory_gb: 16,
+        power_watts: {
+          idle: 8.8,
+          max: 27.2
+        },
+        embodied_co2e_grams_per_month: 1666.7
+      },
+      "m6g.medium": {
+        architecture: "arm64",
+        vcpus: 1,
+        memory_gb: 4,
+        power_watts: {
+          idle: 2.1,
+          max: 6.6
+        },
+        embodied_co2e_grams_per_month: 416.7
+      },
+      "m6g.large": {
+        architecture: "arm64",
+        vcpus: 2,
+        memory_gb: 8,
+        power_watts: {
+          idle: 4.1,
+          max: 13.2
+        },
+        embodied_co2e_grams_per_month: 833.3
+      },
+      "m6g.xlarge": {
+        architecture: "arm64",
+        vcpus: 4,
+        memory_gb: 16,
+        power_watts: {
+          idle: 8.2,
+          max: 26.4
+        },
+        embodied_co2e_grams_per_month: 1666.7
+      },
+      "m6g.2xlarge": {
+        architecture: "arm64",
+        vcpus: 8,
+        memory_gb: 32,
+        power_watts: {
+          idle: 16.4,
+          max: 52.8
+        },
+        embodied_co2e_grams_per_month: 3333.3
+      },
+      "m7g.medium": {
+        architecture: "arm64",
+        vcpus: 1,
+        memory_gb: 4,
+        power_watts: {
+          idle: 1.8,
+          max: 5.8
+        },
+        embodied_co2e_grams_per_month: 416.7
+      },
+      "m7g.large": {
+        architecture: "arm64",
+        vcpus: 2,
+        memory_gb: 8,
+        power_watts: {
+          idle: 3.6,
+          max: 11.6
+        },
+        embodied_co2e_grams_per_month: 833.3
+      },
+      "m7g.xlarge": {
+        architecture: "arm64",
+        vcpus: 4,
+        memory_gb: 16,
+        power_watts: {
+          idle: 7.2,
+          max: 23.2
+        },
+        embodied_co2e_grams_per_month: 1666.7
+      },
+      "m7g.2xlarge": {
+        architecture: "arm64",
+        vcpus: 8,
+        memory_gb: 32,
+        power_watts: {
+          idle: 14.4,
+          max: 46.4
+        },
+        embodied_co2e_grams_per_month: 3333.3
+      },
+      "c6g.medium": {
+        architecture: "arm64",
+        vcpus: 1,
+        memory_gb: 2,
+        power_watts: {
+          idle: 2,
+          max: 7.3
+        },
+        embodied_co2e_grams_per_month: 416.7
+      },
+      "c6g.large": {
+        architecture: "arm64",
+        vcpus: 2,
+        memory_gb: 4,
+        power_watts: {
+          idle: 3.9,
+          max: 14.5
+        },
+        embodied_co2e_grams_per_month: 833.3
+      },
+      "c6g.xlarge": {
+        architecture: "arm64",
+        vcpus: 4,
+        memory_gb: 8,
+        power_watts: {
+          idle: 7.8,
+          max: 29
+        },
+        embodied_co2e_grams_per_month: 1666.7
+      },
+      "c6g.2xlarge": {
+        architecture: "arm64",
+        vcpus: 8,
+        memory_gb: 16,
+        power_watts: {
+          idle: 15.6,
+          max: 58
+        },
+        embodied_co2e_grams_per_month: 3333.3
+      },
+      "c7g.large": {
+        architecture: "arm64",
+        vcpus: 2,
+        memory_gb: 4,
+        power_watts: {
+          idle: 3.5,
+          max: 13
+        },
+        embodied_co2e_grams_per_month: 833.3
+      },
+      "c7g.xlarge": {
+        architecture: "arm64",
+        vcpus: 4,
+        memory_gb: 8,
+        power_watts: {
+          idle: 7,
+          max: 26
+        },
+        embodied_co2e_grams_per_month: 1666.7
+      },
+      "r6g.large": {
+        architecture: "arm64",
+        vcpus: 2,
+        memory_gb: 16,
+        power_watts: {
+          idle: 4.8,
+          max: 15
+        },
+        embodied_co2e_grams_per_month: 833.3
+      },
+      "r6g.xlarge": {
+        architecture: "arm64",
+        vcpus: 4,
+        memory_gb: 32,
+        power_watts: {
+          idle: 9.6,
+          max: 30
+        },
+        embodied_co2e_grams_per_month: 1666.7
+      }
     },
-    "us-west-1": {
-      location: "US West (N. California)",
-      grid_intensity_gco2e_per_kwh: 220,
-      pue: 1.13,
-      water_intensity_litres_per_kwh: 0.38
-    },
-    "us-west-2": {
-      location: "US West (Oregon)",
-      grid_intensity_gco2e_per_kwh: 240.1,
-      pue: 1.13,
-      water_intensity_litres_per_kwh: 0.18
-    },
-    "eu-west-1": {
-      location: "Europe (Ireland)",
-      grid_intensity_gco2e_per_kwh: 334,
-      pue: 1.13,
-      water_intensity_litres_per_kwh: 0.22
-    },
-    "eu-west-2": {
-      location: "Europe (London)",
-      grid_intensity_gco2e_per_kwh: 268,
-      pue: 1.13,
-      water_intensity_litres_per_kwh: 0.25
-    },
-    "eu-central-1": {
-      location: "Europe (Frankfurt)",
-      grid_intensity_gco2e_per_kwh: 420.5,
-      pue: 1.13,
-      water_intensity_litres_per_kwh: 0.28
-    },
-    "eu-north-1": {
-      location: "Europe (Stockholm)",
-      grid_intensity_gco2e_per_kwh: 8.8,
-      pue: 1.13,
-      water_intensity_litres_per_kwh: 0.1
-    },
-    "ap-southeast-1": {
-      location: "Asia Pacific (Singapore)",
-      grid_intensity_gco2e_per_kwh: 408,
-      pue: 1.13,
-      water_intensity_litres_per_kwh: 0.58
-    },
-    "ap-southeast-2": {
-      location: "Asia Pacific (Sydney)",
-      grid_intensity_gco2e_per_kwh: 650,
-      pue: 1.13,
-      water_intensity_litres_per_kwh: 0.45
-    },
-    "ap-northeast-1": {
-      location: "Asia Pacific (Tokyo)",
-      grid_intensity_gco2e_per_kwh: 506,
-      pue: 1.13,
-      water_intensity_litres_per_kwh: 0.5
-    },
-    "ap-south-1": {
-      location: "Asia Pacific (Mumbai)",
-      grid_intensity_gco2e_per_kwh: 723,
-      pue: 1.13,
-      water_intensity_litres_per_kwh: 0.72
-    },
-    "ca-central-1": {
-      location: "Canada (Central)",
-      grid_intensity_gco2e_per_kwh: 130,
-      pue: 1.13,
-      water_intensity_litres_per_kwh: 0.2
-    },
-    "sa-east-1": {
-      location: "South America (S\xE3o Paulo)",
-      grid_intensity_gco2e_per_kwh: 74,
-      pue: 1.13,
-      water_intensity_litres_per_kwh: 0.35
+    pricing_usd_per_hour: {
+      "us-east-1": {
+        "t3.micro": 0.0104,
+        "t3.small": 0.0208,
+        "t3.medium": 0.0416,
+        "t3.large": 0.0832,
+        "t3.xlarge": 0.1664,
+        "t3a.medium": 0.0376,
+        "t3a.large": 0.0752,
+        "m5.large": 0.096,
+        "m5.xlarge": 0.192,
+        "m5.2xlarge": 0.384,
+        "m5a.large": 0.086,
+        "m5a.xlarge": 0.172,
+        "c5.large": 0.085,
+        "c5.xlarge": 0.17,
+        "c5.2xlarge": 0.34,
+        "c5a.large": 0.077,
+        "c5a.xlarge": 0.154,
+        "r5.large": 0.126,
+        "r5.xlarge": 0.252,
+        "t4g.micro": 84e-4,
+        "t4g.small": 0.0168,
+        "t4g.medium": 0.0336,
+        "t4g.large": 0.0672,
+        "t4g.xlarge": 0.1344,
+        "m6g.medium": 0.0385,
+        "m6g.large": 0.077,
+        "m6g.xlarge": 0.154,
+        "m6g.2xlarge": 0.308,
+        "m7g.medium": 0.0408,
+        "m7g.large": 0.0816,
+        "m7g.xlarge": 0.1632,
+        "m7g.2xlarge": 0.3264,
+        "c6g.medium": 0.034,
+        "c6g.large": 0.068,
+        "c6g.xlarge": 0.136,
+        "c6g.2xlarge": 0.272,
+        "c7g.large": 0.0725,
+        "c7g.xlarge": 0.145,
+        "r6g.large": 0.1008,
+        "r6g.xlarge": 0.2016
+      },
+      "us-east-2": {
+        "t3.micro": 0.0104,
+        "t3.small": 0.0208,
+        "t3.medium": 0.0416,
+        "t3.large": 0.0832,
+        "t3.xlarge": 0.1664,
+        "t3a.medium": 0.0376,
+        "t3a.large": 0.0752,
+        "m5.large": 0.096,
+        "m5.xlarge": 0.192,
+        "m5.2xlarge": 0.384,
+        "m5a.large": 0.086,
+        "m5a.xlarge": 0.172,
+        "c5.large": 0.085,
+        "c5.xlarge": 0.17,
+        "c5.2xlarge": 0.34,
+        "c5a.large": 0.077,
+        "c5a.xlarge": 0.154,
+        "r5.large": 0.126,
+        "r5.xlarge": 0.252,
+        "t4g.micro": 84e-4,
+        "t4g.small": 0.0168,
+        "t4g.medium": 0.0336,
+        "t4g.large": 0.0672,
+        "t4g.xlarge": 0.1344,
+        "m6g.medium": 0.0385,
+        "m6g.large": 0.077,
+        "m6g.xlarge": 0.154,
+        "m6g.2xlarge": 0.308,
+        "m7g.medium": 0.0408,
+        "m7g.large": 0.0816,
+        "m7g.xlarge": 0.1632,
+        "m7g.2xlarge": 0.3264,
+        "c6g.medium": 0.034,
+        "c6g.large": 0.068,
+        "c6g.xlarge": 0.136,
+        "c6g.2xlarge": 0.272,
+        "c7g.large": 0.0725,
+        "c7g.xlarge": 0.145,
+        "r6g.large": 0.1008,
+        "r6g.xlarge": 0.2016
+      },
+      "us-west-1": {
+        "t3.micro": 0.0116,
+        "t3.small": 0.0232,
+        "t3.medium": 0.0464,
+        "t3.large": 0.0928,
+        "t3.xlarge": 0.1856,
+        "m5.large": 0.107,
+        "m5.xlarge": 0.214,
+        "m5.2xlarge": 0.428,
+        "c5.large": 0.096,
+        "c5.xlarge": 0.192,
+        "c5.2xlarge": 0.384,
+        "t4g.medium": 0.0376,
+        "t4g.large": 0.0752,
+        "t4g.xlarge": 0.1504,
+        "m6g.large": 0.086,
+        "m6g.xlarge": 0.172,
+        "m6g.2xlarge": 0.344,
+        "m7g.large": 0.0912,
+        "m7g.xlarge": 0.1824,
+        "c6g.large": 0.076,
+        "c6g.xlarge": 0.152,
+        "r6g.large": 0.1127,
+        "r6g.xlarge": 0.2254
+      },
+      "us-west-2": {
+        "t3.micro": 0.0104,
+        "t3.small": 0.0208,
+        "t3.medium": 0.0416,
+        "t3.large": 0.0832,
+        "t3.xlarge": 0.1664,
+        "t3a.medium": 0.0376,
+        "t3a.large": 0.0752,
+        "m5.large": 0.096,
+        "m5.xlarge": 0.192,
+        "m5.2xlarge": 0.384,
+        "m5a.large": 0.086,
+        "m5a.xlarge": 0.172,
+        "c5.large": 0.085,
+        "c5.xlarge": 0.17,
+        "c5.2xlarge": 0.34,
+        "c5a.large": 0.077,
+        "c5a.xlarge": 0.154,
+        "r5.large": 0.126,
+        "r5.xlarge": 0.252,
+        "t4g.micro": 84e-4,
+        "t4g.small": 0.0168,
+        "t4g.medium": 0.0336,
+        "t4g.large": 0.0672,
+        "t4g.xlarge": 0.1344,
+        "m6g.medium": 0.0385,
+        "m6g.large": 0.077,
+        "m6g.xlarge": 0.154,
+        "m6g.2xlarge": 0.308,
+        "m7g.medium": 0.0408,
+        "m7g.large": 0.0816,
+        "m7g.xlarge": 0.1632,
+        "m7g.2xlarge": 0.3264,
+        "c6g.medium": 0.034,
+        "c6g.large": 0.068,
+        "c6g.xlarge": 0.136,
+        "c6g.2xlarge": 0.272,
+        "c7g.large": 0.0725,
+        "c7g.xlarge": 0.145,
+        "r6g.large": 0.1008,
+        "r6g.xlarge": 0.2016
+      },
+      "eu-west-1": {
+        "t3.micro": 0.0116,
+        "t3.small": 0.0232,
+        "t3.medium": 0.0456,
+        "t3.large": 0.0912,
+        "t3.xlarge": 0.1824,
+        "t3a.medium": 0.0416,
+        "t3a.large": 0.0832,
+        "m5.large": 0.107,
+        "m5.xlarge": 0.214,
+        "m5.2xlarge": 0.428,
+        "m5a.large": 0.096,
+        "m5a.xlarge": 0.192,
+        "c5.large": 0.096,
+        "c5.xlarge": 0.192,
+        "c5.2xlarge": 0.384,
+        "c5a.large": 0.087,
+        "c5a.xlarge": 0.174,
+        "r5.large": 0.141,
+        "r5.xlarge": 0.282,
+        "t4g.micro": 94e-4,
+        "t4g.small": 0.0188,
+        "t4g.medium": 0.0376,
+        "t4g.large": 0.0752,
+        "t4g.xlarge": 0.1504,
+        "m6g.medium": 0.043,
+        "m6g.large": 0.086,
+        "m6g.xlarge": 0.172,
+        "m6g.2xlarge": 0.344,
+        "m7g.medium": 0.0456,
+        "m7g.large": 0.0912,
+        "m7g.xlarge": 0.1824,
+        "m7g.2xlarge": 0.3648,
+        "c6g.medium": 0.038,
+        "c6g.large": 0.076,
+        "c6g.xlarge": 0.152,
+        "c6g.2xlarge": 0.304,
+        "c7g.large": 0.0812,
+        "c7g.xlarge": 0.1624,
+        "r6g.large": 0.1127,
+        "r6g.xlarge": 0.2254
+      },
+      "eu-west-2": {
+        "t3.micro": 0.0126,
+        "t3.small": 0.0252,
+        "t3.medium": 0.0504,
+        "t3.large": 0.1008,
+        "t3.xlarge": 0.2016,
+        "m5.large": 0.1178,
+        "m5.xlarge": 0.2356,
+        "m5.2xlarge": 0.4712,
+        "c5.large": 0.1054,
+        "c5.xlarge": 0.2108,
+        "c5.2xlarge": 0.4216,
+        "t4g.medium": 0.0414,
+        "t4g.large": 0.0828,
+        "t4g.xlarge": 0.1656,
+        "m6g.large": 0.0945,
+        "m6g.xlarge": 0.189,
+        "m6g.2xlarge": 0.378,
+        "m7g.large": 0.1001,
+        "m7g.xlarge": 0.2002,
+        "c6g.large": 0.0836,
+        "c6g.xlarge": 0.1672,
+        "r6g.large": 0.124,
+        "r6g.xlarge": 0.248
+      },
+      "eu-central-1": {
+        "t3.micro": 0.012,
+        "t3.small": 0.024,
+        "t3.medium": 0.0496,
+        "t3.large": 0.0992,
+        "t3.xlarge": 0.1984,
+        "t3a.medium": 0.0448,
+        "t3a.large": 0.0896,
+        "m5.large": 0.115,
+        "m5.xlarge": 0.23,
+        "m5.2xlarge": 0.46,
+        "m5a.large": 0.103,
+        "m5a.xlarge": 0.206,
+        "c5.large": 0.102,
+        "c5.xlarge": 0.204,
+        "c5.2xlarge": 0.408,
+        "r5.large": 0.151,
+        "r5.xlarge": 0.302,
+        "t4g.micro": 0.01,
+        "t4g.small": 0.02,
+        "t4g.medium": 0.0416,
+        "t4g.large": 0.0832,
+        "t4g.xlarge": 0.1664,
+        "m6g.medium": 0.046,
+        "m6g.large": 0.092,
+        "m6g.xlarge": 0.184,
+        "m6g.2xlarge": 0.368,
+        "m7g.medium": 0.0488,
+        "m7g.large": 0.0976,
+        "m7g.xlarge": 0.1952,
+        "m7g.2xlarge": 0.3904,
+        "c6g.medium": 0.041,
+        "c6g.large": 0.082,
+        "c6g.xlarge": 0.164,
+        "c6g.2xlarge": 0.328,
+        "c7g.large": 0.0875,
+        "c7g.xlarge": 0.175,
+        "r6g.large": 0.121,
+        "r6g.xlarge": 0.242
+      },
+      "eu-north-1": {
+        "t3.micro": 0.0108,
+        "t3.small": 0.0216,
+        "t3.medium": 0.0432,
+        "t3.large": 0.0864,
+        "t3.xlarge": 0.1728,
+        "m5.large": 0.1,
+        "m5.xlarge": 0.2,
+        "m5.2xlarge": 0.4,
+        "c5.large": 0.089,
+        "c5.xlarge": 0.178,
+        "c5.2xlarge": 0.356,
+        "t4g.medium": 0.0362,
+        "t4g.large": 0.0724,
+        "t4g.xlarge": 0.1448,
+        "m6g.large": 0.08,
+        "m6g.xlarge": 0.16,
+        "m6g.2xlarge": 0.32,
+        "m7g.large": 0.0848,
+        "m7g.xlarge": 0.1696,
+        "c6g.large": 0.0712,
+        "c6g.xlarge": 0.1424,
+        "r6g.large": 0.1054,
+        "r6g.xlarge": 0.2108
+      },
+      "ap-southeast-1": {
+        "t3.micro": 0.0132,
+        "t3.small": 0.0264,
+        "t3.medium": 0.0528,
+        "t3.large": 0.1056,
+        "t3.xlarge": 0.2112,
+        "m5.large": 0.124,
+        "m5.xlarge": 0.248,
+        "m5.2xlarge": 0.496,
+        "c5.large": 0.107,
+        "c5.xlarge": 0.214,
+        "c5.2xlarge": 0.428,
+        "t4g.medium": 0.0438,
+        "t4g.large": 0.0876,
+        "t4g.xlarge": 0.1752,
+        "m6g.large": 0.0992,
+        "m6g.xlarge": 0.1984,
+        "m6g.2xlarge": 0.3968,
+        "m7g.large": 0.1051,
+        "m7g.xlarge": 0.2102,
+        "c6g.large": 0.086,
+        "c6g.xlarge": 0.172,
+        "r6g.large": 0.1307,
+        "r6g.xlarge": 0.2614
+      },
+      "ap-southeast-2": {
+        "t3.micro": 0.0136,
+        "t3.small": 0.0272,
+        "t3.medium": 0.0544,
+        "t3.large": 0.1088,
+        "t3.xlarge": 0.2176,
+        "t3a.medium": 0.0492,
+        "t3a.large": 0.0984,
+        "m5.large": 0.134,
+        "m5.xlarge": 0.268,
+        "m5.2xlarge": 0.536,
+        "m5a.large": 0.12,
+        "m5a.xlarge": 0.24,
+        "c5.large": 0.118,
+        "c5.xlarge": 0.236,
+        "c5.2xlarge": 0.472,
+        "r5.large": 0.176,
+        "r5.xlarge": 0.352,
+        "t4g.micro": 0.0113,
+        "t4g.small": 0.0226,
+        "t4g.medium": 0.0452,
+        "t4g.large": 0.0904,
+        "t4g.xlarge": 0.1808,
+        "m6g.medium": 0.0535,
+        "m6g.large": 0.107,
+        "m6g.xlarge": 0.214,
+        "m6g.2xlarge": 0.428,
+        "m7g.medium": 0.0567,
+        "m7g.large": 0.1134,
+        "m7g.xlarge": 0.2268,
+        "m7g.2xlarge": 0.4536,
+        "c6g.medium": 0.047,
+        "c6g.large": 0.094,
+        "c6g.xlarge": 0.188,
+        "c6g.2xlarge": 0.376,
+        "c7g.large": 0.1002,
+        "c7g.xlarge": 0.2004,
+        "r6g.large": 0.1411,
+        "r6g.xlarge": 0.2822
+      },
+      "ap-northeast-1": {
+        "t3.micro": 0.014,
+        "t3.small": 0.028,
+        "t3.medium": 0.056,
+        "t3.large": 0.112,
+        "t3.xlarge": 0.224,
+        "t3a.medium": 0.0504,
+        "t3a.large": 0.1008,
+        "m5.large": 0.128,
+        "m5.xlarge": 0.256,
+        "m5.2xlarge": 0.512,
+        "m5a.large": 0.115,
+        "m5a.xlarge": 0.23,
+        "c5.large": 0.114,
+        "c5.xlarge": 0.228,
+        "c5.2xlarge": 0.456,
+        "r5.large": 0.169,
+        "r5.xlarge": 0.338,
+        "t4g.micro": 0.0116,
+        "t4g.small": 0.0232,
+        "t4g.medium": 0.0464,
+        "t4g.large": 0.0928,
+        "t4g.xlarge": 0.1856,
+        "m6g.medium": 0.0549,
+        "m6g.large": 0.1098,
+        "m6g.xlarge": 0.2196,
+        "m6g.2xlarge": 0.4392,
+        "m7g.medium": 0.0582,
+        "m7g.large": 0.1164,
+        "m7g.xlarge": 0.2328,
+        "m7g.2xlarge": 0.4656,
+        "c6g.medium": 0.0482,
+        "c6g.large": 0.0964,
+        "c6g.xlarge": 0.1928,
+        "c6g.2xlarge": 0.3856,
+        "c7g.large": 0.1028,
+        "c7g.xlarge": 0.2056,
+        "r6g.large": 0.1448,
+        "r6g.xlarge": 0.2896
+      },
+      "ap-south-1": {
+        "t3.micro": 0.0114,
+        "t3.small": 0.0228,
+        "t3.medium": 0.0456,
+        "t3.large": 0.0912,
+        "t3.xlarge": 0.1824,
+        "t3a.medium": 0.041,
+        "t3a.large": 0.082,
+        "m5.large": 0.106,
+        "m5.xlarge": 0.212,
+        "m5.2xlarge": 0.424,
+        "c5.large": 0.094,
+        "c5.xlarge": 0.188,
+        "c5.2xlarge": 0.376,
+        "r5.large": 0.1396,
+        "r5.xlarge": 0.2792,
+        "t4g.micro": 95e-4,
+        "t4g.small": 0.019,
+        "t4g.medium": 0.038,
+        "t4g.large": 0.076,
+        "t4g.xlarge": 0.152,
+        "m6g.medium": 0.0454,
+        "m6g.large": 0.0908,
+        "m6g.xlarge": 0.1816,
+        "m6g.2xlarge": 0.3632,
+        "m7g.medium": 0.0481,
+        "m7g.large": 0.0962,
+        "m7g.xlarge": 0.1924,
+        "m7g.2xlarge": 0.3848,
+        "c6g.medium": 0.0399,
+        "c6g.large": 0.0798,
+        "c6g.xlarge": 0.1596,
+        "c6g.2xlarge": 0.3192,
+        "r6g.large": 0.1197,
+        "r6g.xlarge": 0.2394
+      },
+      "ca-central-1": {
+        "t3.micro": 0.0116,
+        "t3.small": 0.0232,
+        "t3.medium": 0.0464,
+        "t3.large": 0.0928,
+        "t3.xlarge": 0.1856,
+        "t3a.medium": 0.0418,
+        "t3a.large": 0.0836,
+        "m5.large": 0.107,
+        "m5.xlarge": 0.214,
+        "m5.2xlarge": 0.428,
+        "m5a.large": 0.096,
+        "m5a.xlarge": 0.192,
+        "c5.large": 0.095,
+        "c5.xlarge": 0.19,
+        "c5.2xlarge": 0.38,
+        "r5.large": 0.141,
+        "r5.xlarge": 0.282,
+        "t4g.micro": 96e-4,
+        "t4g.small": 0.0192,
+        "t4g.medium": 0.0386,
+        "t4g.large": 0.0772,
+        "t4g.xlarge": 0.1544,
+        "m6g.medium": 0.0462,
+        "m6g.large": 0.0924,
+        "m6g.xlarge": 0.1848,
+        "m6g.2xlarge": 0.3696,
+        "m7g.medium": 0.049,
+        "m7g.large": 0.098,
+        "m7g.xlarge": 0.196,
+        "m7g.2xlarge": 0.392,
+        "c6g.medium": 0.0408,
+        "c6g.large": 0.0816,
+        "c6g.xlarge": 0.1632,
+        "c6g.2xlarge": 0.3264,
+        "c7g.large": 0.087,
+        "c7g.xlarge": 0.174,
+        "r6g.large": 0.1218,
+        "r6g.xlarge": 0.2436
+      },
+      "sa-east-1": {
+        "t3.micro": 0.0168,
+        "t3.small": 0.0336,
+        "t3.medium": 0.0672,
+        "t3.large": 0.1344,
+        "t3.xlarge": 0.2688,
+        "m5.large": 0.162,
+        "m5.xlarge": 0.324,
+        "m5.2xlarge": 0.648,
+        "c5.large": 0.144,
+        "c5.xlarge": 0.288,
+        "c5.2xlarge": 0.576,
+        "t4g.medium": 0.056,
+        "t4g.large": 0.112,
+        "t4g.xlarge": 0.224,
+        "m6g.large": 0.1296,
+        "m6g.xlarge": 0.2592,
+        "m6g.2xlarge": 0.5184,
+        "m7g.large": 0.1374,
+        "m7g.xlarge": 0.2748,
+        "c6g.large": 0.1152,
+        "c6g.xlarge": 0.2304,
+        "r6g.large": 0.1706,
+        "r6g.xlarge": 0.3412
+      }
     }
   },
-  instances: {
-    "t3.micro": {
-      architecture: "x86_64",
-      vcpus: 2,
-      memory_gb: 1,
-      power_watts: {
-        idle: 1.4,
-        max: 5
+  azure: {
+    regions: {
+      eastus: {
+        location: "East US (Virginia)",
+        grid_intensity_gco2e_per_kwh: 380,
+        pue: 1.125,
+        water_intensity_litres_per_kwh: 0.43
       },
-      embodied_co2e_grams_per_month: 1041.7
+      eastus2: {
+        location: "East US 2 (Virginia)",
+        grid_intensity_gco2e_per_kwh: 380,
+        pue: 1.125,
+        water_intensity_litres_per_kwh: 0.43
+      },
+      westus: {
+        location: "West US (California)",
+        grid_intensity_gco2e_per_kwh: 200,
+        pue: 1.125,
+        water_intensity_litres_per_kwh: 0.35
+      },
+      westus2: {
+        location: "West US 2 (Washington)",
+        grid_intensity_gco2e_per_kwh: 235,
+        pue: 1.125,
+        water_intensity_litres_per_kwh: 0.18
+      },
+      westus3: {
+        location: "West US 3 (Arizona)",
+        grid_intensity_gco2e_per_kwh: 350,
+        pue: 1.125,
+        water_intensity_litres_per_kwh: 0.55
+      },
+      northeurope: {
+        location: "North Europe (Ireland)",
+        grid_intensity_gco2e_per_kwh: 334,
+        pue: 1.125,
+        water_intensity_litres_per_kwh: 0.22
+      },
+      westeurope: {
+        location: "West Europe (Netherlands)",
+        grid_intensity_gco2e_per_kwh: 270,
+        pue: 1.125,
+        water_intensity_litres_per_kwh: 0.2
+      },
+      uksouth: {
+        location: "UK South (London)",
+        grid_intensity_gco2e_per_kwh: 268,
+        pue: 1.125,
+        water_intensity_litres_per_kwh: 0.25
+      },
+      ukwest: {
+        location: "UK West (Cardiff)",
+        grid_intensity_gco2e_per_kwh: 268,
+        pue: 1.125,
+        water_intensity_litres_per_kwh: 0.25
+      },
+      swedencentral: {
+        location: "Sweden Central",
+        grid_intensity_gco2e_per_kwh: 8.8,
+        pue: 1.125,
+        water_intensity_litres_per_kwh: 0.1
+      },
+      germanywestcentral: {
+        location: "Germany West Central",
+        grid_intensity_gco2e_per_kwh: 420.5,
+        pue: 1.125,
+        water_intensity_litres_per_kwh: 0.28
+      },
+      southeastasia: {
+        location: "Southeast Asia (Singapore)",
+        grid_intensity_gco2e_per_kwh: 408,
+        pue: 1.125,
+        water_intensity_litres_per_kwh: 0.58
+      },
+      australiaeast: {
+        location: "Australia East (NSW)",
+        grid_intensity_gco2e_per_kwh: 650,
+        pue: 1.125,
+        water_intensity_litres_per_kwh: 0.45
+      },
+      japaneast: {
+        location: "Japan East (Tokyo)",
+        grid_intensity_gco2e_per_kwh: 506,
+        pue: 1.125,
+        water_intensity_litres_per_kwh: 0.5
+      },
+      centralindia: {
+        location: "Central India (Pune)",
+        grid_intensity_gco2e_per_kwh: 723,
+        pue: 1.125,
+        water_intensity_litres_per_kwh: 0.72
+      },
+      canadacentral: {
+        location: "Canada Central (Toronto)",
+        grid_intensity_gco2e_per_kwh: 130,
+        pue: 1.125,
+        water_intensity_litres_per_kwh: 0.2
+      },
+      brazilsouth: {
+        location: "Brazil South (Sao Paulo)",
+        grid_intensity_gco2e_per_kwh: 74,
+        pue: 1.125,
+        water_intensity_litres_per_kwh: 0.35
+      }
     },
-    "t3.small": {
-      architecture: "x86_64",
-      vcpus: 2,
-      memory_gb: 2,
-      power_watts: {
-        idle: 2,
-        max: 7
+    instances: {
+      Standard_B2s: {
+        architecture: "x86_64",
+        vcpus: 2,
+        memory_gb: 4,
+        power_watts: {
+          idle: 1.5,
+          max: 5.5
+        },
+        embodied_co2e_grams_per_month: 1041.7
       },
-      embodied_co2e_grams_per_month: 1041.7
+      Standard_B2ms: {
+        architecture: "x86_64",
+        vcpus: 2,
+        memory_gb: 8,
+        power_watts: {
+          idle: 3,
+          max: 11
+        },
+        embodied_co2e_grams_per_month: 1041.7
+      },
+      Standard_B4ms: {
+        architecture: "x86_64",
+        vcpus: 4,
+        memory_gb: 16,
+        power_watts: {
+          idle: 6,
+          max: 22
+        },
+        embodied_co2e_grams_per_month: 2083.3
+      },
+      Standard_D2s_v3: {
+        architecture: "x86_64",
+        vcpus: 2,
+        memory_gb: 8,
+        power_watts: {
+          idle: 6.8,
+          max: 20.4
+        },
+        embodied_co2e_grams_per_month: 1041.7
+      },
+      Standard_D4s_v3: {
+        architecture: "x86_64",
+        vcpus: 4,
+        memory_gb: 16,
+        power_watts: {
+          idle: 13.6,
+          max: 40.8
+        },
+        embodied_co2e_grams_per_month: 2083.3
+      },
+      Standard_D8s_v3: {
+        architecture: "x86_64",
+        vcpus: 8,
+        memory_gb: 32,
+        power_watts: {
+          idle: 27.2,
+          max: 81.6
+        },
+        embodied_co2e_grams_per_month: 4166.6
+      },
+      Standard_D2s_v4: {
+        architecture: "x86_64",
+        vcpus: 2,
+        memory_gb: 8,
+        power_watts: {
+          idle: 6.5,
+          max: 19.5
+        },
+        embodied_co2e_grams_per_month: 1041.7
+      },
+      Standard_D4s_v4: {
+        architecture: "x86_64",
+        vcpus: 4,
+        memory_gb: 16,
+        power_watts: {
+          idle: 13,
+          max: 39
+        },
+        embodied_co2e_grams_per_month: 2083.3
+      },
+      Standard_D2ps_v5: {
+        architecture: "arm64",
+        vcpus: 2,
+        memory_gb: 8,
+        power_watts: {
+          idle: 4.1,
+          max: 13.2
+        },
+        embodied_co2e_grams_per_month: 833.3
+      },
+      Standard_D4ps_v5: {
+        architecture: "arm64",
+        vcpus: 4,
+        memory_gb: 16,
+        power_watts: {
+          idle: 8.2,
+          max: 26.4
+        },
+        embodied_co2e_grams_per_month: 1666.7
+      },
+      Standard_D8ps_v5: {
+        architecture: "arm64",
+        vcpus: 8,
+        memory_gb: 32,
+        power_watts: {
+          idle: 16.4,
+          max: 52.8
+        },
+        embodied_co2e_grams_per_month: 3333.3
+      },
+      Standard_F2s_v2: {
+        architecture: "x86_64",
+        vcpus: 2,
+        memory_gb: 4,
+        power_watts: {
+          idle: 6.5,
+          max: 22
+        },
+        embodied_co2e_grams_per_month: 1041.7
+      },
+      Standard_F4s_v2: {
+        architecture: "x86_64",
+        vcpus: 4,
+        memory_gb: 8,
+        power_watts: {
+          idle: 13,
+          max: 44
+        },
+        embodied_co2e_grams_per_month: 2083.3
+      },
+      Standard_F8s_v2: {
+        architecture: "x86_64",
+        vcpus: 8,
+        memory_gb: 16,
+        power_watts: {
+          idle: 26,
+          max: 88
+        },
+        embodied_co2e_grams_per_month: 4166.6
+      },
+      Standard_E2s_v3: {
+        architecture: "x86_64",
+        vcpus: 2,
+        memory_gb: 16,
+        power_watts: {
+          idle: 8,
+          max: 24
+        },
+        embodied_co2e_grams_per_month: 1041.7
+      },
+      Standard_E4s_v3: {
+        architecture: "x86_64",
+        vcpus: 4,
+        memory_gb: 32,
+        power_watts: {
+          idle: 16,
+          max: 48
+        },
+        embodied_co2e_grams_per_month: 2083.3
+      }
     },
-    "t3.medium": {
-      architecture: "x86_64",
-      vcpus: 2,
-      memory_gb: 4,
-      power_watts: {
-        idle: 3.4,
-        max: 10.2
+    pricing_usd_per_hour: {
+      eastus: {
+        Standard_B2s: 0.041,
+        Standard_B2ms: 0.081,
+        Standard_B4ms: 0.162,
+        Standard_D2s_v3: 0.096,
+        Standard_D4s_v3: 0.192,
+        Standard_D8s_v3: 0.384,
+        Standard_D2s_v4: 0.091,
+        Standard_D4s_v4: 0.182,
+        Standard_D2ps_v5: 0.077,
+        Standard_D4ps_v5: 0.154,
+        Standard_D8ps_v5: 0.308,
+        Standard_F2s_v2: 0.085,
+        Standard_F4s_v2: 0.17,
+        Standard_F8s_v2: 0.34,
+        Standard_E2s_v3: 0.126,
+        Standard_E4s_v3: 0.252
       },
-      embodied_co2e_grams_per_month: 1041.7
-    },
-    "t3.large": {
-      architecture: "x86_64",
-      vcpus: 2,
-      memory_gb: 8,
-      power_watts: {
-        idle: 6.8,
-        max: 20.4
+      eastus2: {
+        Standard_B2s: 0.041,
+        Standard_B2ms: 0.081,
+        Standard_B4ms: 0.162,
+        Standard_D2s_v3: 0.096,
+        Standard_D4s_v3: 0.192,
+        Standard_D8s_v3: 0.384,
+        Standard_D2s_v4: 0.091,
+        Standard_D4s_v4: 0.182,
+        Standard_D2ps_v5: 0.077,
+        Standard_D4ps_v5: 0.154,
+        Standard_D8ps_v5: 0.308,
+        Standard_F2s_v2: 0.085,
+        Standard_F4s_v2: 0.17,
+        Standard_F8s_v2: 0.34,
+        Standard_E2s_v3: 0.126,
+        Standard_E4s_v3: 0.252
       },
-      embodied_co2e_grams_per_month: 1041.7
-    },
-    "t3.xlarge": {
-      architecture: "x86_64",
-      vcpus: 4,
-      memory_gb: 16,
-      power_watts: {
-        idle: 13.6,
-        max: 40.8
+      westus2: {
+        Standard_B2s: 0.041,
+        Standard_B2ms: 0.081,
+        Standard_B4ms: 0.162,
+        Standard_D2s_v3: 0.096,
+        Standard_D4s_v3: 0.192,
+        Standard_D8s_v3: 0.384,
+        Standard_D2s_v4: 0.091,
+        Standard_D4s_v4: 0.182,
+        Standard_D2ps_v5: 0.077,
+        Standard_D4ps_v5: 0.154,
+        Standard_D8ps_v5: 0.308,
+        Standard_F2s_v2: 0.085,
+        Standard_F4s_v2: 0.17,
+        Standard_F8s_v2: 0.34,
+        Standard_E2s_v3: 0.126,
+        Standard_E4s_v3: 0.252
       },
-      embodied_co2e_grams_per_month: 2083.3
-    },
-    "t3a.medium": {
-      architecture: "x86_64",
-      vcpus: 2,
-      memory_gb: 4,
-      power_watts: {
-        idle: 3.2,
-        max: 9.8
+      northeurope: {
+        Standard_B2s: 0.044,
+        Standard_B2ms: 0.087,
+        Standard_B4ms: 0.174,
+        Standard_D2s_v3: 0.104,
+        Standard_D4s_v3: 0.208,
+        Standard_D8s_v3: 0.416,
+        Standard_D2s_v4: 0.098,
+        Standard_D4s_v4: 0.196,
+        Standard_D2ps_v5: 0.083,
+        Standard_D4ps_v5: 0.166,
+        Standard_D8ps_v5: 0.332,
+        Standard_F2s_v2: 0.091,
+        Standard_F4s_v2: 0.183,
+        Standard_F8s_v2: 0.366,
+        Standard_E2s_v3: 0.136,
+        Standard_E4s_v3: 0.271
       },
-      embodied_co2e_grams_per_month: 1041.7
-    },
-    "t3a.large": {
-      architecture: "x86_64",
-      vcpus: 2,
-      memory_gb: 8,
-      power_watts: {
-        idle: 6.4,
-        max: 19.6
+      westeurope: {
+        Standard_B2s: 0.044,
+        Standard_B2ms: 0.087,
+        Standard_B4ms: 0.174,
+        Standard_D2s_v3: 0.104,
+        Standard_D4s_v3: 0.208,
+        Standard_D8s_v3: 0.416,
+        Standard_D2s_v4: 0.098,
+        Standard_D4s_v4: 0.196,
+        Standard_D2ps_v5: 0.083,
+        Standard_D4ps_v5: 0.166,
+        Standard_D8ps_v5: 0.332,
+        Standard_F2s_v2: 0.091,
+        Standard_F4s_v2: 0.183,
+        Standard_F8s_v2: 0.366,
+        Standard_E2s_v3: 0.136,
+        Standard_E4s_v3: 0.271
       },
-      embodied_co2e_grams_per_month: 1041.7
-    },
-    "m5.large": {
-      architecture: "x86_64",
-      vcpus: 2,
-      memory_gb: 8,
-      power_watts: {
-        idle: 6.8,
-        max: 20.4
+      uksouth: {
+        Standard_B2s: 0.046,
+        Standard_B2ms: 0.091,
+        Standard_B4ms: 0.183,
+        Standard_D2s_v3: 0.109,
+        Standard_D4s_v3: 0.218,
+        Standard_D8s_v3: 0.436,
+        Standard_D2s_v4: 0.103,
+        Standard_D4s_v4: 0.206,
+        Standard_D2ps_v5: 0.087,
+        Standard_D4ps_v5: 0.174,
+        Standard_D8ps_v5: 0.348,
+        Standard_F2s_v2: 0.095,
+        Standard_F4s_v2: 0.191,
+        Standard_F8s_v2: 0.382,
+        Standard_E2s_v3: 0.143,
+        Standard_E4s_v3: 0.285
       },
-      embodied_co2e_grams_per_month: 1041.7
-    },
-    "m5.xlarge": {
-      architecture: "x86_64",
-      vcpus: 4,
-      memory_gb: 16,
-      power_watts: {
-        idle: 13.6,
-        max: 40.8
+      swedencentral: {
+        Standard_B2s: 0.042,
+        Standard_B2ms: 0.083,
+        Standard_B4ms: 0.166,
+        Standard_D2s_v3: 0.099,
+        Standard_D4s_v3: 0.198,
+        Standard_D8s_v3: 0.397,
+        Standard_D2s_v4: 0.094,
+        Standard_D4s_v4: 0.187,
+        Standard_D2ps_v5: 0.079,
+        Standard_D4ps_v5: 0.159,
+        Standard_D8ps_v5: 0.317,
+        Standard_F2s_v2: 0.087,
+        Standard_F4s_v2: 0.174,
+        Standard_F8s_v2: 0.348,
+        Standard_E2s_v3: 0.13,
+        Standard_E4s_v3: 0.259
       },
-      embodied_co2e_grams_per_month: 2083.3
-    },
-    "m5.2xlarge": {
-      architecture: "x86_64",
-      vcpus: 8,
-      memory_gb: 32,
-      power_watts: {
-        idle: 27.2,
-        max: 81.6
+      southeastasia: {
+        Standard_B2s: 0.048,
+        Standard_B2ms: 0.096,
+        Standard_B4ms: 0.192,
+        Standard_D2s_v3: 0.114,
+        Standard_D4s_v3: 0.229,
+        Standard_D8s_v3: 0.458,
+        Standard_D2s_v4: 0.108,
+        Standard_D4s_v4: 0.217,
+        Standard_D2ps_v5: 0.092,
+        Standard_D4ps_v5: 0.184,
+        Standard_D8ps_v5: 0.368,
+        Standard_F2s_v2: 0.1,
+        Standard_F4s_v2: 0.2,
+        Standard_F8s_v2: 0.4,
+        Standard_E2s_v3: 0.15,
+        Standard_E4s_v3: 0.301
       },
-      embodied_co2e_grams_per_month: 4166.7
-    },
-    "m5a.large": {
-      architecture: "x86_64",
-      vcpus: 2,
-      memory_gb: 8,
-      power_watts: {
-        idle: 6.5,
-        max: 19.5
+      australiaeast: {
+        Standard_B2s: 0.052,
+        Standard_B2ms: 0.104,
+        Standard_B4ms: 0.208,
+        Standard_D2s_v3: 0.124,
+        Standard_D4s_v3: 0.248,
+        Standard_D8s_v3: 0.496,
+        Standard_D2s_v4: 0.117,
+        Standard_D4s_v4: 0.234,
+        Standard_D2ps_v5: 0.099,
+        Standard_D4ps_v5: 0.199,
+        Standard_D8ps_v5: 0.397,
+        Standard_F2s_v2: 0.108,
+        Standard_F4s_v2: 0.217,
+        Standard_F8s_v2: 0.433,
+        Standard_E2s_v3: 0.162,
+        Standard_E4s_v3: 0.325
       },
-      embodied_co2e_grams_per_month: 1041.7
-    },
-    "m5a.xlarge": {
-      architecture: "x86_64",
-      vcpus: 4,
-      memory_gb: 16,
-      power_watts: {
-        idle: 13,
-        max: 39
+      japaneast: {
+        Standard_B2s: 0.051,
+        Standard_B2ms: 0.102,
+        Standard_B4ms: 0.204,
+        Standard_D2s_v3: 0.121,
+        Standard_D4s_v3: 0.242,
+        Standard_D8s_v3: 0.484,
+        Standard_D2s_v4: 0.115,
+        Standard_D4s_v4: 0.229,
+        Standard_D2ps_v5: 0.097,
+        Standard_D4ps_v5: 0.194,
+        Standard_D8ps_v5: 0.388,
+        Standard_F2s_v2: 0.105,
+        Standard_F4s_v2: 0.211,
+        Standard_F8s_v2: 0.422,
+        Standard_E2s_v3: 0.158,
+        Standard_E4s_v3: 0.317
       },
-      embodied_co2e_grams_per_month: 2083.3
-    },
-    "c5.large": {
-      architecture: "x86_64",
-      vcpus: 2,
-      memory_gb: 4,
-      power_watts: {
-        idle: 6.5,
-        max: 22
+      centralindia: {
+        Standard_B2s: 0.043,
+        Standard_B2ms: 0.086,
+        Standard_B4ms: 0.171,
+        Standard_D2s_v3: 0.102,
+        Standard_D4s_v3: 0.203,
+        Standard_D8s_v3: 0.406,
+        Standard_D2s_v4: 0.096,
+        Standard_D4s_v4: 0.192,
+        Standard_D2ps_v5: 0.081,
+        Standard_D4ps_v5: 0.162,
+        Standard_D8ps_v5: 0.325,
+        Standard_F2s_v2: 0.089,
+        Standard_F4s_v2: 0.178,
+        Standard_F8s_v2: 0.356,
+        Standard_E2s_v3: 0.133,
+        Standard_E4s_v3: 0.266
       },
-      embodied_co2e_grams_per_month: 1041.7
-    },
-    "c5.xlarge": {
-      architecture: "x86_64",
-      vcpus: 4,
-      memory_gb: 8,
-      power_watts: {
-        idle: 13,
-        max: 44
+      canadacentral: {
+        Standard_B2s: 0.043,
+        Standard_B2ms: 0.086,
+        Standard_B4ms: 0.171,
+        Standard_D2s_v3: 0.101,
+        Standard_D4s_v3: 0.202,
+        Standard_D8s_v3: 0.404,
+        Standard_D2s_v4: 0.096,
+        Standard_D4s_v4: 0.191,
+        Standard_D2ps_v5: 0.081,
+        Standard_D4ps_v5: 0.162,
+        Standard_D8ps_v5: 0.323,
+        Standard_F2s_v2: 0.088,
+        Standard_F4s_v2: 0.177,
+        Standard_F8s_v2: 0.354,
+        Standard_E2s_v3: 0.132,
+        Standard_E4s_v3: 0.264
       },
-      embodied_co2e_grams_per_month: 2083.3
-    },
-    "c5.2xlarge": {
-      architecture: "x86_64",
-      vcpus: 8,
-      memory_gb: 16,
-      power_watts: {
-        idle: 26,
-        max: 88
-      },
-      embodied_co2e_grams_per_month: 4166.7
-    },
-    "c5a.large": {
-      architecture: "x86_64",
-      vcpus: 2,
-      memory_gb: 4,
-      power_watts: {
-        idle: 6.2,
-        max: 21
-      },
-      embodied_co2e_grams_per_month: 1041.7
-    },
-    "c5a.xlarge": {
-      architecture: "x86_64",
-      vcpus: 4,
-      memory_gb: 8,
-      power_watts: {
-        idle: 12.4,
-        max: 42
-      },
-      embodied_co2e_grams_per_month: 2083.3
-    },
-    "r5.large": {
-      architecture: "x86_64",
-      vcpus: 2,
-      memory_gb: 16,
-      power_watts: {
-        idle: 8,
-        max: 24
-      },
-      embodied_co2e_grams_per_month: 1041.7
-    },
-    "r5.xlarge": {
-      architecture: "x86_64",
-      vcpus: 4,
-      memory_gb: 32,
-      power_watts: {
-        idle: 16,
-        max: 48
-      },
-      embodied_co2e_grams_per_month: 2083.3
-    },
-    "t4g.micro": {
-      architecture: "arm64",
-      vcpus: 2,
-      memory_gb: 1,
-      power_watts: {
-        idle: 0.9,
-        max: 3.2
-      },
-      embodied_co2e_grams_per_month: 833.3
-    },
-    "t4g.small": {
-      architecture: "arm64",
-      vcpus: 2,
-      memory_gb: 2,
-      power_watts: {
-        idle: 1.4,
-        max: 4.5
-      },
-      embodied_co2e_grams_per_month: 833.3
-    },
-    "t4g.medium": {
-      architecture: "arm64",
-      vcpus: 2,
-      memory_gb: 4,
-      power_watts: {
-        idle: 2.2,
-        max: 6.8
-      },
-      embodied_co2e_grams_per_month: 833.3
-    },
-    "t4g.large": {
-      architecture: "arm64",
-      vcpus: 2,
-      memory_gb: 8,
-      power_watts: {
-        idle: 4.4,
-        max: 13.6
-      },
-      embodied_co2e_grams_per_month: 833.3
-    },
-    "t4g.xlarge": {
-      architecture: "arm64",
-      vcpus: 4,
-      memory_gb: 16,
-      power_watts: {
-        idle: 8.8,
-        max: 27.2
-      },
-      embodied_co2e_grams_per_month: 1666.7
-    },
-    "m6g.medium": {
-      architecture: "arm64",
-      vcpus: 1,
-      memory_gb: 4,
-      power_watts: {
-        idle: 2.1,
-        max: 6.6
-      },
-      embodied_co2e_grams_per_month: 416.7
-    },
-    "m6g.large": {
-      architecture: "arm64",
-      vcpus: 2,
-      memory_gb: 8,
-      power_watts: {
-        idle: 4.1,
-        max: 13.2
-      },
-      embodied_co2e_grams_per_month: 833.3
-    },
-    "m6g.xlarge": {
-      architecture: "arm64",
-      vcpus: 4,
-      memory_gb: 16,
-      power_watts: {
-        idle: 8.2,
-        max: 26.4
-      },
-      embodied_co2e_grams_per_month: 1666.7
-    },
-    "m6g.2xlarge": {
-      architecture: "arm64",
-      vcpus: 8,
-      memory_gb: 32,
-      power_watts: {
-        idle: 16.4,
-        max: 52.8
-      },
-      embodied_co2e_grams_per_month: 3333.3
-    },
-    "m7g.medium": {
-      architecture: "arm64",
-      vcpus: 1,
-      memory_gb: 4,
-      power_watts: {
-        idle: 1.8,
-        max: 5.8
-      },
-      embodied_co2e_grams_per_month: 416.7
-    },
-    "m7g.large": {
-      architecture: "arm64",
-      vcpus: 2,
-      memory_gb: 8,
-      power_watts: {
-        idle: 3.6,
-        max: 11.6
-      },
-      embodied_co2e_grams_per_month: 833.3
-    },
-    "m7g.xlarge": {
-      architecture: "arm64",
-      vcpus: 4,
-      memory_gb: 16,
-      power_watts: {
-        idle: 7.2,
-        max: 23.2
-      },
-      embodied_co2e_grams_per_month: 1666.7
-    },
-    "m7g.2xlarge": {
-      architecture: "arm64",
-      vcpus: 8,
-      memory_gb: 32,
-      power_watts: {
-        idle: 14.4,
-        max: 46.4
-      },
-      embodied_co2e_grams_per_month: 3333.3
-    },
-    "c6g.medium": {
-      architecture: "arm64",
-      vcpus: 1,
-      memory_gb: 2,
-      power_watts: {
-        idle: 2,
-        max: 7.3
-      },
-      embodied_co2e_grams_per_month: 416.7
-    },
-    "c6g.large": {
-      architecture: "arm64",
-      vcpus: 2,
-      memory_gb: 4,
-      power_watts: {
-        idle: 3.9,
-        max: 14.5
-      },
-      embodied_co2e_grams_per_month: 833.3
-    },
-    "c6g.xlarge": {
-      architecture: "arm64",
-      vcpus: 4,
-      memory_gb: 8,
-      power_watts: {
-        idle: 7.8,
-        max: 29
-      },
-      embodied_co2e_grams_per_month: 1666.7
-    },
-    "c6g.2xlarge": {
-      architecture: "arm64",
-      vcpus: 8,
-      memory_gb: 16,
-      power_watts: {
-        idle: 15.6,
-        max: 58
-      },
-      embodied_co2e_grams_per_month: 3333.3
-    },
-    "c7g.large": {
-      architecture: "arm64",
-      vcpus: 2,
-      memory_gb: 4,
-      power_watts: {
-        idle: 3.5,
-        max: 13
-      },
-      embodied_co2e_grams_per_month: 833.3
-    },
-    "c7g.xlarge": {
-      architecture: "arm64",
-      vcpus: 4,
-      memory_gb: 8,
-      power_watts: {
-        idle: 7,
-        max: 26
-      },
-      embodied_co2e_grams_per_month: 1666.7
-    },
-    "r6g.large": {
-      architecture: "arm64",
-      vcpus: 2,
-      memory_gb: 16,
-      power_watts: {
-        idle: 4.8,
-        max: 15
-      },
-      embodied_co2e_grams_per_month: 833.3
-    },
-    "r6g.xlarge": {
-      architecture: "arm64",
-      vcpus: 4,
-      memory_gb: 32,
-      power_watts: {
-        idle: 9.6,
-        max: 30
-      },
-      embodied_co2e_grams_per_month: 1666.7
+      brazilsouth: {
+        Standard_B2s: 0.059,
+        Standard_B2ms: 0.118,
+        Standard_B4ms: 0.237,
+        Standard_D2s_v3: 0.141,
+        Standard_D4s_v3: 0.281,
+        Standard_D8s_v3: 0.562,
+        Standard_D2s_v4: 0.133,
+        Standard_D4s_v4: 0.266,
+        Standard_D2ps_v5: 0.113,
+        Standard_D4ps_v5: 0.225,
+        Standard_D8ps_v5: 0.45,
+        Standard_F2s_v2: 0.123,
+        Standard_F4s_v2: 0.246,
+        Standard_F8s_v2: 0.492,
+        Standard_E2s_v3: 0.184,
+        Standard_E4s_v3: 0.368
+      }
     }
   },
-  pricing_usd_per_hour: {
-    "us-east-1": {
-      "t3.micro": 0.0104,
-      "t3.small": 0.0208,
-      "t3.medium": 0.0416,
-      "t3.large": 0.0832,
-      "t3.xlarge": 0.1664,
-      "t3a.medium": 0.0376,
-      "t3a.large": 0.0752,
-      "m5.large": 0.096,
-      "m5.xlarge": 0.192,
-      "m5.2xlarge": 0.384,
-      "m5a.large": 0.086,
-      "m5a.xlarge": 0.172,
-      "c5.large": 0.085,
-      "c5.xlarge": 0.17,
-      "c5.2xlarge": 0.34,
-      "c5a.large": 0.077,
-      "c5a.xlarge": 0.154,
-      "r5.large": 0.126,
-      "r5.xlarge": 0.252,
-      "t4g.micro": 84e-4,
-      "t4g.small": 0.0168,
-      "t4g.medium": 0.0336,
-      "t4g.large": 0.0672,
-      "t4g.xlarge": 0.1344,
-      "m6g.medium": 0.0385,
-      "m6g.large": 0.077,
-      "m6g.xlarge": 0.154,
-      "m6g.2xlarge": 0.308,
-      "m7g.medium": 0.0408,
-      "m7g.large": 0.0816,
-      "m7g.xlarge": 0.1632,
-      "m7g.2xlarge": 0.3264,
-      "c6g.medium": 0.034,
-      "c6g.large": 0.068,
-      "c6g.xlarge": 0.136,
-      "c6g.2xlarge": 0.272,
-      "c7g.large": 0.0725,
-      "c7g.xlarge": 0.145,
-      "r6g.large": 0.1008,
-      "r6g.xlarge": 0.2016
+  gcp: {
+    regions: {
+      "us-central1": {
+        location: "Iowa",
+        grid_intensity_gco2e_per_kwh: 340,
+        pue: 1.1,
+        water_intensity_litres_per_kwh: 0.4
+      },
+      "us-east1": {
+        location: "South Carolina",
+        grid_intensity_gco2e_per_kwh: 380,
+        pue: 1.1,
+        water_intensity_litres_per_kwh: 0.43
+      },
+      "us-east4": {
+        location: "Virginia",
+        grid_intensity_gco2e_per_kwh: 380,
+        pue: 1.1,
+        water_intensity_litres_per_kwh: 0.43
+      },
+      "us-west1": {
+        location: "Oregon",
+        grid_intensity_gco2e_per_kwh: 200,
+        pue: 1.1,
+        water_intensity_litres_per_kwh: 0.18
+      },
+      "us-west2": {
+        location: "Los Angeles",
+        grid_intensity_gco2e_per_kwh: 220,
+        pue: 1.1,
+        water_intensity_litres_per_kwh: 0.35
+      },
+      "europe-west1": {
+        location: "Belgium",
+        grid_intensity_gco2e_per_kwh: 144,
+        pue: 1.1,
+        water_intensity_litres_per_kwh: 0.2
+      },
+      "europe-west2": {
+        location: "London",
+        grid_intensity_gco2e_per_kwh: 268,
+        pue: 1.1,
+        water_intensity_litres_per_kwh: 0.25
+      },
+      "europe-west4": {
+        location: "Netherlands",
+        grid_intensity_gco2e_per_kwh: 270,
+        pue: 1.1,
+        water_intensity_litres_per_kwh: 0.2
+      },
+      "europe-north1": {
+        location: "Finland",
+        grid_intensity_gco2e_per_kwh: 18,
+        pue: 1.1,
+        water_intensity_litres_per_kwh: 0.12
+      },
+      "asia-southeast1": {
+        location: "Singapore",
+        grid_intensity_gco2e_per_kwh: 408,
+        pue: 1.1,
+        water_intensity_litres_per_kwh: 0.58
+      },
+      "asia-east1": {
+        location: "Taiwan",
+        grid_intensity_gco2e_per_kwh: 486,
+        pue: 1.1,
+        water_intensity_litres_per_kwh: 0.45
+      },
+      "asia-northeast1": {
+        location: "Tokyo",
+        grid_intensity_gco2e_per_kwh: 506,
+        pue: 1.1,
+        water_intensity_litres_per_kwh: 0.5
+      },
+      "asia-south1": {
+        location: "Mumbai",
+        grid_intensity_gco2e_per_kwh: 723,
+        pue: 1.1,
+        water_intensity_litres_per_kwh: 0.72
+      },
+      "northamerica-northeast1": {
+        location: "Montreal",
+        grid_intensity_gco2e_per_kwh: 28,
+        pue: 1.1,
+        water_intensity_litres_per_kwh: 0.2
+      },
+      "southamerica-east1": {
+        location: "Sao Paulo",
+        grid_intensity_gco2e_per_kwh: 74,
+        pue: 1.1,
+        water_intensity_litres_per_kwh: 0.35
+      }
     },
-    "us-east-2": {
-      "t3.micro": 0.0104,
-      "t3.small": 0.0208,
-      "t3.medium": 0.0416,
-      "t3.large": 0.0832,
-      "t3.xlarge": 0.1664,
-      "t3a.medium": 0.0376,
-      "t3a.large": 0.0752,
-      "m5.large": 0.096,
-      "m5.xlarge": 0.192,
-      "m5.2xlarge": 0.384,
-      "m5a.large": 0.086,
-      "m5a.xlarge": 0.172,
-      "c5.large": 0.085,
-      "c5.xlarge": 0.17,
-      "c5.2xlarge": 0.34,
-      "c5a.large": 0.077,
-      "c5a.xlarge": 0.154,
-      "r5.large": 0.126,
-      "r5.xlarge": 0.252,
-      "t4g.micro": 84e-4,
-      "t4g.small": 0.0168,
-      "t4g.medium": 0.0336,
-      "t4g.large": 0.0672,
-      "t4g.xlarge": 0.1344,
-      "m6g.medium": 0.0385,
-      "m6g.large": 0.077,
-      "m6g.xlarge": 0.154,
-      "m6g.2xlarge": 0.308,
-      "m7g.medium": 0.0408,
-      "m7g.large": 0.0816,
-      "m7g.xlarge": 0.1632,
-      "m7g.2xlarge": 0.3264,
-      "c6g.medium": 0.034,
-      "c6g.large": 0.068,
-      "c6g.xlarge": 0.136,
-      "c6g.2xlarge": 0.272,
-      "c7g.large": 0.0725,
-      "c7g.xlarge": 0.145,
-      "r6g.large": 0.1008,
-      "r6g.xlarge": 0.2016
+    instances: {
+      "n2-standard-2": {
+        architecture: "x86_64",
+        vcpus: 2,
+        memory_gb: 8,
+        power_watts: {
+          idle: 6.8,
+          max: 20.4
+        },
+        embodied_co2e_grams_per_month: 1041.7
+      },
+      "n2-standard-4": {
+        architecture: "x86_64",
+        vcpus: 4,
+        memory_gb: 16,
+        power_watts: {
+          idle: 13.6,
+          max: 40.8
+        },
+        embodied_co2e_grams_per_month: 2083.3
+      },
+      "n2-standard-8": {
+        architecture: "x86_64",
+        vcpus: 8,
+        memory_gb: 32,
+        power_watts: {
+          idle: 27.2,
+          max: 81.6
+        },
+        embodied_co2e_grams_per_month: 4166.7
+      },
+      "n2d-standard-2": {
+        architecture: "x86_64",
+        vcpus: 2,
+        memory_gb: 8,
+        power_watts: {
+          idle: 6.5,
+          max: 19.5
+        },
+        embodied_co2e_grams_per_month: 1041.7
+      },
+      "n2d-standard-4": {
+        architecture: "x86_64",
+        vcpus: 4,
+        memory_gb: 16,
+        power_watts: {
+          idle: 13,
+          max: 39
+        },
+        embodied_co2e_grams_per_month: 2083.3
+      },
+      "t2a-standard-1": {
+        architecture: "arm64",
+        vcpus: 1,
+        memory_gb: 4,
+        power_watts: {
+          idle: 2.1,
+          max: 6.6
+        },
+        embodied_co2e_grams_per_month: 416.7
+      },
+      "t2a-standard-2": {
+        architecture: "arm64",
+        vcpus: 2,
+        memory_gb: 8,
+        power_watts: {
+          idle: 4.1,
+          max: 13.2
+        },
+        embodied_co2e_grams_per_month: 833.3
+      },
+      "t2a-standard-4": {
+        architecture: "arm64",
+        vcpus: 4,
+        memory_gb: 16,
+        power_watts: {
+          idle: 8.2,
+          max: 26.4
+        },
+        embodied_co2e_grams_per_month: 1666.7
+      },
+      "t2a-standard-8": {
+        architecture: "arm64",
+        vcpus: 8,
+        memory_gb: 32,
+        power_watts: {
+          idle: 16.4,
+          max: 52.8
+        },
+        embodied_co2e_grams_per_month: 3333.3
+      },
+      "c2-standard-4": {
+        architecture: "x86_64",
+        vcpus: 4,
+        memory_gb: 16,
+        power_watts: {
+          idle: 13,
+          max: 44
+        },
+        embodied_co2e_grams_per_month: 2083.3
+      },
+      "c2-standard-8": {
+        architecture: "x86_64",
+        vcpus: 8,
+        memory_gb: 32,
+        power_watts: {
+          idle: 26,
+          max: 88
+        },
+        embodied_co2e_grams_per_month: 4166.7
+      },
+      "e2-standard-2": {
+        architecture: "x86_64",
+        vcpus: 2,
+        memory_gb: 8,
+        power_watts: {
+          idle: 3.4,
+          max: 10.2
+        },
+        embodied_co2e_grams_per_month: 1041.7
+      },
+      "e2-standard-4": {
+        architecture: "x86_64",
+        vcpus: 4,
+        memory_gb: 16,
+        power_watts: {
+          idle: 6.8,
+          max: 20.4
+        },
+        embodied_co2e_grams_per_month: 2083.3
+      },
+      "t2d-standard-1": {
+        architecture: "x86_64",
+        vcpus: 1,
+        memory_gb: 4,
+        power_watts: {
+          idle: 1.7,
+          max: 5.1
+        },
+        embodied_co2e_grams_per_month: 520.8
+      },
+      "t2d-standard-2": {
+        architecture: "x86_64",
+        vcpus: 2,
+        memory_gb: 8,
+        power_watts: {
+          idle: 3.4,
+          max: 10.2
+        },
+        embodied_co2e_grams_per_month: 1041.7
+      }
     },
-    "us-west-1": {
-      "t3.micro": 0.0116,
-      "t3.small": 0.0232,
-      "t3.medium": 0.0464,
-      "t3.large": 0.0928,
-      "t3.xlarge": 0.1856,
-      "m5.large": 0.107,
-      "m5.xlarge": 0.214,
-      "m5.2xlarge": 0.428,
-      "c5.large": 0.096,
-      "c5.xlarge": 0.192,
-      "c5.2xlarge": 0.384,
-      "t4g.medium": 0.0376,
-      "t4g.large": 0.0752,
-      "t4g.xlarge": 0.1504,
-      "m6g.large": 0.086,
-      "m6g.xlarge": 0.172,
-      "m6g.2xlarge": 0.344,
-      "m7g.large": 0.0912,
-      "m7g.xlarge": 0.1824,
-      "c6g.large": 0.076,
-      "c6g.xlarge": 0.152,
-      "r6g.large": 0.1127,
-      "r6g.xlarge": 0.2254
-    },
-    "us-west-2": {
-      "t3.micro": 0.0104,
-      "t3.small": 0.0208,
-      "t3.medium": 0.0416,
-      "t3.large": 0.0832,
-      "t3.xlarge": 0.1664,
-      "t3a.medium": 0.0376,
-      "t3a.large": 0.0752,
-      "m5.large": 0.096,
-      "m5.xlarge": 0.192,
-      "m5.2xlarge": 0.384,
-      "m5a.large": 0.086,
-      "m5a.xlarge": 0.172,
-      "c5.large": 0.085,
-      "c5.xlarge": 0.17,
-      "c5.2xlarge": 0.34,
-      "c5a.large": 0.077,
-      "c5a.xlarge": 0.154,
-      "r5.large": 0.126,
-      "r5.xlarge": 0.252,
-      "t4g.micro": 84e-4,
-      "t4g.small": 0.0168,
-      "t4g.medium": 0.0336,
-      "t4g.large": 0.0672,
-      "t4g.xlarge": 0.1344,
-      "m6g.medium": 0.0385,
-      "m6g.large": 0.077,
-      "m6g.xlarge": 0.154,
-      "m6g.2xlarge": 0.308,
-      "m7g.medium": 0.0408,
-      "m7g.large": 0.0816,
-      "m7g.xlarge": 0.1632,
-      "m7g.2xlarge": 0.3264,
-      "c6g.medium": 0.034,
-      "c6g.large": 0.068,
-      "c6g.xlarge": 0.136,
-      "c6g.2xlarge": 0.272,
-      "c7g.large": 0.0725,
-      "c7g.xlarge": 0.145,
-      "r6g.large": 0.1008,
-      "r6g.xlarge": 0.2016
-    },
-    "eu-west-1": {
-      "t3.micro": 0.0116,
-      "t3.small": 0.0232,
-      "t3.medium": 0.0456,
-      "t3.large": 0.0912,
-      "t3.xlarge": 0.1824,
-      "t3a.medium": 0.0416,
-      "t3a.large": 0.0832,
-      "m5.large": 0.107,
-      "m5.xlarge": 0.214,
-      "m5.2xlarge": 0.428,
-      "m5a.large": 0.096,
-      "m5a.xlarge": 0.192,
-      "c5.large": 0.096,
-      "c5.xlarge": 0.192,
-      "c5.2xlarge": 0.384,
-      "c5a.large": 0.087,
-      "c5a.xlarge": 0.174,
-      "r5.large": 0.141,
-      "r5.xlarge": 0.282,
-      "t4g.micro": 94e-4,
-      "t4g.small": 0.0188,
-      "t4g.medium": 0.0376,
-      "t4g.large": 0.0752,
-      "t4g.xlarge": 0.1504,
-      "m6g.medium": 0.043,
-      "m6g.large": 0.086,
-      "m6g.xlarge": 0.172,
-      "m6g.2xlarge": 0.344,
-      "m7g.medium": 0.0456,
-      "m7g.large": 0.0912,
-      "m7g.xlarge": 0.1824,
-      "m7g.2xlarge": 0.3648,
-      "c6g.medium": 0.038,
-      "c6g.large": 0.076,
-      "c6g.xlarge": 0.152,
-      "c6g.2xlarge": 0.304,
-      "c7g.large": 0.0812,
-      "c7g.xlarge": 0.1624,
-      "r6g.large": 0.1127,
-      "r6g.xlarge": 0.2254
-    },
-    "eu-west-2": {
-      "t3.micro": 0.0126,
-      "t3.small": 0.0252,
-      "t3.medium": 0.0504,
-      "t3.large": 0.1008,
-      "t3.xlarge": 0.2016,
-      "m5.large": 0.1178,
-      "m5.xlarge": 0.2356,
-      "m5.2xlarge": 0.4712,
-      "c5.large": 0.1054,
-      "c5.xlarge": 0.2108,
-      "c5.2xlarge": 0.4216,
-      "t4g.medium": 0.0414,
-      "t4g.large": 0.0828,
-      "t4g.xlarge": 0.1656,
-      "m6g.large": 0.0945,
-      "m6g.xlarge": 0.189,
-      "m6g.2xlarge": 0.378,
-      "m7g.large": 0.1001,
-      "m7g.xlarge": 0.2002,
-      "c6g.large": 0.0836,
-      "c6g.xlarge": 0.1672,
-      "r6g.large": 0.124,
-      "r6g.xlarge": 0.248
-    },
-    "eu-central-1": {
-      "t3.micro": 0.012,
-      "t3.small": 0.024,
-      "t3.medium": 0.0496,
-      "t3.large": 0.0992,
-      "t3.xlarge": 0.1984,
-      "t3a.medium": 0.0448,
-      "t3a.large": 0.0896,
-      "m5.large": 0.115,
-      "m5.xlarge": 0.23,
-      "m5.2xlarge": 0.46,
-      "m5a.large": 0.103,
-      "m5a.xlarge": 0.206,
-      "c5.large": 0.102,
-      "c5.xlarge": 0.204,
-      "c5.2xlarge": 0.408,
-      "r5.large": 0.151,
-      "r5.xlarge": 0.302,
-      "t4g.micro": 0.01,
-      "t4g.small": 0.02,
-      "t4g.medium": 0.0416,
-      "t4g.large": 0.0832,
-      "t4g.xlarge": 0.1664,
-      "m6g.medium": 0.046,
-      "m6g.large": 0.092,
-      "m6g.xlarge": 0.184,
-      "m6g.2xlarge": 0.368,
-      "m7g.medium": 0.0488,
-      "m7g.large": 0.0976,
-      "m7g.xlarge": 0.1952,
-      "m7g.2xlarge": 0.3904,
-      "c6g.medium": 0.041,
-      "c6g.large": 0.082,
-      "c6g.xlarge": 0.164,
-      "c6g.2xlarge": 0.328,
-      "c7g.large": 0.0875,
-      "c7g.xlarge": 0.175,
-      "r6g.large": 0.121,
-      "r6g.xlarge": 0.242
-    },
-    "eu-north-1": {
-      "t3.micro": 0.0108,
-      "t3.small": 0.0216,
-      "t3.medium": 0.0432,
-      "t3.large": 0.0864,
-      "t3.xlarge": 0.1728,
-      "m5.large": 0.1,
-      "m5.xlarge": 0.2,
-      "m5.2xlarge": 0.4,
-      "c5.large": 0.089,
-      "c5.xlarge": 0.178,
-      "c5.2xlarge": 0.356,
-      "t4g.medium": 0.0362,
-      "t4g.large": 0.0724,
-      "t4g.xlarge": 0.1448,
-      "m6g.large": 0.08,
-      "m6g.xlarge": 0.16,
-      "m6g.2xlarge": 0.32,
-      "m7g.large": 0.0848,
-      "m7g.xlarge": 0.1696,
-      "c6g.large": 0.0712,
-      "c6g.xlarge": 0.1424,
-      "r6g.large": 0.1054,
-      "r6g.xlarge": 0.2108
-    },
-    "ap-southeast-1": {
-      "t3.micro": 0.0132,
-      "t3.small": 0.0264,
-      "t3.medium": 0.0528,
-      "t3.large": 0.1056,
-      "t3.xlarge": 0.2112,
-      "m5.large": 0.124,
-      "m5.xlarge": 0.248,
-      "m5.2xlarge": 0.496,
-      "c5.large": 0.107,
-      "c5.xlarge": 0.214,
-      "c5.2xlarge": 0.428,
-      "t4g.medium": 0.0438,
-      "t4g.large": 0.0876,
-      "t4g.xlarge": 0.1752,
-      "m6g.large": 0.0992,
-      "m6g.xlarge": 0.1984,
-      "m6g.2xlarge": 0.3968,
-      "m7g.large": 0.1051,
-      "m7g.xlarge": 0.2102,
-      "c6g.large": 0.086,
-      "c6g.xlarge": 0.172,
-      "r6g.large": 0.1307,
-      "r6g.xlarge": 0.2614
-    },
-    "ap-southeast-2": {
-      "t3.micro": 0.0136,
-      "t3.small": 0.0272,
-      "t3.medium": 0.0544,
-      "t3.large": 0.1088,
-      "t3.xlarge": 0.2176,
-      "t3a.medium": 0.0492,
-      "t3a.large": 0.0984,
-      "m5.large": 0.134,
-      "m5.xlarge": 0.268,
-      "m5.2xlarge": 0.536,
-      "m5a.large": 0.12,
-      "m5a.xlarge": 0.24,
-      "c5.large": 0.118,
-      "c5.xlarge": 0.236,
-      "c5.2xlarge": 0.472,
-      "r5.large": 0.176,
-      "r5.xlarge": 0.352,
-      "t4g.micro": 0.0113,
-      "t4g.small": 0.0226,
-      "t4g.medium": 0.0452,
-      "t4g.large": 0.0904,
-      "t4g.xlarge": 0.1808,
-      "m6g.medium": 0.0535,
-      "m6g.large": 0.107,
-      "m6g.xlarge": 0.214,
-      "m6g.2xlarge": 0.428,
-      "m7g.medium": 0.0567,
-      "m7g.large": 0.1134,
-      "m7g.xlarge": 0.2268,
-      "m7g.2xlarge": 0.4536,
-      "c6g.medium": 0.047,
-      "c6g.large": 0.094,
-      "c6g.xlarge": 0.188,
-      "c6g.2xlarge": 0.376,
-      "c7g.large": 0.1002,
-      "c7g.xlarge": 0.2004,
-      "r6g.large": 0.1411,
-      "r6g.xlarge": 0.2822
-    },
-    "ap-northeast-1": {
-      "t3.micro": 0.014,
-      "t3.small": 0.028,
-      "t3.medium": 0.056,
-      "t3.large": 0.112,
-      "t3.xlarge": 0.224,
-      "t3a.medium": 0.0504,
-      "t3a.large": 0.1008,
-      "m5.large": 0.128,
-      "m5.xlarge": 0.256,
-      "m5.2xlarge": 0.512,
-      "m5a.large": 0.115,
-      "m5a.xlarge": 0.23,
-      "c5.large": 0.114,
-      "c5.xlarge": 0.228,
-      "c5.2xlarge": 0.456,
-      "r5.large": 0.169,
-      "r5.xlarge": 0.338,
-      "t4g.micro": 0.0116,
-      "t4g.small": 0.0232,
-      "t4g.medium": 0.0464,
-      "t4g.large": 0.0928,
-      "t4g.xlarge": 0.1856,
-      "m6g.medium": 0.0549,
-      "m6g.large": 0.1098,
-      "m6g.xlarge": 0.2196,
-      "m6g.2xlarge": 0.4392,
-      "m7g.medium": 0.0582,
-      "m7g.large": 0.1164,
-      "m7g.xlarge": 0.2328,
-      "m7g.2xlarge": 0.4656,
-      "c6g.medium": 0.0482,
-      "c6g.large": 0.0964,
-      "c6g.xlarge": 0.1928,
-      "c6g.2xlarge": 0.3856,
-      "c7g.large": 0.1028,
-      "c7g.xlarge": 0.2056,
-      "r6g.large": 0.1448,
-      "r6g.xlarge": 0.2896
-    },
-    "ap-south-1": {
-      "t3.micro": 0.0114,
-      "t3.small": 0.0228,
-      "t3.medium": 0.0456,
-      "t3.large": 0.0912,
-      "t3.xlarge": 0.1824,
-      "t3a.medium": 0.041,
-      "t3a.large": 0.082,
-      "m5.large": 0.106,
-      "m5.xlarge": 0.212,
-      "m5.2xlarge": 0.424,
-      "c5.large": 0.094,
-      "c5.xlarge": 0.188,
-      "c5.2xlarge": 0.376,
-      "r5.large": 0.1396,
-      "r5.xlarge": 0.2792,
-      "t4g.micro": 95e-4,
-      "t4g.small": 0.019,
-      "t4g.medium": 0.038,
-      "t4g.large": 0.076,
-      "t4g.xlarge": 0.152,
-      "m6g.medium": 0.0454,
-      "m6g.large": 0.0908,
-      "m6g.xlarge": 0.1816,
-      "m6g.2xlarge": 0.3632,
-      "m7g.medium": 0.0481,
-      "m7g.large": 0.0962,
-      "m7g.xlarge": 0.1924,
-      "m7g.2xlarge": 0.3848,
-      "c6g.medium": 0.0399,
-      "c6g.large": 0.0798,
-      "c6g.xlarge": 0.1596,
-      "c6g.2xlarge": 0.3192,
-      "r6g.large": 0.1197,
-      "r6g.xlarge": 0.2394
-    },
-    "ca-central-1": {
-      "t3.micro": 0.0116,
-      "t3.small": 0.0232,
-      "t3.medium": 0.0464,
-      "t3.large": 0.0928,
-      "t3.xlarge": 0.1856,
-      "t3a.medium": 0.0418,
-      "t3a.large": 0.0836,
-      "m5.large": 0.107,
-      "m5.xlarge": 0.214,
-      "m5.2xlarge": 0.428,
-      "m5a.large": 0.096,
-      "m5a.xlarge": 0.192,
-      "c5.large": 0.095,
-      "c5.xlarge": 0.19,
-      "c5.2xlarge": 0.38,
-      "r5.large": 0.141,
-      "r5.xlarge": 0.282,
-      "t4g.micro": 96e-4,
-      "t4g.small": 0.0192,
-      "t4g.medium": 0.0386,
-      "t4g.large": 0.0772,
-      "t4g.xlarge": 0.1544,
-      "m6g.medium": 0.0462,
-      "m6g.large": 0.0924,
-      "m6g.xlarge": 0.1848,
-      "m6g.2xlarge": 0.3696,
-      "m7g.medium": 0.049,
-      "m7g.large": 0.098,
-      "m7g.xlarge": 0.196,
-      "m7g.2xlarge": 0.392,
-      "c6g.medium": 0.0408,
-      "c6g.large": 0.0816,
-      "c6g.xlarge": 0.1632,
-      "c6g.2xlarge": 0.3264,
-      "c7g.large": 0.087,
-      "c7g.xlarge": 0.174,
-      "r6g.large": 0.1218,
-      "r6g.xlarge": 0.2436
-    },
-    "sa-east-1": {
-      "t3.micro": 0.0168,
-      "t3.small": 0.0336,
-      "t3.medium": 0.0672,
-      "t3.large": 0.1344,
-      "t3.xlarge": 0.2688,
-      "m5.large": 0.162,
-      "m5.xlarge": 0.324,
-      "m5.2xlarge": 0.648,
-      "c5.large": 0.144,
-      "c5.xlarge": 0.288,
-      "c5.2xlarge": 0.576,
-      "t4g.medium": 0.056,
-      "t4g.large": 0.112,
-      "t4g.xlarge": 0.224,
-      "m6g.large": 0.1296,
-      "m6g.xlarge": 0.2592,
-      "m6g.2xlarge": 0.5184,
-      "m7g.large": 0.1374,
-      "m7g.xlarge": 0.2748,
-      "c6g.large": 0.1152,
-      "c6g.xlarge": 0.2304,
-      "r6g.large": 0.1706,
-      "r6g.xlarge": 0.3412
+    pricing_usd_per_hour: {
+      "us-central1": {
+        "n2-standard-2": 0.097,
+        "n2-standard-4": 0.194,
+        "n2-standard-8": 0.388,
+        "n2d-standard-2": 0.086,
+        "n2d-standard-4": 0.172,
+        "t2a-standard-1": 0.038,
+        "t2a-standard-2": 0.076,
+        "t2a-standard-4": 0.152,
+        "t2a-standard-8": 0.304,
+        "c2-standard-4": 0.2,
+        "c2-standard-8": 0.4,
+        "e2-standard-2": 0.067,
+        "e2-standard-4": 0.134,
+        "t2d-standard-1": 0.037,
+        "t2d-standard-2": 0.074
+      },
+      "us-east1": {
+        "n2-standard-2": 0.097,
+        "n2-standard-4": 0.194,
+        "n2-standard-8": 0.388,
+        "n2d-standard-2": 0.086,
+        "n2d-standard-4": 0.172,
+        "t2a-standard-1": 0.038,
+        "t2a-standard-2": 0.076,
+        "t2a-standard-4": 0.152,
+        "t2a-standard-8": 0.304,
+        "c2-standard-4": 0.2,
+        "c2-standard-8": 0.4,
+        "e2-standard-2": 0.067,
+        "e2-standard-4": 0.134,
+        "t2d-standard-1": 0.037,
+        "t2d-standard-2": 0.074
+      },
+      "us-east4": {
+        "n2-standard-2": 0.104,
+        "n2-standard-4": 0.208,
+        "n2-standard-8": 0.416,
+        "n2d-standard-2": 0.092,
+        "n2d-standard-4": 0.185,
+        "t2a-standard-1": 0.041,
+        "t2a-standard-2": 0.082,
+        "t2a-standard-4": 0.163,
+        "t2a-standard-8": 0.326,
+        "c2-standard-4": 0.214,
+        "c2-standard-8": 0.428,
+        "e2-standard-2": 0.072,
+        "e2-standard-4": 0.144,
+        "t2d-standard-1": 0.04,
+        "t2d-standard-2": 0.079
+      },
+      "us-west1": {
+        "n2-standard-2": 0.097,
+        "n2-standard-4": 0.194,
+        "n2-standard-8": 0.388,
+        "n2d-standard-2": 0.086,
+        "n2d-standard-4": 0.172,
+        "t2a-standard-1": 0.038,
+        "t2a-standard-2": 0.076,
+        "t2a-standard-4": 0.152,
+        "t2a-standard-8": 0.304,
+        "c2-standard-4": 0.2,
+        "c2-standard-8": 0.4,
+        "e2-standard-2": 0.067,
+        "e2-standard-4": 0.134,
+        "t2d-standard-1": 0.037,
+        "t2d-standard-2": 0.074
+      },
+      "europe-west1": {
+        "n2-standard-2": 0.108,
+        "n2-standard-4": 0.216,
+        "n2-standard-8": 0.432,
+        "n2d-standard-2": 0.096,
+        "n2d-standard-4": 0.192,
+        "t2a-standard-1": 0.042,
+        "t2a-standard-2": 0.085,
+        "t2a-standard-4": 0.169,
+        "t2a-standard-8": 0.339,
+        "c2-standard-4": 0.222,
+        "c2-standard-8": 0.445,
+        "e2-standard-2": 0.075,
+        "e2-standard-4": 0.15,
+        "t2d-standard-1": 0.044,
+        "t2d-standard-2": 0.087
+      },
+      "europe-west2": {
+        "n2-standard-2": 0.116,
+        "n2-standard-4": 0.231,
+        "n2-standard-8": 0.462,
+        "n2d-standard-2": 0.103,
+        "n2d-standard-4": 0.205,
+        "t2a-standard-1": 0.045,
+        "t2a-standard-2": 0.091,
+        "t2a-standard-4": 0.181,
+        "t2a-standard-8": 0.362,
+        "c2-standard-4": 0.238,
+        "c2-standard-8": 0.475,
+        "e2-standard-2": 0.08,
+        "e2-standard-4": 0.16,
+        "t2d-standard-1": 0.047,
+        "t2d-standard-2": 0.093
+      },
+      "europe-north1": {
+        "n2-standard-2": 0.108,
+        "n2-standard-4": 0.216,
+        "n2-standard-8": 0.432,
+        "n2d-standard-2": 0.096,
+        "n2d-standard-4": 0.192,
+        "t2a-standard-1": 0.042,
+        "t2a-standard-2": 0.085,
+        "t2a-standard-4": 0.169,
+        "t2a-standard-8": 0.339,
+        "c2-standard-4": 0.222,
+        "c2-standard-8": 0.445,
+        "e2-standard-2": 0.075,
+        "e2-standard-4": 0.15,
+        "t2d-standard-1": 0.044,
+        "t2d-standard-2": 0.087
+      },
+      "asia-southeast1": {
+        "n2-standard-2": 0.117,
+        "n2-standard-4": 0.234,
+        "n2-standard-8": 0.469,
+        "n2d-standard-2": 0.104,
+        "n2d-standard-4": 0.208,
+        "t2a-standard-1": 0.046,
+        "t2a-standard-2": 0.092,
+        "t2a-standard-4": 0.184,
+        "t2a-standard-8": 0.368,
+        "c2-standard-4": 0.241,
+        "c2-standard-8": 0.482,
+        "e2-standard-2": 0.081,
+        "e2-standard-4": 0.162,
+        "t2d-standard-1": 0.048,
+        "t2d-standard-2": 0.095
+      },
+      "asia-northeast1": {
+        "n2-standard-2": 0.126,
+        "n2-standard-4": 0.252,
+        "n2-standard-8": 0.504,
+        "n2d-standard-2": 0.112,
+        "n2d-standard-4": 0.223,
+        "t2a-standard-1": 0.049,
+        "t2a-standard-2": 0.099,
+        "t2a-standard-4": 0.197,
+        "t2a-standard-8": 0.395,
+        "c2-standard-4": 0.259,
+        "c2-standard-8": 0.517,
+        "e2-standard-2": 0.087,
+        "e2-standard-4": 0.174,
+        "t2d-standard-1": 0.051,
+        "t2d-standard-2": 0.102
+      },
+      "asia-south1": {
+        "n2-standard-2": 0.102,
+        "n2-standard-4": 0.204,
+        "n2-standard-8": 0.407,
+        "n2d-standard-2": 0.091,
+        "n2d-standard-4": 0.181,
+        "t2a-standard-1": 0.04,
+        "t2a-standard-2": 0.08,
+        "t2a-standard-4": 0.159,
+        "t2a-standard-8": 0.319,
+        "c2-standard-4": 0.209,
+        "c2-standard-8": 0.419,
+        "e2-standard-2": 0.07,
+        "e2-standard-4": 0.14,
+        "t2d-standard-1": 0.039,
+        "t2d-standard-2": 0.078
+      },
+      "northamerica-northeast1": {
+        "n2-standard-2": 0.104,
+        "n2-standard-4": 0.208,
+        "n2-standard-8": 0.416,
+        "n2d-standard-2": 0.092,
+        "n2d-standard-4": 0.185,
+        "t2a-standard-1": 0.041,
+        "t2a-standard-2": 0.082,
+        "t2a-standard-4": 0.163,
+        "t2a-standard-8": 0.326,
+        "c2-standard-4": 0.214,
+        "c2-standard-8": 0.428,
+        "e2-standard-2": 0.072,
+        "e2-standard-4": 0.144,
+        "t2d-standard-1": 0.04,
+        "t2d-standard-2": 0.079
+      },
+      "southamerica-east1": {
+        "n2-standard-2": 0.138,
+        "n2-standard-4": 0.276,
+        "n2-standard-8": 0.552,
+        "n2d-standard-2": 0.123,
+        "n2d-standard-4": 0.245,
+        "t2a-standard-1": 0.054,
+        "t2a-standard-2": 0.108,
+        "t2a-standard-4": 0.216,
+        "t2a-standard-8": 0.431,
+        "c2-standard-4": 0.283,
+        "c2-standard-8": 0.566,
+        "e2-standard-2": 0.095,
+        "e2-standard-4": 0.19,
+        "t2d-standard-1": 0.053,
+        "t2d-standard-2": 0.105
+      }
     }
   }
 };
@@ -1008,8 +1968,8 @@ var factors_default = {
 // package.json
 var package_default = {
   name: "greenops-cli",
-  version: "0.4.0",
-  description: "Carbon footprint linting for Terraform plans. Analyses infrastructure changes for CO2e impact and cost, posts recommendations directly on GitHub PRs.",
+  version: "0.5.0",
+  description: "Carbon footprint linting for Terraform plans \u2014 AWS, Azure, and GCP. Analyses infrastructure changes for Scope 2, Scope 3, and water impact. Posts recommendations directly on GitHub PRs.",
   main: "dist/index.cjs",
   bin: {
     "greenops-cli": "dist/index.cjs"
@@ -1031,6 +1991,9 @@ var package_default = {
     "greenops",
     "cloud",
     "aws",
+    "azure",
+    "gcp",
+    "multi-cloud",
     "sustainability",
     "devops",
     "ci",
@@ -1061,6 +2024,60 @@ var package_default = {
 // extractor.ts
 var import_node_fs = require("node:fs");
 var import_node_path = require("node:path");
+var SUPPORTED_TYPES = {
+  aws: ["aws_instance", "aws_db_instance"],
+  azure: ["azurerm_linux_virtual_machine", "azurerm_windows_virtual_machine", "azurerm_virtual_machine"],
+  gcp: ["google_compute_instance"]
+};
+var COMPUTE_RELEVANT_TYPES = [
+  "aws_launch_template",
+  "aws_autoscaling_group",
+  "aws_ecs_service",
+  "aws_eks_node_group",
+  "aws_lambda_function",
+  "azurerm_virtual_machine_scale_set",
+  "azurerm_kubernetes_cluster",
+  "azurerm_function_app",
+  "google_compute_instance_template",
+  "google_container_cluster",
+  "google_cloudfunctions_function"
+];
+function detectProvider(resourceType) {
+  if (resourceType.startsWith("aws_"))
+    return "aws";
+  if (resourceType.startsWith("azurerm_"))
+    return "azure";
+  if (resourceType.startsWith("google_"))
+    return "gcp";
+  return null;
+}
+function extractProviderRegions(plan) {
+  const result2 = { aws: null, azure: null, gcp: null };
+  const providerConfig = plan.configuration?.provider_config;
+  if (!providerConfig)
+    return result2;
+  for (const [key, provider] of Object.entries(providerConfig)) {
+    if (key === "aws" || key.startsWith("aws.")) {
+      const alias = provider.expressions?.alias?.constant_value;
+      if (alias && key !== "aws")
+        continue;
+      const region = provider.expressions?.region?.constant_value;
+      if (region && !result2.aws)
+        result2.aws = region;
+    }
+    if (key === "azurerm" || key.startsWith("azurerm.")) {
+      const location = provider.expressions?.location?.constant_value;
+      if (location && !result2.azure)
+        result2.azure = location;
+    }
+    if (key === "google" || key.startsWith("google.")) {
+      const region = provider.expressions?.region?.constant_value;
+      if (region && !result2.gcp)
+        result2.gcp = region;
+    }
+  }
+  return result2;
+}
 function isKnownAfterApply(change, fieldPath) {
   if (!change)
     return true;
@@ -1070,30 +2087,7 @@ function isKnownAfterApply(change, fieldPath) {
     return true;
   return false;
 }
-function extractProviderRegion(plan) {
-  const providerConfig = plan.configuration?.provider_config;
-  if (!providerConfig)
-    return null;
-  for (const [key, provider] of Object.entries(providerConfig)) {
-    if (key === "aws" || key.startsWith("aws.")) {
-      const alias = provider.expressions?.alias?.constant_value;
-      if (alias && key !== "aws")
-        continue;
-      const region = provider.expressions?.region?.constant_value;
-      if (region && typeof region === "string")
-        return region;
-    }
-  }
-  for (const [key, provider] of Object.entries(providerConfig)) {
-    if (key === "aws" || key.startsWith("aws.")) {
-      const region = provider.expressions?.region?.constant_value;
-      if (region && typeof region === "string")
-        return region;
-    }
-  }
-  return null;
-}
-function resolveRegion(change, providerRegion) {
+function resolveAwsRegion(change, providerRegion) {
   if (change?.after?.arn && typeof change.after.arn === "string") {
     const parts = change.after.arn.split(":");
     if (parts.length >= 4 && parts[3])
@@ -1104,15 +2098,66 @@ function resolveRegion(change, providerRegion) {
     if (azMatch)
       return azMatch[1];
   }
-  if (change?.after?.region && typeof change.after.region === "string") {
+  if (change?.after?.region && typeof change.after.region === "string")
     return change.after.region;
-  }
-  if (change?.before?.region && typeof change.before.region === "string") {
+  if (change?.before?.region && typeof change.before.region === "string")
     return change.before.region;
-  }
   if (providerRegion)
     return providerRegion;
   return null;
+}
+function resolveAzureRegion(change, providerRegion) {
+  const raw = change?.after?.location ?? change?.before?.location ?? providerRegion;
+  if (!raw || typeof raw !== "string")
+    return null;
+  return raw.toLowerCase().replace(/\s+/g, "");
+}
+function resolveGcpRegion(change, providerRegion) {
+  if (change?.after?.region && typeof change.after.region === "string")
+    return change.after.region;
+  if (change?.after?.zone && typeof change.after.zone === "string") {
+    const zoneMatch = change.after.zone.match(/^([a-z]+-[a-z]+\d+)/);
+    if (zoneMatch)
+      return zoneMatch[1];
+  }
+  if (change?.before?.region && typeof change.before.region === "string")
+    return change.before.region;
+  if (providerRegion)
+    return providerRegion;
+  return null;
+}
+function extractAwsInstanceType(res, plannedValuesMap) {
+  const isDb = res.type === "aws_db_instance";
+  const typeField = isDb ? "instance_class" : "instance_type";
+  if (isKnownAfterApply(res.change, typeField)) {
+    const plannedType = plannedValuesMap.get(res.address)?.[typeField];
+    if (typeof plannedType !== "string")
+      return { instanceType: null, skipReason: "known_after_apply" };
+    if (!res.change.after)
+      res.change.after = {};
+    res.change.after[typeField] = plannedType;
+  }
+  let instanceType = res.change?.after?.[typeField];
+  if (typeof instanceType !== "string")
+    return { instanceType: null, skipReason: "known_after_apply" };
+  if (isDb && instanceType.startsWith("db.")) {
+    instanceType = instanceType.replace(/^db\./, "");
+    if (!instanceType.includes("."))
+      return { instanceType: null, skipReason: "unsupported_instance" };
+  }
+  return { instanceType };
+}
+function extractAzureInstanceType(res) {
+  const size = res.change?.after?.size ?? res.change?.before?.size;
+  if (!size || typeof size !== "string")
+    return { instanceType: null, skipReason: "known_after_apply" };
+  return { instanceType: size };
+}
+function extractGcpInstanceType(res) {
+  const machineType = res.change?.after?.machine_type ?? res.change?.before?.machine_type;
+  if (!machineType || typeof machineType !== "string")
+    return { instanceType: null, skipReason: "known_after_apply" };
+  return { instanceType: machineType };
 }
 function extractResourceInputs(planFilePath) {
   const result2 = { resources: [], skipped: [], unsupportedTypes: [] };
@@ -1136,68 +2181,66 @@ function extractResourceInputs(planFilePath) {
     return result2;
   }
   const typedPlan = plan;
-  const providerRegion = extractProviderRegion(typedPlan);
+  const providerRegions = extractProviderRegions(typedPlan);
   const plannedValuesMap = /* @__PURE__ */ new Map();
   for (const r of typedPlan.planned_values?.root_module?.resources ?? []) {
     if (r.address && r.values)
       plannedValuesMap.set(r.address, r.values);
   }
+  const allSupportedTypes = Object.values(SUPPORTED_TYPES).flat();
   for (const rawRes of typedPlan.resource_changes) {
     const res = rawRes;
     const actions = res.change?.actions;
     if (!Array.isArray(actions) || !actions.includes("create") && !actions.includes("update")) {
       continue;
     }
-    const SUPPORTED_TYPES = ["aws_instance", "aws_db_instance"];
-    const COMPUTE_RELEVANT_TYPES = ["aws_launch_template", "aws_autoscaling_group", "aws_ecs_service", "aws_eks_node_group", "aws_lambda_function"];
-    if (!SUPPORTED_TYPES.includes(res.type)) {
+    const provider = detectProvider(res.type);
+    if (!allSupportedTypes.includes(res.type)) {
       if (COMPUTE_RELEVANT_TYPES.includes(res.type) && !result2.unsupportedTypes.includes(res.type)) {
         result2.unsupportedTypes.push(res.type);
       }
       continue;
     }
-    const isDb = res.type === "aws_db_instance";
-    const typeField = isDb ? "instance_class" : "instance_type";
-    if (isKnownAfterApply(res.change, typeField)) {
-      const plannedType = plannedValuesMap.get(res.address)?.[typeField];
-      if (typeof plannedType !== "string") {
-        result2.skipped.push({ resourceId: res.address, reason: "known_after_apply" });
-        continue;
-      }
-      if (!res.change.after)
-        res.change.after = {};
-      res.change.after[typeField] = plannedType;
+    if (!provider)
+      continue;
+    let instanceType = null;
+    let skipReason;
+    let region = null;
+    if (provider === "aws") {
+      const extracted2 = extractAwsInstanceType(res, plannedValuesMap);
+      instanceType = extracted2.instanceType;
+      skipReason = extracted2.skipReason;
+      if (instanceType)
+        region = resolveAwsRegion(res.change, providerRegions.aws);
+    } else if (provider === "azure") {
+      const extracted2 = extractAzureInstanceType(res);
+      instanceType = extracted2.instanceType;
+      skipReason = extracted2.skipReason;
+      if (instanceType)
+        region = resolveAzureRegion(res.change, providerRegions.azure);
+    } else if (provider === "gcp") {
+      const extracted2 = extractGcpInstanceType(res);
+      instanceType = extracted2.instanceType;
+      skipReason = extracted2.skipReason;
+      if (instanceType)
+        region = resolveGcpRegion(res.change, providerRegions.gcp);
     }
-    let instanceType = res.change.after[typeField];
-    if (typeof res.change.after[typeField] !== "string") {
-      result2.skipped.push({ resourceId: res.address, reason: "known_after_apply" });
+    if (!instanceType || skipReason) {
+      result2.skipped.push({ resourceId: res.address, reason: skipReason ?? "known_after_apply" });
       continue;
     }
-    if (isDb && instanceType.startsWith("db.")) {
-      instanceType = instanceType.replace(/^db\./, "");
-      if (!instanceType.includes(".")) {
-        result2.skipped.push({ resourceId: res.address, reason: "unsupported_instance" });
-        continue;
-      }
-    }
-    const region = resolveRegion(res.change, providerRegion);
     if (!region) {
       result2.skipped.push({ resourceId: res.address, reason: "known_after_apply" });
       continue;
     }
-    result2.resources.push({
-      resourceId: res.address,
-      // Correctly applies nested addresses as the ID (e.g. module.compute.aws_instance.api)
-      instanceType,
-      region
-    });
+    result2.resources.push({ resourceId: res.address, instanceType, region, provider });
   }
   return result2;
 }
 
 // engine.ts
 var HOURS_PER_MONTH = 730;
-var GRAMS_PER_KWH_TO_KWH_FACTOR = 1e3;
+var GRAMS_PER_KWH = 1e3;
 function resolveUtilization(input, ledger) {
   if (input.avgUtilization !== void 0 && (input.avgUtilization < 0 || input.avgUtilization > 1)) {
     throw new RangeError(`avgUtilization must be between 0 and 1, got ${input.avgUtilization}`);
@@ -1210,50 +2253,70 @@ function resolveUtilization(input, ledger) {
 function linearInterpolationWatts(idle, max, utilization) {
   return idle + (max - idle) * utilization;
 }
-function wattsToScope2Carbon(watts, hours, pue, gridIntensityGco2ePerKwh) {
-  const energyKwh = watts * pue * hours / GRAMS_PER_KWH_TO_KWH_FACTOR;
-  return energyKwh * gridIntensityGco2ePerKwh;
+function wattsToScope2Carbon(watts, hours, pue, gridIntensity) {
+  return watts * pue * hours / GRAMS_PER_KWH * gridIntensity;
 }
-function wattsToWater(watts, hours, waterIntensityLitresPerKwh) {
-  const energyKwh = watts * hours / GRAMS_PER_KWH_TO_KWH_FACTOR;
-  return energyKwh * waterIntensityLitresPerKwh;
+function wattsToWater(watts, hours, wue) {
+  return watts * hours / GRAMS_PER_KWH * wue;
 }
 var ARM_UPGRADE_MAP = {
-  // x86 → ARM64 upgrade targets (same vCPU/RAM class, lower power + embodied)
-  t3: "t4g",
-  t3a: "t4g",
-  m5: "m6g",
-  m5a: "m6g",
-  c5: "c6g",
-  c5a: "c6g",
-  r5: "r6g",
-  r5a: "r6g"
+  aws: {
+    t3: "t4g",
+    t3a: "t4g",
+    m5: "m6g",
+    m5a: "m6g",
+    c5: "c6g",
+    c5a: "c6g",
+    r5: "r6g",
+    r5a: "r6g"
+  },
+  azure: {
+    "Standard_D2s_v3": "Standard_D2ps_v5",
+    "Standard_D4s_v3": "Standard_D4ps_v5",
+    "Standard_D8s_v3": "Standard_D8ps_v5",
+    "Standard_D2s_v4": "Standard_D2ps_v5",
+    "Standard_D4s_v4": "Standard_D4ps_v5"
+  },
+  gcp: {
+    n2: "t2a",
+    n2d: "t2a",
+    e2: "t2a"
+  }
 };
-function getArmAlternative(instanceType, ledger) {
+function getArmAlternative(instanceType, provider, ledger) {
+  const providerLedger = ledger[provider];
+  const map = ARM_UPGRADE_MAP[provider];
+  if (provider === "azure") {
+    const candidate2 = map[instanceType];
+    return candidate2 && providerLedger.instances[candidate2] ? candidate2 : null;
+  }
   const [family, size] = instanceType.split(".");
   if (!family || !size)
     return null;
-  const armFamily = ARM_UPGRADE_MAP[family];
+  const armFamily = map[family];
   if (!armFamily)
     return null;
   const candidate = `${armFamily}.${size}`;
-  return ledger.instances[candidate] ? candidate : null;
+  return providerLedger.instances[candidate] ? candidate : null;
 }
-function getCleanerRegion(currentRegion, instanceType, ledger) {
-  const regions = Object.entries(ledger.regions).filter(([regionId]) => {
+function getCleanerRegion(currentRegion, instanceType, provider, ledger) {
+  const providerLedger = ledger[provider];
+  const regions = Object.entries(providerLedger.regions).filter(([regionId]) => {
     if (regionId === currentRegion)
       return false;
-    return !!ledger.pricing_usd_per_hour[regionId]?.[instanceType];
+    return !!providerLedger.pricing_usd_per_hour[regionId]?.[instanceType];
   }).sort(([, a], [, b]) => a.grid_intensity_gco2e_per_kwh - b.grid_intensity_gco2e_per_kwh);
   if (regions.length === 0)
     return null;
   const [cleanestRegionId, cleanestRegion] = regions[0];
-  const currentIntensity = ledger.regions[currentRegion]?.grid_intensity_gco2e_per_kwh ?? Infinity;
+  const currentIntensity = providerLedger.regions[currentRegion]?.grid_intensity_gco2e_per_kwh ?? Infinity;
   if (cleanestRegion.grid_intensity_gco2e_per_kwh >= currentIntensity * 0.9)
     return null;
   return cleanestRegionId;
 }
 function calculateBaseline(input, ledger = factors_default) {
+  const provider = input.provider ?? "aws";
+  const providerLedger = ledger[provider];
   const hours = input.hoursPerMonth ?? HOURS_PER_MONTH;
   const utilization = resolveUtilization(input, ledger);
   const zeroResult = (unsupportedReason, gridIntensity = 0, embodied = 0, waterIntensity = 0) => ({
@@ -1273,23 +2336,23 @@ function calculateBaseline(input, ledger = factors_default) {
       waterIntensityLitresPerKwhApplied: waterIntensity
     }
   });
-  const regionData = ledger.regions[input.region];
+  const regionData = providerLedger.regions[input.region];
   if (!regionData) {
-    return zeroResult(`Region "${input.region}" is not present in the Open GreenOps Methodology Ledger v${ledger.metadata.ledger_version}.`);
+    return zeroResult(`Region "${input.region}" is not present in the ${provider.toUpperCase()} section of the Open GreenOps Methodology Ledger v${ledger.metadata.ledger_version}.`);
   }
-  const instanceData = ledger.instances[input.instanceType];
+  const instanceData = providerLedger.instances[input.instanceType];
   if (!instanceData) {
     return zeroResult(
-      `Instance type "${input.instanceType}" is not present in the Open GreenOps Methodology Ledger v${ledger.metadata.ledger_version}.`,
+      `Instance type "${input.instanceType}" is not present in the ${provider.toUpperCase()} section of the Open GreenOps Methodology Ledger v${ledger.metadata.ledger_version}.`,
       regionData.grid_intensity_gco2e_per_kwh,
       0,
       regionData.water_intensity_litres_per_kwh
     );
   }
-  const pricePerHour = ledger.pricing_usd_per_hour[input.region]?.[input.instanceType];
+  const pricePerHour = providerLedger.pricing_usd_per_hour[input.region]?.[input.instanceType];
   if (pricePerHour === void 0) {
     return zeroResult(
-      `No pricing data for "${input.instanceType}" in "${input.region}" in the Open GreenOps Methodology Ledger v${ledger.metadata.ledger_version}.`,
+      `No pricing data for "${input.instanceType}" in "${input.region}" (${provider.toUpperCase()}).`,
       regionData.grid_intensity_gco2e_per_kwh,
       instanceData.embodied_co2e_grams_per_month,
       regionData.water_intensity_litres_per_kwh
@@ -1308,11 +2371,7 @@ function calculateBaseline(input, ledger = factors_default) {
     regionData.grid_intensity_gco2e_per_kwh
   );
   const embodiedCo2eGramsPerMonth = instanceData.embodied_co2e_grams_per_month * (hours / HOURS_PER_MONTH);
-  const waterLitresPerMonth = wattsToWater(
-    effectiveWatts,
-    hours,
-    regionData.water_intensity_litres_per_kwh
-  );
+  const waterLitresPerMonth = wattsToWater(effectiveWatts, hours, regionData.water_intensity_litres_per_kwh);
   const totalLifecycleCo2eGramsPerMonth = totalCo2eGramsPerMonth + embodiedCo2eGramsPerMonth;
   const totalCostUsdPerMonth = pricePerHour * hours;
   const confidence = input.avgUtilization !== void 0 ? "MEDIUM" : "HIGH";
@@ -1336,8 +2395,10 @@ function calculateBaseline(input, ledger = factors_default) {
 function generateRecommendation(input, baseline, ledger = factors_default) {
   if (baseline.confidence === "LOW_ASSUMED_DEFAULT")
     return null;
+  const provider = input.provider ?? "aws";
+  const providerLedger = ledger[provider];
   const candidates = [];
-  const armAlternative = getArmAlternative(input.instanceType, ledger);
+  const armAlternative = getArmAlternative(input.instanceType, provider, ledger);
   if (armAlternative) {
     const armEstimate = calculateBaseline({ ...input, instanceType: armAlternative }, ledger);
     if (armEstimate.confidence !== "LOW_ASSUMED_DEFAULT") {
@@ -1345,17 +2406,17 @@ function generateRecommendation(input, baseline, ledger = factors_default) {
       const costDelta = armEstimate.totalCostUsdPerMonth - baseline.totalCostUsdPerMonth;
       const embodiedDelta = armEstimate.embodiedCo2eGramsPerMonth - baseline.embodiedCo2eGramsPerMonth;
       if (co2Delta < 0 && costDelta < 0) {
-        const embodiedNote = embodiedDelta < 0 ? ` ARM64 also reduces embodied (Scope 3) carbon by ${Math.abs(Math.round(embodiedDelta))}g CO2e/month.` : "";
+        const embodiedNote = embodiedDelta < 0 ? ` ARM also reduces embodied (Scope 3) carbon by ${Math.abs(Math.round(embodiedDelta))}g CO2e/month.` : "";
         candidates.push({
           suggestedInstanceType: armAlternative,
           co2eDeltaGramsPerMonth: co2Delta,
           costDeltaUsdPerMonth: costDelta,
-          rationale: `Switching from ${input.instanceType} (x86_64) to ${armAlternative} (ARM64) provides identical vCPU and memory at lower power draw, reducing Scope 2 carbon by ${Math.abs(Math.round(co2Delta))}g CO2e/month and cost by $${Math.abs(costDelta).toFixed(2)}/month.${embodiedNote}`
+          rationale: `Switching from ${input.instanceType} to ${armAlternative} (ARM) provides identical vCPU and memory at lower power draw, saving ${Math.abs(Math.round(co2Delta))}g CO2e/month and $${Math.abs(costDelta).toFixed(2)}/month.${embodiedNote}`
         });
       }
     }
   }
-  const cleanerRegion = getCleanerRegion(input.region, input.instanceType, ledger);
+  const cleanerRegion = getCleanerRegion(input.region, input.instanceType, provider, ledger);
   if (cleanerRegion) {
     const regionEstimate = calculateBaseline({ ...input, region: cleanerRegion }, ledger);
     if (regionEstimate.confidence !== "LOW_ASSUMED_DEFAULT") {
@@ -1363,7 +2424,7 @@ function generateRecommendation(input, baseline, ledger = factors_default) {
       const costDelta = regionEstimate.totalCostUsdPerMonth - baseline.totalCostUsdPerMonth;
       const co2ReductionPct = baseline.totalCo2eGramsPerMonth > 0 ? Math.abs(co2Delta) / baseline.totalCo2eGramsPerMonth : 0;
       if (co2Delta < 0 && co2ReductionPct > 0.15) {
-        const regionName = ledger.regions[cleanerRegion]?.location ?? cleanerRegion;
+        const regionName = providerLedger.regions[cleanerRegion]?.location ?? cleanerRegion;
         const costNote = costDelta > 0 ? ` (note: cost increases by $${costDelta.toFixed(2)}/month)` : ` saving $${Math.abs(costDelta).toFixed(2)}/month`;
         const waterDelta = regionEstimate.waterLitresPerMonth - baseline.waterLitresPerMonth;
         const waterNote = waterDelta < -0.1 ? ` Water consumption also decreases by ${Math.abs(waterDelta).toFixed(1)}L/month.` : "";
@@ -1371,7 +2432,7 @@ function generateRecommendation(input, baseline, ledger = factors_default) {
           suggestedRegion: cleanerRegion,
           co2eDeltaGramsPerMonth: co2Delta,
           costDeltaUsdPerMonth: costDelta,
-          rationale: `Moving ${input.instanceType} from ${input.region} to ${regionName} (${cleanerRegion}) reduces Scope 2 grid carbon intensity from ${ledger.regions[input.region]?.grid_intensity_gco2e_per_kwh}g to ${ledger.regions[cleanerRegion]?.grid_intensity_gco2e_per_kwh}g CO2e/kWh, saving ${Math.abs(Math.round(co2Delta))}g CO2e/month${costNote}.${waterNote}`
+          rationale: `Moving ${input.instanceType} from ${input.region} to ${regionName} (${cleanerRegion}) reduces grid carbon intensity from ${providerLedger.regions[input.region]?.grid_intensity_gco2e_per_kwh}g to ${providerLedger.regions[cleanerRegion]?.grid_intensity_gco2e_per_kwh}g CO2e/kWh, saving ${Math.abs(Math.round(co2Delta))}g CO2e/month${costNote}.${waterNote}`
         });
       }
     }
@@ -1415,10 +2476,12 @@ function analysePlan(resources, skipped, planFile2, ledger = factors_default, un
       potentialCostSavingUsdPerMonth: 0
     }
   );
+  const providers = [...new Set(resources.map((r) => r.provider ?? "aws"))];
   return {
     analysedAt: (/* @__PURE__ */ new Date()).toISOString(),
     ledgerVersion: ledger.metadata.ledger_version,
     planFile: planFile2,
+    providers: providers.length > 0 ? providers : ["aws"],
     resources: analysedResources,
     skipped,
     unsupportedTypes,
@@ -2007,17 +3070,27 @@ if (values.help) {
   process.exit(0);
 }
 if (values.coverage) {
-  const rawFs = Object.assign({}, factors_default);
+  const rawFs = factors_default;
+  const awsRegions = Object.keys(rawFs.aws.regions);
+  const azureRegions = Object.keys(rawFs.azure.regions);
+  const gcpRegions = Object.keys(rawFs.gcp.regions);
+  const awsInstances = Object.keys(rawFs.aws.instances);
+  const azureInstances = Object.keys(rawFs.azure.instances);
+  const gcpInstances = Object.keys(rawFs.gcp.instances);
   if (values.format === "json") {
     console.log(JSON.stringify({
       ledgerVersion: rawFs.metadata.ledger_version,
-      regions: Object.keys(rawFs.regions),
-      instances: Object.keys(rawFs.instances)
+      providers: {
+        aws: { regions: awsRegions, instances: awsInstances },
+        azure: { regions: azureRegions, instances: azureInstances },
+        gcp: { regions: gcpRegions, instances: gcpInstances }
+      }
     }, null, 2));
   } else {
     console.log(`GreenOps Methodology Ledger v${rawFs.metadata.ledger_version}`);
-    console.log(`Supported Regions (${Object.keys(rawFs.regions).length}): ${Object.keys(rawFs.regions).join(", ")}`);
-    console.log(`Supported Instances (${Object.keys(rawFs.instances).length}): ${Object.keys(rawFs.instances).join(", ")}`);
+    console.log(`AWS:   ${awsRegions.length} regions | ${awsInstances.length} instances`);
+    console.log(`Azure: ${azureRegions.length} regions | ${azureInstances.length} instances`);
+    console.log(`GCP:   ${gcpRegions.length} regions | ${gcpInstances.length} instances`);
   }
   process.exit(0);
 }
