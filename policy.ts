@@ -9,6 +9,16 @@
  * - Offline-first: zero network calls, pure computation against local state.
  * - Transparent: every violation includes the constraint that was breached,
  *   the actual value, and the allowed limit — suitable for PR comment output.
+ *
+ * Constraint semantics:
+ *   max_pr_co2e_increase_kg   — Scope 2 operational CO2e of all resources in plan (kg/month)
+ *   max_pr_cost_increase_usd  — Total infrastructure cost of all resources in plan (USD/month)
+ *   max_total_co2e_kg         — Same as max_pr_co2e_increase_kg (alias for clarity)
+ *   max_lifecycle_co2e_kg     — Scope 2 + Scope 3 combined lifecycle CO2e (kg/month)
+ *
+ * Note: all constraints evaluate the footprint of resources present in the plan,
+ * not a delta from a baseline. True delta calculation requires Terraform state
+ * access which is outside the scope of a plan-only analysis.
  */
 
 import { readFileSync, existsSync } from 'node:fs';
@@ -32,17 +42,23 @@ import type { PlanAnalysisResult } from './types.js';
  *     max_pr_co2e_increase_kg: 10
  *     max_pr_cost_increase_usd: 500
  *     max_total_co2e_kg: 100
+ *     max_lifecycle_co2e_kg: 15
  *   fail_on_violation: true
  */
 export interface GreenOpsPolicy {
   version: number;
   budgets?: {
-    /** Maximum CO2e increase (kg) this PR is allowed to introduce. */
+    /** Maximum Scope 2 CO2e (kg/month) this PR is allowed to introduce. */
     max_pr_co2e_increase_kg?: number;
     /** Maximum cost increase (USD/month) this PR is allowed to introduce. */
     max_pr_cost_increase_usd?: number;
-    /** Maximum total CO2e (kg/month) across all analysed resources in this plan. */
+    /** Maximum total Scope 2 CO2e (kg/month) across all analysed resources. */
     max_total_co2e_kg?: number;
+    /**
+     * Maximum lifecycle CO2e (kg/month) — Scope 2 operational + Scope 3 embodied combined.
+     * Use this for CSRD reporting where full lifecycle emissions must be bounded.
+     */
+    max_lifecycle_co2e_kg?: number;
   };
   /** If true, CLI exits with code 1 when policy is violated. Default: false (warn-only). */
   fail_on_violation?: boolean;
@@ -198,6 +214,7 @@ export function loadPolicy(repoRoot: string = process.cwd()): GreenOpsPolicy | n
       'max_pr_co2e_increase_kg',
       'max_pr_cost_increase_usd',
       'max_total_co2e_kg',
+      'max_lifecycle_co2e_kg',
     ];
 
     for (const field of numericFields) {
@@ -237,9 +254,7 @@ export function evaluatePolicy(
   const { totals } = result;
   const b = policy.budgets;
 
-  // Constraint 1: max_pr_co2e_increase_kg
-  // The "increase" for a PR is the total new footprint introduced (currentCo2eGramsPerMonth).
-  // We don't have a pre-PR baseline here — the plan represents net-new resources being added.
+  // Constraint 1: max_pr_co2e_increase_kg (Scope 2 operational)
   if (b.max_pr_co2e_increase_kg !== undefined) {
     const actualKg = totals.currentCo2eGramsPerMonth / 1000;
     if (actualKg > b.max_pr_co2e_increase_kg) {
@@ -248,7 +263,7 @@ export function evaluatePolicy(
         actual: Math.round(actualKg * 100) / 100,
         limit: b.max_pr_co2e_increase_kg,
         unit: 'kg CO2e/month',
-        message: `This PR introduces ${(actualKg).toFixed(2)}kg CO2e/month, exceeding the ${b.max_pr_co2e_increase_kg}kg limit defined in .greenops.yml.`,
+        message: `This PR introduces ${actualKg.toFixed(2)}kg Scope 2 CO2e/month, exceeding the ${b.max_pr_co2e_increase_kg}kg limit defined in .greenops.yml.`,
       });
     }
   }
@@ -267,7 +282,7 @@ export function evaluatePolicy(
     }
   }
 
-  // Constraint 3: max_total_co2e_kg
+  // Constraint 3: max_total_co2e_kg (Scope 2 operational — alias)
   if (b.max_total_co2e_kg !== undefined) {
     const actualKg = totals.currentCo2eGramsPerMonth / 1000;
     if (actualKg > b.max_total_co2e_kg) {
@@ -276,7 +291,21 @@ export function evaluatePolicy(
         actual: Math.round(actualKg * 100) / 100,
         limit: b.max_total_co2e_kg,
         unit: 'kg CO2e/month',
-        message: `Total analysed footprint is ${actualKg.toFixed(2)}kg CO2e/month, exceeding the ${b.max_total_co2e_kg}kg ceiling defined in .greenops.yml.`,
+        message: `Total Scope 2 footprint is ${actualKg.toFixed(2)}kg CO2e/month, exceeding the ${b.max_total_co2e_kg}kg ceiling defined in .greenops.yml.`,
+      });
+    }
+  }
+
+  // Constraint 4: max_lifecycle_co2e_kg (Scope 2 + Scope 3 combined)
+  if (b.max_lifecycle_co2e_kg !== undefined) {
+    const actualKg = totals.currentLifecycleCo2eGramsPerMonth / 1000;
+    if (actualKg > b.max_lifecycle_co2e_kg) {
+      violations.push({
+        constraint: 'max_lifecycle_co2e_kg',
+        actual: Math.round(actualKg * 100) / 100,
+        limit: b.max_lifecycle_co2e_kg,
+        unit: 'kg lifecycle CO2e/month',
+        message: `Total lifecycle footprint (Scope 2 + Scope 3) is ${actualKg.toFixed(2)}kg CO2e/month, exceeding the ${b.max_lifecycle_co2e_kg}kg limit defined in .greenops.yml.`,
       });
     }
   }

@@ -152,6 +152,83 @@ describe('Policy Engine', () => {
     assert.equal(evaluation.shouldBlock, false, 'Should not block when fail_on_violation is unset');
   });
 
+  it('detects max_lifecycle_co2e_kg violation (Scope 2 + Scope 3)', () => {
+    // lifecycle = Scope2 + Scope3 = 5000 + 1041.7 = 6041.7g = 6.04kg
+    const result = makeMockResult({
+      currentCo2eGramsPerMonth: 5000,
+      currentEmbodiedCo2eGramsPerMonth: 1041.7,
+      currentLifecycleCo2eGramsPerMonth: 6041.7,
+    });
+    const policy = {
+      version: 1,
+      budgets: { max_lifecycle_co2e_kg: 5 }, // 6.04kg > 5kg — violation
+      fail_on_violation: false,
+    };
+
+    const evaluation = evaluatePolicy(result, policy);
+    assert.equal(evaluation.isCompliant, false);
+    assert.equal(evaluation.violations.length, 1);
+    assert.equal(evaluation.violations[0].constraint, 'max_lifecycle_co2e_kg');
+    assert.ok(evaluation.violations[0].actual > 5, 'Actual should exceed limit');
+    assert.ok(evaluation.violations[0].message.includes('Scope 2 + Scope 3'), 'Message should mention both scopes');
+  });
+
+  it('max_lifecycle_co2e_kg is compliant when within limit', () => {
+    const result = makeMockResult({
+      currentLifecycleCo2eGramsPerMonth: 4000, // 4kg lifecycle
+    });
+    const policy = {
+      version: 1,
+      budgets: { max_lifecycle_co2e_kg: 10 }, // 4kg < 10kg — pass
+      fail_on_violation: true,
+    };
+
+    const evaluation = evaluatePolicy(result, policy);
+    assert.equal(evaluation.isCompliant, true);
+    assert.equal(evaluation.violations.length, 0);
+    assert.equal(evaluation.shouldBlock, false);
+  });
+
+  it('max_lifecycle_co2e_kg can trigger independently of Scope 2 constraints', () => {
+    // Scope 2 alone passes, but lifecycle (Scope 2 + Scope 3) fails
+    const result = makeMockResult({
+      currentCo2eGramsPerMonth: 3000,          // 3kg Scope 2 — under limit
+      currentEmbodiedCo2eGramsPerMonth: 4000,  // 4kg Scope 3
+      currentLifecycleCo2eGramsPerMonth: 7000, // 7kg lifecycle — over limit
+    });
+    const policy = {
+      version: 1,
+      budgets: {
+        max_pr_co2e_increase_kg: 5,   // 3kg < 5kg — passes
+        max_lifecycle_co2e_kg: 6,     // 7kg > 6kg — fails
+      },
+      fail_on_violation: true,
+    };
+
+    const evaluation = evaluatePolicy(result, policy);
+    assert.equal(evaluation.isCompliant, false);
+    assert.equal(evaluation.violations.length, 1);
+    assert.equal(evaluation.violations[0].constraint, 'max_lifecycle_co2e_kg');
+    assert.equal(evaluation.shouldBlock, true);
+  });
+
+  it('loads max_lifecycle_co2e_kg from .greenops.yml', () => {
+    mkdirSync(TMP_DIR, { recursive: true });
+    const policyPath = resolve(TMP_DIR, '.greenops.yml');
+    writeFileSync(policyPath, [
+      'version: 1',
+      'budgets:',
+      '  max_lifecycle_co2e_kg: 20',
+      'fail_on_violation: true',
+    ].join('\n'));
+
+    const policy = loadPolicy(TMP_DIR);
+    assert.ok(policy !== null);
+    assert.equal(policy!.budgets?.max_lifecycle_co2e_kg, 20);
+
+    unlinkSync(policyPath);
+  });
+
   it('throws a descriptive error for malformed budgets values', () => {
     mkdirSync(TMP_DIR, { recursive: true });
     const policyPath = resolve(TMP_DIR, '.greenops.yml');
