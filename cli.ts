@@ -57,17 +57,27 @@ if (values.help) {
 }
 
 if (values.coverage) {
-  const rawFs = Object.assign({}, factorsData);
+  const rawFs = factorsData as any;
+  const awsRegions = Object.keys(rawFs.aws.regions);
+  const azureRegions = Object.keys(rawFs.azure.regions);
+  const gcpRegions = Object.keys(rawFs.gcp.regions);
+  const awsInstances = Object.keys(rawFs.aws.instances);
+  const azureInstances = Object.keys(rawFs.azure.instances);
+  const gcpInstances = Object.keys(rawFs.gcp.instances);
   if (values.format === 'json') {
     console.log(JSON.stringify({
       ledgerVersion: rawFs.metadata.ledger_version,
-      regions: Object.keys(rawFs.regions),
-      instances: Object.keys(rawFs.instances)
+      providers: {
+        aws:   { regions: awsRegions,   instances: awsInstances },
+        azure: { regions: azureRegions, instances: azureInstances },
+        gcp:   { regions: gcpRegions,   instances: gcpInstances },
+      }
     }, null, 2));
   } else {
     console.log(`GreenOps Methodology Ledger v${rawFs.metadata.ledger_version}`);
-    console.log(`Supported Regions (${Object.keys(rawFs.regions).length}): ${Object.keys(rawFs.regions).join(', ')}`);
-    console.log(`Supported Instances (${Object.keys(rawFs.instances).length}): ${Object.keys(rawFs.instances).join(', ')}`);
+    console.log(`AWS:   ${awsRegions.length} regions | ${awsInstances.length} instances`);
+    console.log(`Azure: ${azureRegions.length} regions | ${azureInstances.length} instances`);
+    console.log(`GCP:   ${gcpRegions.length} regions | ${gcpInstances.length} instances`);
   }
   process.exit(0);
 }

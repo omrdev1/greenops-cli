@@ -16,10 +16,13 @@ export type PowerModel =
   | "IDLE_PLUS_DYNAMIC"        // for Lambda-style invocation models (future)
   | "STATIC_TDP";              // fallback when only max TDP is known
 
+export type CloudProvider = 'aws' | 'azure' | 'gcp';
+
 export interface ResourceInput {
   resourceId: string;       // e.g., "aws_instance.web_server"
-  instanceType: string;     // e.g., "m5.large"
-  region: string;           // e.g., "us-east-1"
+  instanceType: string;     // e.g., "m5.large" / "Standard_D2s_v3" / "n2-standard-2"
+  region: string;           // e.g., "us-east-1" / "eastus" / "us-central1"
+  provider?: CloudProvider; // Default: 'aws' — backward compatible
   hoursPerMonth?: number;   // Default: 730 (full calendar month)
   avgUtilization?: number;  // Uses factors.json metadata default (50%) if omitted
 }
@@ -90,6 +93,7 @@ export interface PlanAnalysisResult {
   analysedAt: string;       // ISO timestamp
   ledgerVersion: string;    // from factors.json metadata
   planFile: string;         // path of the input plan
+  providers: CloudProvider[]; // which cloud providers were detected in this plan
 
   resources: Array<{
     input: ResourceInput;

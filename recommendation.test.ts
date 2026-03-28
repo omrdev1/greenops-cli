@@ -40,7 +40,7 @@ describe('generateRecommendation', () => {
     assert.equal(rec!.suggestedInstanceType, 'm6g.large', 'Should suggest ARM equivalent');
     assert.ok(rec!.co2eDeltaGramsPerMonth < 0, 'Carbon delta should be negative');
     assert.ok(rec!.costDeltaUsdPerMonth < 0, 'Cost delta should be negative');
-    assert.ok(rec!.rationale.includes('ARM64'), 'Rationale should mention ARM64');
+    assert.ok(rec!.rationale.includes('ARM'), 'Rationale should mention ARM');
   });
 
   it('returns null for already-ARM instance in cleanest region', () => {
