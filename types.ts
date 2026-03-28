@@ -74,6 +74,8 @@ export interface EmissionAndCostEstimate {
     powerModelUsed: PowerModel;
     embodiedCo2ePerVcpuPerMonthApplied: number;
     waterIntensityLitresPerKwhApplied: number;
+    /** Memory power draw applied (W) = memory_gb × 0.392W/GB. CCF standard. */
+    memoryWattsApplied: number;
   };
 }
 

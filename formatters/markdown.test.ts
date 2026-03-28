@@ -18,6 +18,7 @@ function makeMockBaseline(overrides: Record<string, unknown> = {}) {
       powerModelUsed: 'LINEAR_INTERPOLATION' as const,
       embodiedCo2ePerVcpuPerMonthApplied: 833.3,
       waterIntensityLitresPerKwhApplied: 0.18,
+      memoryWattsApplied: 3.136,
     },
     ...overrides,
   };

@@ -51,6 +51,13 @@ interface Ledger {
 const HOURS_PER_MONTH = 730;
 const GRAMS_PER_KWH = 1000;
 
+/**
+ * Memory power draw coefficient — CCF standard (0.392W per GB of RAM).
+ * Applied to all instances with a known memory_gb value.
+ * Source: Cloud Carbon Footprint methodology v3.
+ */
+const MEMORY_WATTS_PER_GB = 0.392;
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -65,8 +72,14 @@ function resolveUtilization(input: ResourceInput, ledger: Ledger): number {
   return input.avgUtilization ?? ledger.metadata.assumptions.default_utilization.value;
 }
 
-function linearInterpolationWatts(idle: number, max: number, utilization: number): number {
-  return idle + (max - idle) * utilization;
+/**
+ * Returns total effective watts: CPU interpolation + memory power draw.
+ * Memory contribution is constant (not utilization-dependent) per CCF methodology.
+ */
+function effectiveTotalWatts(idle: number, max: number, utilization: number, memoryGb: number): number {
+  const cpuWatts = idle + (max - idle) * utilization;
+  const memoryWatts = memoryGb * MEMORY_WATTS_PER_GB;
+  return cpuWatts + memoryWatts;
 }
 
 function wattsToScope2Carbon(watts: number, hours: number, pue: number, gridIntensity: number): number {
@@ -163,6 +176,7 @@ export function calculateBaseline(
       powerModelUsed: 'LINEAR_INTERPOLATION',
       embodiedCo2ePerVcpuPerMonthApplied: embodied,
       waterIntensityLitresPerKwhApplied: waterIntensity,
+      memoryWattsApplied: 0,
     },
   });
 
@@ -190,8 +204,11 @@ export function calculateBaseline(
   }
 
   const powerModel: PowerModel = 'LINEAR_INTERPOLATION';
-  const effectiveWatts = linearInterpolationWatts(
-    instanceData.power_watts.idle, instanceData.power_watts.max, utilization
+  const effectiveWatts = effectiveTotalWatts(
+    instanceData.power_watts.idle,
+    instanceData.power_watts.max,
+    utilization,
+    instanceData.memory_gb
   );
 
   const totalCo2eGramsPerMonth = wattsToScope2Carbon(
@@ -217,6 +234,7 @@ export function calculateBaseline(
       powerModelUsed: powerModel,
       embodiedCo2ePerVcpuPerMonthApplied: instanceData.embodied_co2e_grams_per_month,
       waterIntensityLitresPerKwhApplied: regionData.water_intensity_litres_per_kwh,
+      memoryWattsApplied: instanceData.memory_gb * MEMORY_WATTS_PER_GB,
     },
   };
 }
