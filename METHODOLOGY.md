@@ -34,16 +34,22 @@ Run `greenops-cli --coverage` to see the full instance and region list per provi
 
 ### Power Model
 
-GreenOps uses the **linear interpolation model** from the Cloud Carbon Footprint (CCF) methodology:
+GreenOps uses the **linear interpolation model** from the Cloud Carbon Footprint (CCF) methodology, extended with memory power draw:
 
 ```
-W_effective = W_idle + (W_max - W_idle) × utilization
+W_cpu    = W_idle + (W_max - W_idle) × utilization
+W_memory = memory_gb × 0.392 W/GB
+W_effective = W_cpu + W_memory
 ```
 
 Where:
 - `W_idle` = idle TDP (watts) from `factors.json`
 - `W_max` = maximum TDP (watts) from `factors.json`
 - `utilization` = CPU utilisation fraction (default: 0.50, matching CCF baseline)
+- `memory_gb` = RAM size from `factors.json`
+- `0.392 W/GB` = CCF memory power coefficient (constant, not utilization-dependent)
+
+Memory power draw is **constant** regardless of CPU utilisation. This reflects that DRAM draws near-constant power whether or not it is actively being written to, consistent with CCF v3 methodology.
 
 ### Carbon Calculation
 
@@ -64,21 +70,27 @@ GCP's 1.10 PUE is the best in class among the three major providers, producing ~
 
 ### Worked Example — AWS m5.large in us-east-1 at 50% utilisation
 
-1. **Power:** `W = 6.8 + (20.4 - 6.8) × 0.50 = 13.6W`
-2. **Energy:** `13.6W × 1.13 PUE × 730h / 1000 = 11.219 kWh/month`
-3. **Carbon:** `11.219 × 384.5 = 4,313.6g CO2e/month`
+1. **CPU power:** `W_cpu = 6.8 + (20.4 - 6.8) × 0.50 = 13.6W`
+2. **Memory power:** `W_mem = 8GB × 0.392 = 3.136W`
+3. **Total:** `W = 13.6 + 3.136 = 16.736W`
+4. **Energy:** `16.736W × 1.13 PUE × 730h / 1000 = 13.816 kWh/month`
+5. **Carbon:** `13.816 × 384.5 = 5,308.2g CO2e/month`
 
 ### Worked Example — Azure Standard_D2s_v3 in eastus at 50% utilisation
 
-1. **Power:** `W = 6.8 + (20.4 - 6.8) × 0.50 = 13.6W`
-2. **Energy:** `13.6W × 1.125 PUE × 730h / 1000 = 11.178 kWh/month`
-3. **Carbon:** `11.178 × 380.0 = 4,244.2g CO2e/month`
+1. **CPU power:** `W_cpu = 6.8 + (20.4 - 6.8) × 0.50 = 13.6W`
+2. **Memory power:** `W_mem = 8GB × 0.392 = 3.136W`
+3. **Total:** `W = 16.736W`
+4. **Energy:** `16.736W × 1.125 PUE × 730h / 1000 = 13.745 kWh/month`
+5. **Carbon:** `13.745 × 380.0 = 5,222.9g CO2e/month`
 
 ### Worked Example — GCP n2-standard-2 in us-central1 at 50% utilisation
 
-1. **Power:** `W = 6.8 + (20.4 - 6.8) × 0.50 = 13.6W`
-2. **Energy:** `13.6W × 1.10 PUE × 730h / 1000 = 10.921 kWh/month`
-3. **Carbon:** `10.921 × 340.0 = 3,713.1g CO2e/month`
+1. **CPU power:** `W_cpu = 6.8 + (20.4 - 6.8) × 0.50 = 13.6W`
+2. **Memory power:** `W_mem = 8GB × 0.392 = 3.136W`
+3. **Total:** `W = 16.736W`
+4. **Energy:** `16.736W × 1.10 PUE × 730h / 1000 = 13.445 kWh/month`
+5. **Carbon:** `13.445 × 340.0 = 4,569.3g CO2e/month`
 
 ---
 
