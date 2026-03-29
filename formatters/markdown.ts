@@ -97,7 +97,7 @@ export function formatMarkdown(result: PlanAnalysisResult, options: FormatterOpt
   out += `Math is MIT-licensed and auditable. Analysed at ${result.analysedAt}.*\n`;
 
   if (options.showUpgradePrompt) {
-    out += `\n> 🏢 **GreenOps Dashboard** — aggregate carbon data across all your repositories, set team budgets, and export ESG reports. [Join the waitlist](https://greenops-cli.dev) · Coming soon.\n`;
+    out += `\n> 🏢 **GreenOps Dashboard** — aggregate carbon data across all your repositories, set team budgets, and export ESG reports. [Register your interest](https://github.com/omrdev1/greenops-cli/discussions/17)\n`;
   }
 
   return out;
