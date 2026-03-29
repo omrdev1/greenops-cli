@@ -3119,7 +3119,7 @@ function formatMarkdown(result2, options = {}) {
 `;
   if (options.showUpgradePrompt) {
     out += `
-> \u{1F3E2} **GreenOps Dashboard** \u2014 aggregate carbon data across all your repositories, set team budgets, and export ESG reports. [Join the waitlist](https://greenops-cli.dev) \xB7 Coming soon.
+> \u{1F3E2} **GreenOps Dashboard** \u2014 aggregate carbon data across all your repositories, set team budgets, and export ESG reports. [Register your interest](https://github.com/omrdev1/greenops-cli/discussions/17)
 `;
   }
   return out;
