@@ -85,13 +85,15 @@ runs:
         GREENOPS_API_KEY: ${{ inputs.api-key }}
       run: |
         # Build the ReportPayload from the JSON result captured in the analysis step
+        # JSON output is wrapped: { schemaVersion, result: PlanAnalysisResult }
+        # Navigate into .result before extracting fields
         jq --arg repo "$GITHUB_REPOSITORY" \
            --arg branch "$GITHUB_HEAD_REF" \
            --arg actor "$GITHUB_ACTOR" \
            --arg sha "$GITHUB_SHA" \
            --arg runId "${GITHUB_RUN_ID}_${{ inputs.plan-file }}" \
            --argjson pr '${{ github.event.pull_request.number || 0 }}' \
-           '{
+           '.result | {
              runId: $runId,
              repo: $repo,
              branch: (if $branch == "" then "main" else $branch end),
