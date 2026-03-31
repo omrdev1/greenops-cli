@@ -82,13 +82,37 @@ runs:
           --format json > result.json
 
         jq --arg repo "$GITHUB_REPOSITORY" \
-           --arg pr "${{ github.event.pull_request.number }}" \
+           --arg branch "$GITHUB_HEAD_REF" \
+           --arg actor "$GITHUB_ACTOR" \
            --arg sha "$GITHUB_SHA" \
-           --arg ref "$GITHUB_REF" \
-           '{ repository: $repo, pull_request_number: ($pr | tonumber), commit_sha: $sha, ref: $ref, analysis: . }' \
-           result.json > upload.json
+           --arg runId "$GITHUB_RUN_ID" \
+           --argjson pr '${{ github.event.pull_request.number || 0 }}' \
+           '{
+             runId: $runId,
+             repo: $repo,
+             branch: $branch,
+             actor: $actor,
+             commitSha: $sha,
+             prNumber: (if $pr == 0 then null else $pr end),
+             analysedAt: .analysedAt,
+             ledgerVersion: .ledgerVersion,
+             providers: .providers,
+             totals: {
+               currentCo2eGramsPerMonth: .totals.currentCo2eGramsPerMonth,
+               currentEmbodiedCo2eGramsPerMonth: .totals.currentEmbodiedCo2eGramsPerMonth,
+               currentLifecycleCo2eGramsPerMonth: .totals.currentLifecycleCo2eGramsPerMonth,
+               currentWaterLitresPerMonth: .totals.currentWaterLitresPerMonth,
+               currentCostUsdPerMonth: .totals.currentCostUsdPerMonth,
+               potentialCo2eSavingGramsPerMonth: .totals.potentialCo2eSavingGramsPerMonth,
+               potentialCostSavingUsdPerMonth: .totals.potentialCostSavingUsdPerMonth
+             },
+             resourceCount: (.resources | length),
+             recommendationCount: ([.resources[] | select(.recommendation != null)] | length),
+             skippedCount: (.skipped | length),
+             unsupportedTypes: .unsupportedTypes
+           }' result.json > upload.json
 
-        curl -f -X POST https://greenops-dashboard.vercel.app/api/v1/ingest \
+        curl -s -X POST https://greenops-dashboard.vercel.app/api/v1/ingest \
           -H "Authorization: Bearer $GREENOPS_API_KEY" \
           -H "Content-Type: application/json" \
           -d @upload.json || true
