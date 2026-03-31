@@ -26,15 +26,18 @@ jobs:
         with:
           plan-file: fixtures/tfplan.e2e.json
           github-token: ${{ secrets.GITHUB_TOKEN }}
+          api-key: ${{ secrets.GREENOPS_API_KEY }}
 
       - name: Run GreenOps — Azure fixture
         uses: ./
         with:
           plan-file: fixtures/tfplan.azure.e2e.json
           github-token: ${{ secrets.GITHUB_TOKEN }}
+          api-key: ${{ secrets.GREENOPS_API_KEY }}
 
       - name: Run GreenOps — GCP fixture
         uses: ./
         with:
           plan-file: fixtures/tfplan.gcp.e2e.json
           github-token: ${{ secrets.GITHUB_TOKEN }}
+          api-key: ${{ secrets.GREENOPS_API_KEY }}
