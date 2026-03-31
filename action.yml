@@ -28,24 +28,30 @@ runs:
       id: run-cli
       shell: bash
       run: |
-        SUGGESTIONS_FLAG=""
-        if [ "${{ inputs.post-suggestions }}" = "true" ]; then
-          SUGGESTIONS_FLAG="--post-suggestions \
-            --github-token=${{ inputs.github-token }} \
-            --repo=${{ github.repository }} \
-            --pr-number=${{ github.event.pull_request.number }} \
-            --commit-sha=${{ github.event.pull_request.head.sha }}"
-        fi
+        # Run once in JSON format — reused for both PR comment and telemetry
+        node "${{ github.action_path }}/dist/index.cjs" diff "${{ inputs.plan-file }}" \
+          --format json > greenops-result.json
 
+        # Convert JSON result to markdown for the PR comment
         node "${{ github.action_path }}/dist/index.cjs" diff "${{ inputs.plan-file }}" \
           --format markdown \
-          --show-upgrade-prompt="${{ inputs.show-upgrade-prompt }}" \
-          $SUGGESTIONS_FLAG > greenops-output.md
+          --show-upgrade-prompt="${{ inputs.show-upgrade-prompt }}" > greenops-output.md
 
         EOF=$(dd if=/dev/urandom bs=15 count=1 status=none | base64)
         echo "comment_body<<$EOF" >> "$GITHUB_OUTPUT"
         cat greenops-output.md >> "$GITHUB_OUTPUT"
         echo "$EOF" >> "$GITHUB_OUTPUT"
+
+    - name: Post Inline Suggestions
+      if: inputs.post-suggestions == 'true'
+      shell: bash
+      run: |
+        node "${{ github.action_path }}/dist/index.cjs" diff "${{ inputs.plan-file }}" \
+          --post-suggestions \
+          --github-token="${{ inputs.github-token }}" \
+          --repo="${{ github.repository }}" \
+          --pr-number="${{ github.event.pull_request.number }}" \
+          --commit-sha="${{ github.event.pull_request.head.sha }}"
 
     - name: Post or Update PR Comment
       uses: actions/github-script@v7
@@ -78,17 +84,41 @@ runs:
       env:
         GREENOPS_API_KEY: ${{ inputs.api-key }}
       run: |
-        node "${{ github.action_path }}/dist/index.cjs" diff "${{ inputs.plan-file }}" \
-          --format json > result.json
-
+        # Build the ReportPayload from the JSON result captured in the analysis step
+        # JSON output is wrapped: { schemaVersion, result: PlanAnalysisResult }
+        # Navigate into .result before extracting fields
         jq --arg repo "$GITHUB_REPOSITORY" \
-           --arg pr "${{ github.event.pull_request.number }}" \
+           --arg branch "$GITHUB_HEAD_REF" \
+           --arg actor "$GITHUB_ACTOR" \
            --arg sha "$GITHUB_SHA" \
-           --arg ref "$GITHUB_REF" \
-           '{ repository: $repo, pull_request_number: ($pr | tonumber), commit_sha: $sha, ref: $ref, analysis: . }' \
-           result.json > upload.json
+           --arg runId "${GITHUB_RUN_ID}_${{ inputs.plan-file }}" \
+           --argjson pr '${{ github.event.pull_request.number || 0 }}' \
+           '.result | {
+             runId: $runId,
+             repo: $repo,
+             branch: (if $branch == "" then "main" else $branch end),
+             actor: $actor,
+             commitSha: $sha,
+             prNumber: (if $pr == 0 then null else $pr end),
+             analysedAt: .analysedAt,
+             ledgerVersion: .ledgerVersion,
+             providers: .providers,
+             totals: {
+               currentCo2eGramsPerMonth: .totals.currentCo2eGramsPerMonth,
+               currentEmbodiedCo2eGramsPerMonth: .totals.currentEmbodiedCo2eGramsPerMonth,
+               currentLifecycleCo2eGramsPerMonth: .totals.currentLifecycleCo2eGramsPerMonth,
+               currentWaterLitresPerMonth: .totals.currentWaterLitresPerMonth,
+               currentCostUsdPerMonth: .totals.currentCostUsdPerMonth,
+               potentialCo2eSavingGramsPerMonth: .totals.potentialCo2eSavingGramsPerMonth,
+               potentialCostSavingUsdPerMonth: .totals.potentialCostSavingUsdPerMonth
+             },
+             resourceCount: (.resources | length),
+             recommendationCount: ([.resources[] | select(.recommendation != null)] | length),
+             skippedCount: (.skipped | length),
+             unsupportedTypes: .unsupportedTypes
+           }' greenops-result.json > upload.json
 
-        curl -f -X POST https://greenops-dashboard.vercel.app/api/v1/ingest \
+        curl -s -X POST https://greenops-dashboard.vercel.app/api/v1/ingest \
           -H "Authorization: Bearer $GREENOPS_API_KEY" \
           -H "Content-Type: application/json" \
           -d @upload.json || true
