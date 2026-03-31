@@ -88,7 +88,7 @@ runs:
            '{ repository: $repo, pull_request_number: ($pr | tonumber), commit_sha: $sha, ref: $ref, analysis: . }' \
            result.json > upload.json
 
-        curl -f -X POST https://api.greenops-cli.dev/ingest \
+        curl -f -X POST https://greenops-dashboard.vercel.app/api/v1/ingest \
           -H "Authorization: Bearer $GREENOPS_API_KEY" \
           -H "Content-Type: application/json" \
           -d @upload.json || true
