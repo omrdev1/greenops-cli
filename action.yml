@@ -84,9 +84,6 @@ runs:
       env:
         GREENOPS_API_KEY: ${{ inputs.api-key }}
       run: |
-        # Build the ReportPayload from the JSON result captured in the analysis step
-        # JSON output is wrapped: { schemaVersion, result: PlanAnalysisResult }
-        # Navigate into .result before extracting fields
         jq --arg repo "$GITHUB_REPOSITORY" \
            --arg branch "$GITHUB_HEAD_REF" \
            --arg actor "$GITHUB_ACTOR" \
