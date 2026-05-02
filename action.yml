@@ -109,6 +109,8 @@ runs:
                potentialCo2eSavingGramsPerMonth: .totals.potentialCo2eSavingGramsPerMonth,
                potentialCostSavingUsdPerMonth: .totals.potentialCostSavingUsdPerMonth
              },
+             resources: (.resources // []),
+             skipped: (.skipped // []),
              resourceCount: (.resources | length),
              recommendationCount: ([.resources[] | select(.recommendation != null)] | length),
              skippedCount: (.skipped | length),
