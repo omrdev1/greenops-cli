@@ -2073,7 +2073,7 @@ var package_default = {
   license: "MIT",
   repository: {
     type: "git",
-    url: "https://github.com/omrdev1/greenops-cli.git"
+    url: "git+https://github.com/omrdev1/greenops-cli.git"
   },
   homepage: "https://github.com/omrdev1/greenops-cli#readme",
   bugs: {
