@@ -79,11 +79,17 @@ runs:
           }
 
     - name: Upload Telemetry (optional)
-      if: inputs.api-key != ''
       shell: bash
       env:
         GREENOPS_API_KEY: ${{ inputs.api-key }}
       run: |
+        # Guard inside the script — composite action 'if' conditions on inputs
+        # are unreliable when the input is an empty string vs not set.
+        if [ -z "$GREENOPS_API_KEY" ]; then
+          echo "[GreenOps] No API key provided — skipping telemetry."
+          exit 0
+        fi
+
         jq --arg repo "$GITHUB_REPOSITORY" \
            --arg branch "$GITHUB_HEAD_REF" \
            --arg actor "$GITHUB_ACTOR" \
