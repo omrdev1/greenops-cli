@@ -123,7 +123,7 @@ runs:
              unsupportedTypes: .unsupportedTypes
            }' greenops-result.json > upload.json
 
-        curl -s -X POST https://greenops-dashboard.vercel.app/api/v1/ingest \
+        curl -s -X POST https://getgreenops.com/api/v1/ingest \
           -H "Authorization: Bearer $GREENOPS_API_KEY" \
           -H "Content-Type: application/json" \
           -d @upload.json || true
