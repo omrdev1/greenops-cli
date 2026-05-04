@@ -1,22 +1,13 @@
-# Source files — not needed by consumers, only the built dist is required
-*.ts
-!*.d.ts
+# Claude Code worktrees and editor files
+.claude/
 
-# Test files
+# Development only
 *.test.ts
-integration.test.ts
-
-# Fixtures and dev files
+formatters/*.test.ts
 fixtures/
-demo.json
 tsconfig.json
+.github/
+.gitignore
 
-# GitHub workflows and templates
-.github/workflows/
-.github/ISSUE_TEMPLATE/
-.github/PULL_REQUEST_TEMPLATE.md
-
-# Research and internal docs
-research.*.md
-upgrade_*.py
-
+# Build artifacts not needed in package
+*.tgz
