@@ -1,13 +1,23 @@
 # Claude Code worktrees and editor files
 .claude/
 
-# Development only
-*.test.ts
-formatters/*.test.ts
+# TypeScript source — not needed, dist/index.cjs is the binary
+*.ts
+formatters/
+
+# Development and research files
+*.py
+*.md
+!README.md
+!METHODOLOGY.md
+
+# Test fixtures and demo data
 fixtures/
-tsconfig.json
+demo.json
+
+# GitHub config
 .github/
 .gitignore
 
-# Build artifacts not needed in package
+# Build artifacts
 *.tgz
