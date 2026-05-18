@@ -2095,18 +2095,20 @@ var SUPPORTED_TYPES = {
   azure: ["azurerm_linux_virtual_machine", "azurerm_windows_virtual_machine", "azurerm_virtual_machine"],
   gcp: ["google_compute_instance"]
 };
+var SUPPORTED_SERVERLESS_TYPES = {
+  aws: ["aws_lambda_function"],
+  azure: ["azurerm_function_app", "azurerm_linux_function_app", "azurerm_windows_function_app"],
+  gcp: ["google_cloudfunctions_function", "google_cloudfunctions2_function", "google_cloud_run_service"]
+};
 var COMPUTE_RELEVANT_TYPES = [
   "aws_launch_template",
   "aws_autoscaling_group",
   "aws_ecs_service",
   "aws_eks_node_group",
-  "aws_lambda_function",
   "azurerm_virtual_machine_scale_set",
   "azurerm_kubernetes_cluster",
-  "azurerm_function_app",
   "google_compute_instance_template",
-  "google_container_cluster",
-  "google_cloudfunctions_function"
+  "google_container_cluster"
 ];
 function detectProvider(resourceType) {
   if (resourceType.startsWith("aws_"))
@@ -2225,6 +2227,49 @@ function extractGcpInstanceType(res) {
     return { instanceType: null, skipReason: "known_after_apply" };
   return { instanceType: machineType };
 }
+function extractServerlessInput(res, provider, providerRegions, plannedValuesMap) {
+  const plannedValues = plannedValuesMap.get(res.address) ?? {};
+  const after = res.change?.after ?? {};
+  let memoryMb = 128;
+  let invocationsPerMonth = 1e6;
+  let avgDurationMs = 200;
+  let region = null;
+  if (provider === "aws") {
+    const raw = after.memory_size ?? plannedValues.memory_size;
+    if (typeof raw === "number")
+      memoryMb = raw;
+    region = resolveAwsRegion(res.change, providerRegions.aws);
+  } else if (provider === "azure") {
+    memoryMb = 256;
+    region = resolveAzureRegion(res.change, providerRegions.azure);
+  } else if (provider === "gcp") {
+    const rawMem = after.available_memory ?? plannedValues.available_memory;
+    const rawMemMb = after.available_memory_mb ?? plannedValues.available_memory_mb;
+    if (typeof rawMem === "string") {
+      const match = rawMem.match(/^(\d+(?:\.\d+)?)\s*([MmGg])?/);
+      if (match) {
+        const val = parseFloat(match[1]);
+        memoryMb = match[2]?.toLowerCase() === "g" ? val * 1024 : val;
+      }
+    } else if (typeof rawMemMb === "number") {
+      memoryMb = rawMemMb;
+    } else {
+      memoryMb = 256;
+    }
+    region = resolveGcpRegion(res.change, providerRegions.gcp);
+  }
+  if (!region)
+    return { resourceInput: null, skipReason: "known_after_apply" };
+  const instanceType = `serverless:${memoryMb}mb:${invocationsPerMonth}inv:${avgDurationMs}ms`;
+  return {
+    resourceInput: {
+      resourceId: res.address,
+      instanceType,
+      region,
+      provider
+    }
+  };
+}
 function extractResourceInputs(planFilePath) {
   const result2 = { resources: [], skipped: [], unsupportedTypes: [] };
   const resolvedPath = (0, import_node_path.isAbsolute)(planFilePath) ? planFilePath : (0, import_node_path.resolve)(process.cwd(), planFilePath);
@@ -2254,6 +2299,7 @@ function extractResourceInputs(planFilePath) {
       plannedValuesMap.set(r.address, r.values);
   }
   const allSupportedTypes = Object.values(SUPPORTED_TYPES).flat();
+  const allServerlessTypes = Object.values(SUPPORTED_SERVERLESS_TYPES).flat();
   for (const rawRes of typedPlan.resource_changes) {
     const res = rawRes;
     const actions = res.change?.actions;
@@ -2261,6 +2307,22 @@ function extractResourceInputs(planFilePath) {
       continue;
     }
     const provider = detectProvider(res.type);
+    if (allServerlessTypes.includes(res.type)) {
+      if (!provider)
+        continue;
+      const { resourceInput, skipReason: skipReason2 } = extractServerlessInput(
+        res,
+        provider,
+        providerRegions,
+        plannedValuesMap
+      );
+      if (resourceInput) {
+        result2.resources.push(resourceInput);
+      } else {
+        result2.skipped.push({ resourceId: res.address, reason: skipReason2 ?? "known_after_apply" });
+      }
+      continue;
+    }
     if (!allSupportedTypes.includes(res.type)) {
       if (COMPUTE_RELEVANT_TYPES.includes(res.type) && !result2.unsupportedTypes.includes(res.type)) {
         result2.unsupportedTypes.push(res.type);
@@ -2383,6 +2445,55 @@ function getCleanerRegion(currentRegion, instanceType, provider, ledger) {
     return null;
   return cleanestRegionId;
 }
+function parseServerlessInstanceType(instanceType) {
+  if (!instanceType.startsWith("serverless:"))
+    return null;
+  const match = instanceType.match(/^serverless:(\d+)mb:(\d+)inv:(\d+)ms$/);
+  if (!match)
+    return null;
+  return {
+    memoryMb: parseInt(match[1], 10),
+    invocationsPerMonth: parseInt(match[2], 10),
+    avgDurationMs: parseInt(match[3], 10)
+  };
+}
+function calculateServerlessBaseline(input, params, regionData) {
+  const { memoryMb, invocationsPerMonth, avgDurationMs } = params;
+  const memoryGb = memoryMb / 1024;
+  const LAMBDA_CPU_OVERHEAD_W = 2e-3;
+  const powerW = memoryGb * MEMORY_WATTS_PER_GB + LAMBDA_CPU_OVERHEAD_W;
+  const computeSecondsPerMonth = avgDurationMs / 1e3 * invocationsPerMonth;
+  const energyKwh = powerW * computeSecondsPerMonth / 36e5;
+  const totalCo2eGramsPerMonth = energyKwh * regionData.pue * regionData.grid_intensity_gco2e_per_kwh;
+  const EMBODIED_MONTHLY_SINGLE_SERVER_G = 500;
+  const durationFractionOfMonth = computeSecondsPerMonth / (730 * 3600);
+  const embodiedCo2eGramsPerMonth = EMBODIED_MONTHLY_SINGLE_SERVER_G * durationFractionOfMonth;
+  const totalLifecycleCo2eGramsPerMonth = totalCo2eGramsPerMonth + embodiedCo2eGramsPerMonth;
+  const waterLitresPerMonth = energyKwh * regionData.pue * regionData.water_intensity_litres_per_kwh;
+  const REQUEST_COST = 2e-7;
+  const GB_SECOND_COST = 167e-10;
+  const gbSeconds = memoryGb * (avgDurationMs / 1e3) * invocationsPerMonth;
+  const totalCostUsdPerMonth = REQUEST_COST * invocationsPerMonth + GB_SECOND_COST * gbSeconds;
+  return {
+    totalCo2eGramsPerMonth,
+    embodiedCo2eGramsPerMonth,
+    totalLifecycleCo2eGramsPerMonth,
+    waterLitresPerMonth,
+    totalCostUsdPerMonth,
+    confidence: "LOW_ASSUMED_DEFAULT",
+    scope: "SCOPE_2_AND_3",
+    unsupportedReason: `Serverless estimation uses assumed defaults: ${memoryMb}MB memory, ${invocationsPerMonth.toLocaleString()} invocations/month, ${avgDurationMs}ms avg duration. Override via .greenops.yml or resource tags for accuracy.`,
+    assumptionsApplied: {
+      utilizationApplied: 1,
+      // serverless runs at full allocated memory
+      gridIntensityApplied: regionData.grid_intensity_gco2e_per_kwh,
+      powerModelUsed: "SERVERLESS_INVOCATION",
+      embodiedCo2ePerVcpuPerMonthApplied: EMBODIED_MONTHLY_SINGLE_SERVER_G,
+      waterIntensityLitresPerKwhApplied: regionData.water_intensity_litres_per_kwh,
+      memoryWattsApplied: memoryGb * MEMORY_WATTS_PER_GB
+    }
+  };
+}
 function calculateBaseline(input, ledger = factors_default) {
   const provider = input.provider ?? "aws";
   const providerLedger = ledger[provider];
@@ -2409,6 +2520,10 @@ function calculateBaseline(input, ledger = factors_default) {
   const regionData = providerLedger.regions[input.region];
   if (!regionData) {
     return zeroResult(`Region "${input.region}" is not present in the ${provider.toUpperCase()} section of the Open GreenOps Methodology Ledger v${ledger.metadata.ledger_version}.`);
+  }
+  const serverlessParams = parseServerlessInstanceType(input.instanceType);
+  if (serverlessParams) {
+    return calculateServerlessBaseline(input, serverlessParams, regionData);
   }
   const instanceData = providerLedger.instances[input.instanceType];
   if (!instanceData) {
@@ -3113,8 +3228,12 @@ function formatMarkdown(result2, options = {}) {
 
 `;
   }
-  const analysed = result2.resources.filter((r) => r.baseline.confidence !== "LOW_ASSUMED_DEFAULT");
-  const unsupportedResources = result2.resources.filter((r) => r.baseline.confidence === "LOW_ASSUMED_DEFAULT");
+  const analysed = result2.resources.filter(
+    (r) => r.baseline.confidence !== "LOW_ASSUMED_DEFAULT" || r.input.instanceType.startsWith("serverless:")
+  );
+  const unsupportedResources = result2.resources.filter(
+    (r) => r.baseline.confidence === "LOW_ASSUMED_DEFAULT" && !r.input.instanceType.startsWith("serverless:")
+  );
   out += `### Resource Breakdown
 
 `;
@@ -3123,12 +3242,21 @@ function formatMarkdown(result2, options = {}) {
   out += `|---|---|---|---|---|---|---|---|
 `;
   for (const r of analysed) {
+    const isServerless = r.input.instanceType.startsWith("serverless:");
+    const displayType = isServerless ? `\`serverless\`` : `\`${r.input.instanceType}\``;
+    const serverlessBadge = isServerless ? " \u26A1" : "";
     const action = r.recommendation ? `\u{1F4A1} [View Recommendation](#recommendations)` : `\u2705 Optimal`;
-    out += `| \`${r.input.resourceId}\` | \`${r.input.instanceType}\` | \`${r.input.region}\` | ${formatGrams(r.baseline.totalCo2eGramsPerMonth)} | ${formatGrams(r.baseline.embodiedCo2eGramsPerMonth)} | ${formatWater(r.baseline.waterLitresPerMonth)} | ${r.baseline.totalCostUsdPerMonth.toFixed(2)} | ${action} |
+    out += `| \`${r.input.resourceId}\`${serverlessBadge} | ${displayType} | \`${r.input.region}\` | ${formatGrams(r.baseline.totalCo2eGramsPerMonth)} | ${formatGrams(r.baseline.embodiedCo2eGramsPerMonth)} | ${formatWater(r.baseline.waterLitresPerMonth)} | ${r.baseline.totalCostUsdPerMonth.toFixed(2)} | ${action} |
 `;
   }
   out += `
 `;
+  const serverlessResources = analysed.filter((r) => r.input.instanceType.startsWith("serverless:"));
+  if (serverlessResources.length > 0) {
+    out += `> \u26A1 **Serverless resources** are estimated using assumed defaults (1M invocations/month, 200ms avg duration). Actual emissions depend on real invocation patterns. Values are marked \`LOW_ASSUMED_DEFAULT\`.
+
+`;
+  }
   const totalSkipped = result2.skipped.length + unsupportedResources.length;
   if (totalSkipped > 0) {
     out += `<details><summary>\u26A0\uFE0F <b>${totalSkipped} Skipped Resource${totalSkipped !== 1 ? "s" : ""}</b></summary>
