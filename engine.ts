@@ -149,6 +149,102 @@ function getCleanerRegion(currentRegion: string, instanceType: string, provider:
 }
 
 // ---------------------------------------------------------------------------
+// Serverless estimation model
+// ---------------------------------------------------------------------------
+
+/**
+ * Parse a serverless instance type string into its parameters.
+ * Format: "serverless:{memoryMb}mb:{invocations}inv:{durationMs}ms"
+ */
+function parseServerlessInstanceType(instanceType: string): {
+  memoryMb: number;
+  invocationsPerMonth: number;
+  avgDurationMs: number;
+} | null {
+  if (!instanceType.startsWith('serverless:')) return null;
+  const match = instanceType.match(/^serverless:(\d+)mb:(\d+)inv:(\d+)ms$/);
+  if (!match) return null;
+  return {
+    memoryMb: parseInt(match[1], 10),
+    invocationsPerMonth: parseInt(match[2], 10),
+    avgDurationMs: parseInt(match[3], 10),
+  };
+}
+
+/**
+ * Calculate emissions for a serverless function.
+ *
+ * Model: AWS Lambda Power Model (CCF methodology)
+ *   W = (memory_gb × 0.392W/GB) + CONSTANT_CPU_OVERHEAD
+ *   energy_kwh = W × (avg_duration_seconds × invocations_per_month) / 3_600_000
+ *
+ * CPU overhead constant: 0.002W (Lambda micro-VM baseline)
+ * This is conservative and marked LOW_ASSUMED_DEFAULT because we don't have
+ * actual invocation telemetry — we use the Terraform-configured memory and defaults.
+ *
+ * Embodied carbon: Lambda shares hardware with other tenants — we use
+ * a minimal prorated allocation (1/48 vCPU equivalent, prorated by duration fraction).
+ */
+function calculateServerlessBaseline(
+  input: ResourceInput,
+  params: { memoryMb: number; invocationsPerMonth: number; avgDurationMs: number },
+  regionData: LedgerRegion
+): EmissionAndCostEstimate {
+  const { memoryMb, invocationsPerMonth, avgDurationMs } = params;
+  const memoryGb = memoryMb / 1024;
+
+  // Power: memory-proportional + constant CPU overhead
+  const LAMBDA_CPU_OVERHEAD_W = 0.002;
+  const powerW = (memoryGb * MEMORY_WATTS_PER_GB) + LAMBDA_CPU_OVERHEAD_W;
+
+  // Total compute seconds per month
+  const computeSecondsPerMonth = (avgDurationMs / 1000) * invocationsPerMonth;
+
+  // Energy in kWh (convert W×s to kWh: divide by 3,600,000)
+  const energyKwh = (powerW * computeSecondsPerMonth) / 3_600_000;
+
+  // Scope 2: energy × PUE × grid intensity
+  const totalCo2eGramsPerMonth = energyKwh * regionData.pue * regionData.grid_intensity_gco2e_per_kwh;
+
+  // Scope 3: minimal embodied — prorate by duration fraction of a month
+  // Assumption: Lambda co-tenancy means ~1/100th of a single-server embodied allocation
+  const EMBODIED_MONTHLY_SINGLE_SERVER_G = 500; // conservative baseline
+  const durationFractionOfMonth = computeSecondsPerMonth / (730 * 3600);
+  const embodiedCo2eGramsPerMonth = EMBODIED_MONTHLY_SINGLE_SERVER_G * durationFractionOfMonth;
+
+  const totalLifecycleCo2eGramsPerMonth = totalCo2eGramsPerMonth + embodiedCo2eGramsPerMonth;
+
+  // Water
+  const waterLitresPerMonth = energyKwh * regionData.pue * regionData.water_intensity_litres_per_kwh;
+
+  // Cost: AWS Lambda pricing at us-east-1 rates
+  // $0.0000002/request + $0.0000000167/GB-second
+  const REQUEST_COST = 0.0000002;
+  const GB_SECOND_COST = 0.0000000167;
+  const gbSeconds = memoryGb * (avgDurationMs / 1000) * invocationsPerMonth;
+  const totalCostUsdPerMonth = (REQUEST_COST * invocationsPerMonth) + (GB_SECOND_COST * gbSeconds);
+
+  return {
+    totalCo2eGramsPerMonth,
+    embodiedCo2eGramsPerMonth,
+    totalLifecycleCo2eGramsPerMonth,
+    waterLitresPerMonth,
+    totalCostUsdPerMonth,
+    confidence: 'LOW_ASSUMED_DEFAULT',
+    scope: 'SCOPE_2_AND_3',
+    unsupportedReason: `Serverless estimation uses assumed defaults: ${memoryMb}MB memory, ${invocationsPerMonth.toLocaleString()} invocations/month, ${avgDurationMs}ms avg duration. Override via .greenops.yml or resource tags for accuracy.`,
+    assumptionsApplied: {
+      utilizationApplied: 1.0, // serverless runs at full allocated memory
+      gridIntensityApplied: regionData.grid_intensity_gco2e_per_kwh,
+      powerModelUsed: 'SERVERLESS_INVOCATION',
+      embodiedCo2ePerVcpuPerMonthApplied: EMBODIED_MONTHLY_SINGLE_SERVER_G,
+      waterIntensityLitresPerKwhApplied: regionData.water_intensity_litres_per_kwh,
+      memoryWattsApplied: memoryGb * MEMORY_WATTS_PER_GB,
+    },
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Core Engine
 // ---------------------------------------------------------------------------
 
@@ -183,6 +279,12 @@ export function calculateBaseline(
   const regionData = providerLedger.regions[input.region];
   if (!regionData) {
     return zeroResult(`Region "${input.region}" is not present in the ${provider.toUpperCase()} section of the Open GreenOps Methodology Ledger v${ledger.metadata.ledger_version}.`);
+  }
+
+  // --- Serverless path ---
+  const serverlessParams = parseServerlessInstanceType(input.instanceType);
+  if (serverlessParams) {
+    return calculateServerlessBaseline(input, serverlessParams, regionData);
   }
 
   const instanceData = providerLedger.instances[input.instanceType];

@@ -56,13 +56,18 @@ const SUPPORTED_TYPES: Record<CloudProvider, string[]> = {
   gcp:   ['google_compute_instance'],
 };
 
+// Serverless types — analysed with SERVERLESS_INVOCATION power model
+const SUPPORTED_SERVERLESS_TYPES: Record<CloudProvider, string[]> = {
+  aws:   ['aws_lambda_function'],
+  azure: ['azurerm_function_app', 'azurerm_linux_function_app', 'azurerm_windows_function_app'],
+  gcp:   ['google_cloudfunctions_function', 'google_cloudfunctions2_function', 'google_cloud_run_service'],
+};
+
 const COMPUTE_RELEVANT_TYPES = [
   'aws_launch_template', 'aws_autoscaling_group', 'aws_ecs_service',
-  'aws_eks_node_group', 'aws_lambda_function',
+  'aws_eks_node_group',
   'azurerm_virtual_machine_scale_set', 'azurerm_kubernetes_cluster',
-  'azurerm_function_app',
   'google_compute_instance_template', 'google_container_cluster',
-  'google_cloudfunctions_function',
 ];
 
 function detectProvider(resourceType: string): CloudProvider | null {
@@ -169,6 +174,64 @@ function extractGcpInstanceType(res: TerraformResourceChange): { instanceType: s
   return { instanceType: machineType };
 }
 
+function extractServerlessInput(
+  res: TerraformResourceChange,
+  provider: CloudProvider,
+  providerRegions: Record<CloudProvider, string | null>,
+  plannedValuesMap: Map<string, Record<string, unknown>>
+): { resourceInput: ResourceInput | null; skipReason?: string } {
+  // --- Memory allocation (AWS: memory_size in MB, others default) ---
+  const plannedValues = plannedValuesMap.get(res.address) ?? {};
+  const after = res.change?.after ?? {};
+
+  let memoryMb = 128; // AWS Lambda default
+  let invocationsPerMonth = 1_000_000; // default: 1M invocations/month
+  let avgDurationMs = 200; // default: 200ms avg duration
+  let region: string | null = null;
+
+  if (provider === 'aws') {
+    const raw = after.memory_size ?? plannedValues.memory_size;
+    if (typeof raw === 'number') memoryMb = raw;
+    region = resolveAwsRegion(res.change, providerRegions.aws);
+  } else if (provider === 'azure') {
+    // Azure Function Apps: no explicit memory config in Terraform — use 256MB default
+    memoryMb = 256;
+    region = resolveAzureRegion(res.change, providerRegions.azure);
+  } else if (provider === 'gcp') {
+    // Cloud Run / Cloud Functions: memory from available_memory or available_memory_mb
+    const rawMem = after.available_memory ?? plannedValues.available_memory;
+    const rawMemMb = after.available_memory_mb ?? plannedValues.available_memory_mb;
+    if (typeof rawMem === 'string') {
+      // e.g. "256M" or "1G"
+      const match = rawMem.match(/^(\d+(?:\.\d+)?)\s*([MmGg])?/);
+      if (match) {
+        const val = parseFloat(match[1]);
+        memoryMb = match[2]?.toLowerCase() === 'g' ? val * 1024 : val;
+      }
+    } else if (typeof rawMemMb === 'number') {
+      memoryMb = rawMemMb;
+    } else {
+      memoryMb = 256; // GCP default
+    }
+    region = resolveGcpRegion(res.change, providerRegions.gcp);
+  }
+
+  if (!region) return { resourceInput: null, skipReason: 'known_after_apply' };
+
+  // Encode serverless params into instanceType string for engine lookup
+  // Format: "serverless:{memoryMb}mb:{invocations}inv:{durationMs}ms"
+  const instanceType = `serverless:${memoryMb}mb:${invocationsPerMonth}inv:${avgDurationMs}ms`;
+
+  return {
+    resourceInput: {
+      resourceId: res.address,
+      instanceType,
+      region,
+      provider,
+    }
+  };
+}
+
 export function extractResourceInputs(planFilePath: string): ExtractorResult {
   const result: ExtractorResult = { resources: [], skipped: [], unsupportedTypes: [] };
 
@@ -205,6 +268,7 @@ export function extractResourceInputs(planFilePath: string): ExtractorResult {
   }
 
   const allSupportedTypes = Object.values(SUPPORTED_TYPES).flat();
+  const allServerlessTypes = Object.values(SUPPORTED_SERVERLESS_TYPES).flat();
 
   for (const rawRes of typedPlan.resource_changes) {
     const res = rawRes as TerraformResourceChange;
@@ -216,6 +280,21 @@ export function extractResourceInputs(planFilePath: string): ExtractorResult {
 
     const provider = detectProvider(res.type);
 
+    // --- Serverless path ---
+    if (allServerlessTypes.includes(res.type)) {
+      if (!provider) continue;
+      const { resourceInput, skipReason } = extractServerlessInput(
+        res, provider, providerRegions, plannedValuesMap
+      );
+      if (resourceInput) {
+        result.resources.push(resourceInput);
+      } else {
+        result.skipped.push({ resourceId: res.address, reason: skipReason ?? 'known_after_apply' });
+      }
+      continue;
+    }
+
+    // --- Standard compute path ---
     if (!allSupportedTypes.includes(res.type)) {
       if (COMPUTE_RELEVANT_TYPES.includes(res.type) && !result.unsupportedTypes.includes(res.type)) {
         result.unsupportedTypes.push(res.type);

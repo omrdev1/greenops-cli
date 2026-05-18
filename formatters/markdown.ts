@@ -42,18 +42,34 @@ export function formatMarkdown(result: PlanAnalysisResult, options: FormatterOpt
     out += `> ✅ **Already optimally configured.** No upgrades recommended.\n\n`;
   }
 
-  // Separate fully-analysed resources from unsupported (LOW_ASSUMED_DEFAULT)
-  const analysed = result.resources.filter(r => r.baseline.confidence !== 'LOW_ASSUMED_DEFAULT');
-  const unsupportedResources = result.resources.filter(r => r.baseline.confidence === 'LOW_ASSUMED_DEFAULT');
+  // Separate fully-analysed, serverless-estimated, and unsupported resources
+  const analysed = result.resources.filter(r =>
+    r.baseline.confidence !== 'LOW_ASSUMED_DEFAULT' ||
+    r.input.instanceType.startsWith('serverless:')
+  );
+  const unsupportedResources = result.resources.filter(r =>
+    r.baseline.confidence === 'LOW_ASSUMED_DEFAULT' &&
+    !r.input.instanceType.startsWith('serverless:')
+  );
 
   out += `### Resource Breakdown\n\n`;
   out += `| Resource | Type | Region | Scope 2 CO2e | Scope 3 CO2e | Water | Cost/mo | Action |\n`;
   out += `|---|---|---|---|---|---|---|---|\n`;
   for (const r of analysed) {
+    const isServerless = r.input.instanceType.startsWith('serverless:');
+    const displayType = isServerless
+      ? `\`serverless\`` : `\`${r.input.instanceType}\``;
+    const serverlessBadge = isServerless ? ' ⚡' : '';
     const action = r.recommendation ? `💡 [View Recommendation](#recommendations)` : `✅ Optimal`;
-    out += `| \`${r.input.resourceId}\` | \`${r.input.instanceType}\` | \`${r.input.region}\` | ${formatGrams(r.baseline.totalCo2eGramsPerMonth)} | ${formatGrams(r.baseline.embodiedCo2eGramsPerMonth)} | ${formatWater(r.baseline.waterLitresPerMonth)} | ${r.baseline.totalCostUsdPerMonth.toFixed(2)} | ${action} |\n`;
+    out += `| \`${r.input.resourceId}\`${serverlessBadge} | ${displayType} | \`${r.input.region}\` | ${formatGrams(r.baseline.totalCo2eGramsPerMonth)} | ${formatGrams(r.baseline.embodiedCo2eGramsPerMonth)} | ${formatWater(r.baseline.waterLitresPerMonth)} | ${r.baseline.totalCostUsdPerMonth.toFixed(2)} | ${action} |\n`;
   }
   out += `\n`;
+
+  // Serverless assumptions note
+  const serverlessResources = analysed.filter(r => r.input.instanceType.startsWith('serverless:'));
+  if (serverlessResources.length > 0) {
+    out += `> ⚡ **Serverless resources** are estimated using assumed defaults (1M invocations/month, 200ms avg duration). Actual emissions depend on real invocation patterns. Values are marked \`LOW_ASSUMED_DEFAULT\`.\n\n`;
+  }
 
   const totalSkipped = result.skipped.length + unsupportedResources.length;
   if (totalSkipped > 0) {

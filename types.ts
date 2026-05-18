@@ -13,7 +13,7 @@ export type ConfidenceLevel = "HIGH" | "MEDIUM" | "LOW_ASSUMED_DEFAULT";
 
 export type PowerModel =
   | "LINEAR_INTERPOLATION"     // W = idle + (max - idle) * util — standard CCF model
-  | "IDLE_PLUS_DYNAMIC"        // for Lambda-style invocation models (future)
+  | "SERVERLESS_INVOCATION"    // W derived from memory allocation × invocation count
   | "STATIC_TDP";              // fallback when only max TDP is known
 
 export type CloudProvider = 'aws' | 'azure' | 'gcp';
