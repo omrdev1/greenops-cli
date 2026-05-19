@@ -16,4 +16,4 @@ The GitHub Action (`action.yml`) provides an **opt-in telemetry step** to push f
 - If no key is provided, the Action makes no outbound calls. The security posture remains zero-network.
 
 **Vulnerability Reporting:**
-Please direct security disclosures to `security@greenops-cli.dev`.
+Please direct security disclosures to `security@getgreenops.com`.
