@@ -72,7 +72,7 @@ jobs:
           terraform show -json tfplan > plan.json
 
       - name: GreenOps Carbon Lint
-        uses: omrdev1/greenops-cli@v0
+        uses: omrdev1/greenops-cli@v0.8.0
         with:
           plan-file: plan.json
           github-token: ${{ secrets.GITHUB_TOKEN }}
@@ -84,7 +84,7 @@ Works with AWS, Azure, and GCP plans — provider is detected automatically from
 
 ```yaml
       - name: GreenOps Carbon Lint
-        uses: omrdev1/greenops-cli@v0
+        uses: omrdev1/greenops-cli@v0.8.0
         with:
           plan-file: plan.json
           github-token: ${{ secrets.GITHUB_TOKEN }}
@@ -114,7 +114,7 @@ All fields are optional. `fail_on_violation: true` exits with code 1, blocking m
 
 **GitHub Action** (recommended for CI):
 ```yaml
-uses: omrdev1/greenops-cli@v0
+uses: omrdev1/greenops-cli@v0.8.0
 ```
 
 **npm:**
@@ -161,12 +161,13 @@ PUE differs by provider: AWS 1.13, Azure 1.125, GCP 1.10. All other coefficients
 
 ## 🛑 What it doesn't cover
 
-- AWS Lambda, ECS, EKS, Auto Scaling Groups (flagged as unsupported in output)
-- Azure VMSS, AKS node groups, Function Apps (flagged)
-- GCP GKE node pools, Cloud Functions (flagged)
-- Memory power draw (tracked in `factors.json`, excluded from calculation — consistent with CCF baseline)
+- AWS ECS, EKS, Auto Scaling Groups (flagged as unsupported in output)
+- Azure VMSS, AKS node groups (flagged)
+- GCP GKE node pools (flagged)
 - Real-time marginal grid intensity (annual averages used)
 - Multi-aliased Terraform provider configs may skip with `known_after_apply`
+
+> ⚡ **Lambda/serverless** (`aws_lambda_function`, `azurerm_function_app`, `azurerm_linux_function_app`, `google_cloud_run_service`, `google_cloudfunctions_function`) are estimated using assumed defaults — flagged as `LOW_ASSUMED_DEFAULT` in output with assumptions shown.
 
 ---
 
