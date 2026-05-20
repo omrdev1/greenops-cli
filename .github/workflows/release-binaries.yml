@@ -48,7 +48,9 @@ jobs:
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
         with:
-          bun-version: latest
+          # Pinned to 1.x — prevents a Bun 2.x breaking release silently producing
+          # broken binaries. Bump to 2.x only after validating --compile compatibility.
+          bun-version: '1.x'
 
       - name: Install dependencies
         run: bun install

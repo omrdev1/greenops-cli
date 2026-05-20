@@ -1,5 +1,5 @@
 name: Coverage Request
-description: Request a new AWS instance type or region
+description: Request a new instance type or region (AWS, Azure, GCP)
 labels: ["coverage"]
 body:
   - type: markdown
@@ -13,7 +13,7 @@ body:
       label: What are you requesting?
       options:
         - New instance type
-        - New AWS region
+        - New region
         - Both
     validations:
       required: true
@@ -22,13 +22,13 @@ body:
     id: instance
     attributes:
       label: Instance type (if applicable)
-      placeholder: "m7g.large"
+      placeholder: "e.g., m7g.large, Standard_D2s_v5, n2-standard-2"
 
   - type: input
     id: region
     attributes:
-      label: AWS region (if applicable)
-      placeholder: "ap-northeast-1"
+      label: Region (if applicable)
+      placeholder: "e.g., ap-northeast-1, westeurope, europe-west1"
 
   - type: textarea
     id: data

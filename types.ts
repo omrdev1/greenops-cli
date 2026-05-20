@@ -6,7 +6,7 @@
  *   SCOPE_3_EMBODIED     — Prorated hardware manufacturing lifecycle emissions
  *
  * Water consumption is tracked separately as it is not an emission scope
- * but is a material environmental impact that other carbon-accounting tools report.
+ * but is a material environmental impact tracked across cloud sustainability frameworks.
  */
 
 export type ConfidenceLevel = "HIGH" | "MEDIUM" | "LOW_ASSUMED_DEFAULT";

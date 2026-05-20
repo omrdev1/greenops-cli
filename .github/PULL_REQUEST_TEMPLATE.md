@@ -12,7 +12,7 @@
 
 ## Checklist
 
-- [ ] `npm test` passes locally (all 50+ tests green)
+- [ ] `npm test` passes locally (all 100+ tests green)
 - [ ] `npx tsc --noEmit` passes (zero type errors)
 - [ ] `npm run build` produces no warnings
 - [ ] `node dist/index.cjs diff fixtures/tfplan.e2e.json --format table` produces live output

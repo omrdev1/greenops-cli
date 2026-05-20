@@ -39,8 +39,8 @@ Analyses Terraform plans for **Scope 2 operational**, **Scope 3 embodied**, and 
 
 | Provider | Regions | Instances | Resource Types |
 |---|---|---|---|
-| **AWS** | 14 | 40 | `aws_instance`, `aws_db_instance` |
-| **Azure** | 17 | 16 | `azurerm_linux_virtual_machine`, `azurerm_windows_virtual_machine` |
+| **AWS** | 14 | 47 | `aws_instance`, `aws_db_instance` |
+| **Azure** | 17 | 16 | `azurerm_linux_virtual_machine`, `azurerm_windows_virtual_machine`, `azurerm_virtual_machine` |
 | **GCP** | 15 | 15 | `google_compute_instance` |
 
 Run `greenops-cli --coverage` for the full instance and region list per provider.
@@ -72,7 +72,7 @@ jobs:
           terraform show -json tfplan > plan.json
 
       - name: GreenOps Carbon Lint
-        uses: omrdev1/greenops-cli@v0.8.0
+        uses: omrdev1/greenops-cli@v0.8.1
         with:
           plan-file: plan.json
           github-token: ${{ secrets.GITHUB_TOKEN }}
@@ -84,7 +84,7 @@ Works with AWS, Azure, and GCP plans — provider is detected automatically from
 
 ```yaml
       - name: GreenOps Carbon Lint
-        uses: omrdev1/greenops-cli@v0.8.0
+        uses: omrdev1/greenops-cli@v0.8.1
         with:
           plan-file: plan.json
           github-token: ${{ secrets.GITHUB_TOKEN }}
@@ -103,10 +103,21 @@ budgets:
   max_pr_co2e_increase_kg: 10
   max_pr_cost_increase_usd: 500
   max_total_co2e_kg: 50
+  max_lifecycle_co2e_kg: 60  # Scope 2 + Scope 3 combined (CSRD reporting)
 fail_on_violation: true
 ```
 
 All fields are optional. `fail_on_violation: true` exits with code 1, blocking merge.
+
+### Action Inputs Reference
+
+| Input | Required | Default | Description |
+|---|---|---|---|
+| `plan-file` | ✅ | — | Path to `terraform show -json` output |
+| `github-token` | ✅ | — | Token for posting PR comments (`pull-requests: write`) |
+| `post-suggestions` | ❌ | `false` | Post inline Terraform suggestion comments (one-click committable) |
+| `show-upgrade-prompt` | ❌ | `true` | Append a GreenOps Dashboard link to the PR comment. Set `false` to suppress. |
+| `api-key` | ❌ | — | Optional API key for the GreenOps Dashboard telemetry aggregation. No calls are made if omitted. |
 
 ---
 
@@ -114,7 +125,7 @@ All fields are optional. `fail_on_violation: true` exits with code 1, blocking m
 
 **GitHub Action** (recommended for CI):
 ```yaml
-uses: omrdev1/greenops-cli@v0.8.0
+uses: omrdev1/greenops-cli@v0.8.1
 ```
 
 **npm:**
@@ -139,7 +150,9 @@ All three environmental dimensions use the same formulas regardless of cloud pro
 
 **Scope 2 — Operational (CPU power × grid intensity):**
 ```
-W = W_idle + (W_max - W_idle) × utilization    [CCF linear interpolation]
+W_cpu     = W_idle + (W_max - W_idle) × utilization    [CCF linear interpolation]
+W_memory  = memory_gb × 0.392                          [CCF constant, not utilization-dependent]
+W         = W_cpu + W_memory
 energy_kwh = W × PUE × 730h / 1000
 co2e_grams = energy_kwh × grid_intensity_gco2e_per_kwh
 ```
@@ -149,6 +162,7 @@ co2e_grams = energy_kwh × grid_intensity_gco2e_per_kwh
 embodied_gco2e/month = (1,200,000g / 35,040h / 48 vCPUs) × vcpus × 730h
                        × 0.80  [ARM64 discount — Graviton, Ampere, T2A]
 ```
+_Note: these values are pre-computed per instance type and stored in the methodology ledger (`factors.json`). The formula above documents how ledger values are generated._
 
 **Water consumption (data centre cooling):**
 ```
@@ -161,13 +175,13 @@ PUE differs by provider: AWS 1.13, Azure 1.125, GCP 1.10. All other coefficients
 
 ## 🛑 What it doesn't cover
 
-- AWS ECS, EKS, Auto Scaling Groups (flagged as unsupported in output)
-- Azure VMSS, AKS node groups (flagged)
-- GCP GKE node pools (flagged)
+- `aws_ecs_service`, `aws_eks_node_group`, `aws_launch_template`, `aws_autoscaling_group` (flagged as unsupported in output)
+- `azurerm_virtual_machine_scale_set`, `azurerm_kubernetes_cluster` (flagged)
+- `google_compute_instance_template`, `google_container_cluster` (flagged)
 - Real-time marginal grid intensity (annual averages used)
 - Multi-aliased Terraform provider configs may skip with `known_after_apply`
 
-> ⚡ **Lambda/serverless** (`aws_lambda_function`, `azurerm_function_app`, `azurerm_linux_function_app`, `google_cloud_run_service`, `google_cloudfunctions_function`) are estimated using assumed defaults — flagged as `LOW_ASSUMED_DEFAULT` in output with assumptions shown.
+> ⚡ **Lambda/serverless** (`aws_lambda_function`, `azurerm_function_app`, `azurerm_linux_function_app`, `azurerm_windows_function_app`, `google_cloud_run_service`, `google_cloudfunctions_function`, `google_cloudfunctions2_function`) are estimated using assumed defaults — flagged as `LOW_ASSUMED_DEFAULT` in output with assumptions shown.
 
 ---
 

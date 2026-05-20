@@ -114,6 +114,46 @@ var factors_default = {
       }
     },
     instances: {
+      "t2.micro": {
+        architecture: "x86_64",
+        vcpus: 1,
+        memory_gb: 1,
+        power_watts: {
+          idle: 1,
+          max: 4.5
+        },
+        embodied_co2e_grams_per_month: 1041.7
+      },
+      "t2.small": {
+        architecture: "x86_64",
+        vcpus: 1,
+        memory_gb: 2,
+        power_watts: {
+          idle: 1.5,
+          max: 6.5
+        },
+        embodied_co2e_grams_per_month: 1041.7
+      },
+      "t2.medium": {
+        architecture: "x86_64",
+        vcpus: 2,
+        memory_gb: 4,
+        power_watts: {
+          idle: 3,
+          max: 9.5
+        },
+        embodied_co2e_grams_per_month: 1041.7
+      },
+      "t2.large": {
+        architecture: "x86_64",
+        vcpus: 2,
+        memory_gb: 8,
+        power_watts: {
+          idle: 6,
+          max: 19
+        },
+        embodied_co2e_grams_per_month: 1041.7
+      },
       "t3.micro": {
         architecture: "x86_64",
         vcpus: 2,
