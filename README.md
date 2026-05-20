@@ -84,7 +84,7 @@ Works with AWS, Azure, and GCP plans — provider is detected automatically from
 
 ```yaml
       - name: GreenOps Carbon Lint
-        uses: omrdev1/greenops-cli@v0.8.1
+        uses: omrdev1/greenops-cli@v0.8.2
         with:
           plan-file: plan.json
           github-token: ${{ secrets.GITHUB_TOKEN }}
