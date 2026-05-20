@@ -72,7 +72,7 @@ jobs:
           terraform show -json tfplan > plan.json
 
       - name: GreenOps Carbon Lint
-        uses: omrdev1/greenops-cli@v0.8.1
+        uses: omrdev1/greenops-cli@v0.8.3
         with:
           plan-file: plan.json
           github-token: ${{ secrets.GITHUB_TOKEN }}
@@ -84,7 +84,7 @@ Works with AWS, Azure, and GCP plans — provider is detected automatically from
 
 ```yaml
       - name: GreenOps Carbon Lint
-        uses: omrdev1/greenops-cli@v0.8.2
+        uses: omrdev1/greenops-cli@v0.8.3
         with:
           plan-file: plan.json
           github-token: ${{ secrets.GITHUB_TOKEN }}
@@ -125,7 +125,7 @@ All fields are optional. `fail_on_violation: true` exits with code 1, blocking m
 
 **GitHub Action** (recommended for CI):
 ```yaml
-uses: omrdev1/greenops-cli@v0.8.1
+uses: omrdev1/greenops-cli@v0.8.3
 ```
 
 **npm:**
