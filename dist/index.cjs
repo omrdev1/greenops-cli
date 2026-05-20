@@ -587,6 +587,10 @@ var factors_default = {
     },
     pricing_usd_per_hour: {
       "us-east-1": {
+        "t2.micro": 0.0116,
+        "t2.small": 0.023,
+        "t2.medium": 0.0464,
+        "t2.large": 0.0928,
         "t3.micro": 0.0104,
         "t3.small": 0.0208,
         "t3.medium": 0.0416,
@@ -632,6 +636,10 @@ var factors_default = {
         "r6g.xlarge": 0.2016
       },
       "us-east-2": {
+        "t2.micro": 0.0116,
+        "t2.small": 0.023,
+        "t2.medium": 0.0464,
+        "t2.large": 0.0928,
         "t3.micro": 0.0104,
         "t3.small": 0.0208,
         "t3.medium": 0.0416,
@@ -677,6 +685,10 @@ var factors_default = {
         "r6g.xlarge": 0.2016
       },
       "us-west-1": {
+        "t2.micro": 0.0138,
+        "t2.small": 0.0276,
+        "t2.medium": 0.0552,
+        "t2.large": 0.1104,
         "t3.micro": 0.0116,
         "t3.small": 0.0232,
         "t3.medium": 0.0464,
@@ -703,6 +715,10 @@ var factors_default = {
         "r6g.xlarge": 0.2254
       },
       "us-west-2": {
+        "t2.micro": 0.0116,
+        "t2.small": 0.023,
+        "t2.medium": 0.0464,
+        "t2.large": 0.0928,
         "t3.micro": 0.0104,
         "t3.small": 0.0208,
         "t3.medium": 0.0416,
@@ -748,6 +764,10 @@ var factors_default = {
         "r6g.xlarge": 0.2016
       },
       "eu-west-1": {
+        "t2.micro": 0.0126,
+        "t2.small": 0.0252,
+        "t2.medium": 0.0504,
+        "t2.large": 0.1008,
         "t3.micro": 0.0116,
         "t3.small": 0.0232,
         "t3.medium": 0.0456,
@@ -793,6 +813,10 @@ var factors_default = {
         "r6g.xlarge": 0.2254
       },
       "eu-west-2": {
+        "t2.micro": 0.0142,
+        "t2.small": 0.0284,
+        "t2.medium": 0.0567,
+        "t2.large": 0.1134,
         "t3.micro": 0.0126,
         "t3.small": 0.0252,
         "t3.medium": 0.0504,
@@ -819,6 +843,10 @@ var factors_default = {
         "r6g.xlarge": 0.248
       },
       "eu-central-1": {
+        "t2.micro": 0.0134,
+        "t2.small": 0.0268,
+        "t2.medium": 0.0536,
+        "t2.large": 0.1072,
         "t3.micro": 0.012,
         "t3.small": 0.024,
         "t3.medium": 0.0496,
@@ -862,6 +890,10 @@ var factors_default = {
         "r6g.xlarge": 0.242
       },
       "eu-north-1": {
+        "t2.micro": 0.0116,
+        "t2.small": 0.0232,
+        "t2.medium": 0.0464,
+        "t2.large": 0.0928,
         "t3.micro": 0.0108,
         "t3.small": 0.0216,
         "t3.medium": 0.0432,
@@ -892,6 +924,10 @@ var factors_default = {
         "r6g.xlarge": 0.2108
       },
       "ap-southeast-1": {
+        "t2.micro": 0.0146,
+        "t2.small": 0.0292,
+        "t2.medium": 0.0584,
+        "t2.large": 0.1168,
         "t3.micro": 0.0132,
         "t3.small": 0.0264,
         "t3.medium": 0.0528,
@@ -918,6 +954,10 @@ var factors_default = {
         "r6g.xlarge": 0.2614
       },
       "ap-southeast-2": {
+        "t2.micro": 0.0152,
+        "t2.small": 0.0304,
+        "t2.medium": 0.0608,
+        "t2.large": 0.1216,
         "t3.micro": 0.0136,
         "t3.small": 0.0272,
         "t3.medium": 0.0544,
@@ -961,6 +1001,10 @@ var factors_default = {
         "r6g.xlarge": 0.2822
       },
       "ap-northeast-1": {
+        "t2.micro": 0.0152,
+        "t2.small": 0.0304,
+        "t2.medium": 0.0608,
+        "t2.large": 0.1216,
         "t3.micro": 0.014,
         "t3.small": 0.028,
         "t3.medium": 0.056,
@@ -1004,6 +1048,10 @@ var factors_default = {
         "r6g.xlarge": 0.2896
       },
       "ap-south-1": {
+        "t2.micro": 0.0128,
+        "t2.small": 0.0256,
+        "t2.medium": 0.0512,
+        "t2.large": 0.1024,
         "t3.micro": 0.0114,
         "t3.small": 0.0228,
         "t3.medium": 0.0456,
@@ -1043,6 +1091,10 @@ var factors_default = {
         "r6g.xlarge": 0.2394
       },
       "ca-central-1": {
+        "t2.micro": 0.013,
+        "t2.small": 0.026,
+        "t2.medium": 0.052,
+        "t2.large": 0.104,
         "t3.micro": 0.0116,
         "t3.small": 0.0232,
         "t3.medium": 0.0464,
@@ -1086,6 +1138,10 @@ var factors_default = {
         "r6g.xlarge": 0.2436
       },
       "sa-east-1": {
+        "t2.micro": 0.0188,
+        "t2.small": 0.0376,
+        "t2.medium": 0.0752,
+        "t2.large": 0.1504,
         "t3.micro": 0.0168,
         "t3.small": 0.0336,
         "t3.medium": 0.0672,

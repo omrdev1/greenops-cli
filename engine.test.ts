@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import * as assert from 'node:assert/strict';
-import { calculateBaseline } from './engine';
+import { calculateBaseline, generateRecommendation } from './engine';
 
 describe('calculateBaseline', () => {
   it('calculates the exact gCO2e value using the ledger default utilization (HIGH confidence)', () => {
@@ -372,5 +372,32 @@ describe('calculateBaseline', () => {
       resourceId: 'test', instanceType: 'n2-standard-2', region: 'me-west1', provider: 'gcp',
     });
     assert.equal(result.confidence, 'LOW_ASSUMED_DEFAULT');
+  });
+
+  // ---------------------------------------------------------------------------
+  // t2 series — kunduso compatibility tests
+  // ---------------------------------------------------------------------------
+
+  it('t2.micro: calculates Scope 2 CO2e in us-east-1 (HIGH confidence)', () => {
+    const result = calculateBaseline({
+      resourceId: 'aws_instance.web', instanceType: 't2.micro', region: 'us-east-1', provider: 'aws',
+    });
+    assert.equal(result.confidence, 'HIGH');
+    assert.ok(result.totalCo2eGramsPerMonth > 0);
+    assert.ok(result.totalCo2eGramsPerMonth < 2000, 't2.micro should emit less than 2kg CO2e/month');
+    assert.equal(result.assumptionsApplied.powerModelUsed, 'LINEAR_INTERPOLATION');
+  });
+
+  it('t2.micro: emits less than t3.micro (lower power spec)', () => {
+    const t2 = calculateBaseline({ resourceId: 'x', instanceType: 't2.micro', region: 'us-east-1', provider: 'aws' });
+    const t3 = calculateBaseline({ resourceId: 'x', instanceType: 't3.micro', region: 'us-east-1', provider: 'aws' });
+    assert.ok(t2.totalCo2eGramsPerMonth < t3.totalCo2eGramsPerMonth, 't2.micro should emit less than t3.micro');
+  });
+
+  it('t2.micro: generates a recommendation in us-east-1', () => {
+    const input = { resourceId: 'x', instanceType: 't2.micro', region: 'us-east-1', provider: 'aws' as const };
+    const baseline = calculateBaseline(input);
+    const rec = generateRecommendation(input, baseline);
+    assert.ok(rec !== null, 'Should recommend region shift or ARM upgrade for t2.micro in us-east-1');
   });
 });
