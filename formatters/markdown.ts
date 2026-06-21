@@ -122,7 +122,7 @@ export function formatMarkdown(result: PlanAnalysisResult, options: FormatterOpt
   out += `Math is MIT-licensed and auditable. Analysed at ${result.analysedAt}.*\n`;
 
   if (options.showUpgradePrompt) {
-    out += `\n> 🏢 **GreenOps Dashboard**: aggregate carbon trends across all your repositories and export ESG reports. [Get started free](https://greenops-dashboard.vercel.app)\n`;
+    out += `\n> 🏢 **GreenOps Dashboard**: aggregate carbon trends across all your repositories and export ESG reports. [Get started free](https://getgreenops.com)\n`;
   }
 
   return out;

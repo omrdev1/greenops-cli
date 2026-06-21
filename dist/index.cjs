@@ -3485,7 +3485,7 @@ function formatMarkdown(result2, options = {}) {
 `;
   if (options.showUpgradePrompt) {
     out += `
-> \u{1F3E2} **GreenOps Dashboard**: aggregate carbon trends across all your repositories and export ESG reports. [Get started free](https://greenops-dashboard.vercel.app)
+> \u{1F3E2} **GreenOps Dashboard**: aggregate carbon trends across all your repositories and export ESG reports. [Get started free](https://getgreenops.com)
 `;
   }
   return out;
