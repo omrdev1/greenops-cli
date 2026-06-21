@@ -2130,8 +2130,8 @@ var factors_default = {
 // package.json
 var package_default = {
   name: "greenops-cli",
-  version: "0.8.3",
-  description: "Carbon footprint linting for Terraform plans \u2014 AWS, Azure, and GCP. Analyses infrastructure changes for Scope 2, Scope 3, and water impact. Posts recommendations directly on GitHub PRs.",
+  version: "0.9.0",
+  description: "Carbon footprint linting for Terraform plans: AWS, Azure, and GCP. Analyses infrastructure changes including Kubernetes node groups for Scope 2, Scope 3, and water impact. Posts recommendations directly on GitHub PRs.",
   main: "dist/index.cjs",
   bin: {
     "greenops-cli": "dist/index.cjs"
@@ -3362,9 +3362,9 @@ function formatMarkdown(result2, options = {}) {
 `;
   out += `> |---|---|
 `;
-  out += `> | \u{1F50B} Scope 2 \u2014 Operational CO2e | **${scope2}** |
+  out += `> | \u{1F50B} Scope 2 (Operational CO2e) | **${scope2}** |
 `;
-  out += `> | \u{1F3ED} Scope 3 \u2014 Embodied CO2e | **${scope3}** |
+  out += `> | \u{1F3ED} Scope 3 (Embodied CO2e) | **${scope3}** |
 `;
   out += `> | \u{1F30D} Total Lifecycle CO2e | **${lifecycle}** |
 `;
@@ -3485,7 +3485,7 @@ function formatMarkdown(result2, options = {}) {
 `;
   if (options.showUpgradePrompt) {
     out += `
-> \u{1F3E2} **GreenOps Dashboard** \u2014 aggregate carbon trends across all your repositories and export ESG reports. [Get started free](https://greenops-dashboard.vercel.app)
+> \u{1F3E2} **GreenOps Dashboard**: aggregate carbon trends across all your repositories and export ESG reports. [Get started free](https://greenops-dashboard.vercel.app)
 `;
   }
   return out;

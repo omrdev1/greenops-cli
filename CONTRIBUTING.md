@@ -1,6 +1,6 @@
 # Contributing to GreenOps CLI
 
-Thank you for contributing. Coverage extensions — new instance types, regions, or a second cloud provider — are the fastest PRs to merge.
+Thank you for contributing. Coverage extensions (new instance types, regions, or a second cloud provider) are the fastest PRs to merge.
 
 ---
 
@@ -44,7 +44,7 @@ npx tsc --noEmit
 ## Running Tests
 
 ```bash
-# Full test suite (102 tests across engine, extractor, formatters, policy, serverless)
+# Full test suite (116 tests across engine, extractor, formatters, policy, serverless, node groups)
 npm test
 
 # Run a single test file
@@ -59,22 +59,23 @@ npm run build
 git diff --exit-code dist/index.cjs   # must be clean
 ```
 
-The CI release pipeline enforces this check — a stale or manually-patched bundle will fail.
+The CI release pipeline enforces this check. A stale or manually-patched bundle will fail.
 
 ---
 
 ## Working with Fixtures
 
-The `fixtures/` directory contains synthetic Terraform plan JSON files used for E2E testing and local development. All fixtures are fully synthetic — no real account IDs, ARNs, or IP addresses.
+The `fixtures/` directory contains synthetic Terraform plan JSON files used for E2E testing and local development. All fixtures are fully synthetic. None contain real account IDs, ARNs, or IP addresses.
 
 | File | Provider | Purpose |
 |---|---|---|
-| `tfplan.e2e.json` | AWS | E2E CI fixture — 2 instances, produces recommendations |
-| `tfplan.azure.e2e.json` | Azure | E2E CI fixture — tests Azure extraction |
-| `tfplan.gcp.e2e.json` | GCP | E2E CI fixture — tests GCP extraction |
-| `tfplan.saas-demo.json` | AWS | Larger 10-resource demo (web + API + DB + workers) for manual testing |
+| `tfplan.e2e.json` | AWS | E2E CI fixture, 2 instances, produces recommendations |
+| `tfplan.azure.e2e.json` | Azure | E2E CI fixture, tests Azure extraction |
+| `tfplan.gcp.e2e.json` | GCP | E2E CI fixture, tests GCP extraction |
+| `tfplan.eks.e2e.json` | AWS | E2E CI fixture, EKS node group with autoscaling, tests node count scaling |
+| `tfplan.saas-demo.json` | AWS | Larger 10-resource demo (web, API, DB, workers) for manual testing |
 
-**Run all three E2E fixtures locally:**
+**Run all four E2E fixtures locally:**
 ```bash
 npm run build
 
@@ -86,6 +87,9 @@ node dist/index.cjs diff fixtures/tfplan.azure.e2e.json --format table
 
 # GCP
 node dist/index.cjs diff fixtures/tfplan.gcp.e2e.json --format table
+
+# AWS EKS node group
+node dist/index.cjs diff fixtures/tfplan.eks.e2e.json --format table
 
 # Larger AWS demo (useful for testing recommendation output)
 node dist/index.cjs diff fixtures/tfplan.saas-demo.json --format table
@@ -102,14 +106,14 @@ node dist/index.cjs diff fixtures/tfplan.e2e.json --format markdown --show-upgra
 
 All compute factors live in [`factors.json`](./factors.json). Each provider has an `instances` object.
 
-**Step 1 — Find power data**
+**Step 1: Find power data**
 
 Source idle and max TDP from the [Cloud Carbon Footprint coefficients spreadsheet](https://www.cloudcarbonfootprint.org/docs/methodology). For ARM instances apply the 0.80 embodied multiplier.
 
-**Step 2 — Add to `factors.json`**
+**Step 2: Add to `factors.json`**
 
 ```json
-// AWS example — add under aws.instances
+// AWS example, add under aws.instances
 "m7g.large": {
   "architecture": "arm64",
   "vcpus": 2,
@@ -124,11 +128,11 @@ Embodied formula (documented in METHODOLOGY.md):
 embodied_g/month = (1,200,000g / 35,040h / 48 vCPUs) × vcpus × 730h × arm_discount
 ```
 
-**Step 3 — Add pricing** under `aws.pricing_usd_per_hour` for each region where the instance is available. Prices from the [AWS pricing page](https://aws.amazon.com/ec2/pricing/on-demand/).
+**Step 3: Add pricing** under `aws.pricing_usd_per_hour` for each region where the instance is available. Prices from the [AWS pricing page](https://aws.amazon.com/ec2/pricing/on-demand/).
 
-**Step 4 — Add a test case** in `engine.test.ts` with a math trace comment:
+**Step 4: Add a test case** in `engine.test.ts` with a math trace comment:
 ```ts
-it('m7g.large in eu-west-1 — ARM64 baseline', () => {
+it('m7g.large in eu-west-1: ARM64 baseline', () => {
   // idle=3.05W, max=7.66W, util=0.50, mem=8GB
   // cpu_watts = 3.05 + (7.66-3.05)*0.50 = 5.355W
   // mem_watts = 8 * 0.392 = 3.136W
@@ -140,30 +144,30 @@ it('m7g.large in eu-west-1 — ARM64 baseline', () => {
 });
 ```
 
-**Step 5 — Verify:**
+**Step 5: Verify:**
 ```bash
 npm run build && node dist/index.cjs --coverage
 npm test
 ```
 
-The same pattern applies to Azure (`azure.instances`) and GCP (`gcp.instances`) — the field names are identical.
+The same pattern applies to Azure (`azure.instances`) and GCP (`gcp.instances`); the field names are identical.
 
 ---
 
 ## Adding a New Region
 
-**Step 1 — Find grid intensity**
+**Step 1: Find grid intensity**
 
 Use [Electricity Maps](https://www.electricitymaps.com) annual average CO2 intensity (gCO2e/kWh) for the grid zone corresponding to the data centre region.
 
-**Step 2 — Find WUE (water intensity)**
+**Step 2: Find WUE (water intensity)**
 
 From the provider's annual sustainability report:
 - AWS: [AWS Sustainability Report](https://sustainability.aboutamazon.com)
 - Azure: [Microsoft Sustainability Report](https://aka.ms/SustainabilityReport)
 - GCP: [Google Environmental Report](https://sustainability.google)
 
-**Step 3 — Add to `factors.json`** under the provider's `regions` object:
+**Step 3: Add to `factors.json`** under the provider's `regions` object:
 ```json
 // AWS example
 "ap-northeast-1": {
@@ -174,11 +178,11 @@ From the provider's annual sustainability report:
 }
 ```
 
-PUE values: AWS 1.13, Azure 1.125, GCP 1.10 (provider-wide averages — per-region data is not publicly disclosed).
+PUE values: AWS 1.13, Azure 1.125, GCP 1.10 (provider-wide averages; per-region data is not publicly disclosed).
 
-**Step 4 — Add pricing** for all existing instances in that region under `pricing_usd_per_hour`.
+**Step 4: Add pricing** for all existing instances in that region under `pricing_usd_per_hour`.
 
-**Step 5 — Verify:**
+**Step 5: Verify:**
 ```bash
 npm run build && node dist/index.cjs --coverage
 ```

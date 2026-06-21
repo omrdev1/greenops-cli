@@ -26,8 +26,8 @@ export function formatMarkdown(result: PlanAnalysisResult, options: FormatterOpt
 
   out += `> | Metric | Monthly Total |\n`;
   out += `> |---|---|\n`;
-  out += `> | 🔋 Scope 2 — Operational CO2e | **${scope2}** |\n`;
-  out += `> | 🏭 Scope 3 — Embodied CO2e | **${scope3}** |\n`;
+  out += `> | 🔋 Scope 2 (Operational CO2e) | **${scope2}** |\n`;
+  out += `> | 🏭 Scope 3 (Embodied CO2e) | **${scope3}** |\n`;
   out += `> | 🌍 Total Lifecycle CO2e | **${lifecycle}** |\n`;
   out += `> | 💧 Water Consumption | **${water}** |\n`;
   out += `> | 💰 Infrastructure Cost | **$${cost}/month** |\n\n`;
@@ -122,7 +122,7 @@ export function formatMarkdown(result: PlanAnalysisResult, options: FormatterOpt
   out += `Math is MIT-licensed and auditable. Analysed at ${result.analysedAt}.*\n`;
 
   if (options.showUpgradePrompt) {
-    out += `\n> 🏢 **GreenOps Dashboard** — aggregate carbon trends across all your repositories and export ESG reports. [Get started free](https://greenops-dashboard.vercel.app)\n`;
+    out += `\n> 🏢 **GreenOps Dashboard**: aggregate carbon trends across all your repositories and export ESG reports. [Get started free](https://greenops-dashboard.vercel.app)\n`;
   }
 
   return out;

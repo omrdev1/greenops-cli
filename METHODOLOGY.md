@@ -10,9 +10,9 @@ All maths in GreenOps is open, auditable, and reproducible from `factors.json`. 
 
 | Provider | Regions | Instances | Status |
 |---|---|---|---|
-| AWS | 14 | 40 | ✅ Full coverage |
-| Azure | 17 | 16 | ✅ Full coverage |
-| GCP | 15 | 15 | ✅ Full coverage |
+| AWS | 14 | 47 | Full coverage for listed instance and node group types |
+| Azure | 17 | 16 | Full coverage for listed instance and node group types |
+| GCP | 15 | 15 | Full coverage for listed instance and node group types |
 
 Run `greenops-cli --coverage` to see the full instance and region list per provider.
 
@@ -22,11 +22,11 @@ Run `greenops-cli --coverage` to see the full instance and region list per provi
 
 | Scope | What it measures | GreenOps status |
 |---|---|---|
-| Scope 2 — Operational | CPU power draw × grid carbon intensity | ✅ Tracked |
-| Scope 3 — Embodied | Hardware manufacturing lifecycle | ✅ Tracked |
-| Water consumption | Data centre cooling water withdrawal | ✅ Tracked |
-| Scope 3 — Supply chain | Software, logistics, employee travel | ❌ Out of scope |
-| Scope 1 — Direct | On-site combustion | ❌ Not applicable (cloud) |
+| Scope 2 (Operational) | CPU and memory power draw multiplied by grid carbon intensity | Tracked |
+| Scope 3 (Embodied) | Hardware manufacturing lifecycle | Tracked |
+| Water consumption | Data centre cooling water withdrawal | Tracked |
+| Scope 3 (Supply chain) | Software, logistics, employee travel | Out of scope |
+| Scope 1 (Direct) | On-site combustion | Not applicable to cloud infrastructure |
 
 ---
 
@@ -68,7 +68,7 @@ co2e_grams = energy_kwh × grid_intensity_gco2e_per_kwh
 
 GCP's 1.10 PUE is the best in class among the three major providers, producing ~3% less overhead energy per unit of compute.
 
-### Worked Example — AWS m5.large in us-east-1 at 50% utilisation
+### Worked Example: AWS m5.large in us-east-1 at 50% utilisation
 
 1. **CPU power:** `W_cpu = 6.8 + (20.4 - 6.8) × 0.50 = 13.6W`
 2. **Memory power:** `W_mem = 8GB × 0.392 = 3.136W`
@@ -76,7 +76,7 @@ GCP's 1.10 PUE is the best in class among the three major providers, producing ~
 4. **Energy:** `16.736W × 1.13 PUE × 730h / 1000 = 13.816 kWh/month`
 5. **Carbon:** `13.816 × 384.5 = 5,308.2g CO2e/month`
 
-### Worked Example — Azure Standard_D2s_v3 in eastus at 50% utilisation
+### Worked Example: Azure Standard_D2s_v3 in eastus at 50% utilisation
 
 1. **CPU power:** `W_cpu = 6.8 + (20.4 - 6.8) × 0.50 = 13.6W`
 2. **Memory power:** `W_mem = 8GB × 0.392 = 3.136W`
@@ -84,7 +84,7 @@ GCP's 1.10 PUE is the best in class among the three major providers, producing ~
 4. **Energy:** `16.736W × 1.125 PUE × 730h / 1000 = 13.745 kWh/month`
 5. **Carbon:** `13.745 × 380.0 = 5,222.9g CO2e/month`
 
-### Worked Example — GCP n2-standard-2 in us-central1 at 50% utilisation
+### Worked Example: GCP n2-standard-2 in us-central1 at 50% utilisation
 
 1. **CPU power:** `W_cpu = 6.8 + (20.4 - 6.8) × 0.50 = 13.6W`
 2. **Memory power:** `W_mem = 8GB × 0.392 = 3.136W`
@@ -96,7 +96,7 @@ GCP's 1.10 PUE is the best in class among the three major providers, producing ~
 
 ## Scope 3: Embodied Emissions
 
-Embodied carbon covers the manufacturing, transport, and end-of-life disposal of server hardware — prorated to the fraction of a physical server this instance type occupies.
+Embodied carbon covers the manufacturing, transport, and end-of-life disposal of server hardware, prorated to the fraction of a physical server this instance type occupies.
 
 ### Formula
 
@@ -121,7 +121,21 @@ x86_64: (1,200,000 / 35,040 / 48) × 730 = 520.8g CO2e/vCPU/month
 arm64:  520.8 × 0.80                     = 416.7g CO2e/vCPU/month
 ```
 
-The ARM discount applies equally to AWS Graviton, Azure Ampere (Dps-series), and GCP T2A instances — all use Arm Neoverse cores with comparable manufacturing profiles.
+The ARM discount applies equally to AWS Graviton, Azure Ampere (Dps-series), and GCP T2A instances, all of which use Arm Neoverse cores with comparable manufacturing profiles.
+
+---
+
+## Kubernetes Node Groups
+
+`aws_eks_node_group`, `azurerm_kubernetes_cluster`, `azurerm_kubernetes_cluster_node_pool`, and `google_container_node_pool` use the exact Scope 2, Scope 3, and water formulas above, applied once per node and multiplied by node count:
+
+```
+node_group_co2e_per_month = per_node_co2e_per_month × node_count
+```
+
+Node count for autoscaling groups is read from the minimum configured size (`min_size`, `min_count`, or `autoscaling.min_node_count`), never the desired or maximum size. This is a deliberate floor, not an estimate of typical usage: an autoscaler's actual node count at any given moment cannot be known from a Terraform plan, and reporting the maximum would overstate the footprint in the common case where the group is not fully scaled up. The PR comment notes this explicitly whenever a node group is detected.
+
+ARM upgrade and region shift recommendations apply the same scoring as standalone instances (see Recommendation Engine below), with the resulting delta multiplied by node count.
 
 ---
 
@@ -182,9 +196,9 @@ Source: AWS 2023 Sustainability Report, Microsoft 2023 Environmental Sustainabil
 
 GreenOps evaluates two strategies per resource and selects the highest-scoring option:
 
-**Strategy 1 — ARM upgrade:** Switch x86_64 → ARM64 (same vCPU/RAM class). Only recommended if both CO2e and cost decrease. Supported across all three providers.
+**Strategy 1 (ARM upgrade):** Switch x86_64 to ARM64 (same vCPU/RAM class). Only recommended if both CO2e and cost decrease. Supported across all three providers.
 
-**Strategy 2 — Region shift:** Move to the lowest grid-intensity region within the same provider that has pricing data for this instance. Only recommended if CO2e reduction exceeds 15% of baseline.
+**Strategy 2 (Region shift):** Move to the lowest grid-intensity region within the same provider that has pricing data for this instance. Only recommended if CO2e reduction exceeds 15% of baseline.
 
 **Scoring:**
 
@@ -235,11 +249,11 @@ GreenOps only applies emission formulas to instance types explicitly present in 
 
 ### What LOW_ASSUMED_DEFAULT means
 
-`LOW_ASSUMED_DEFAULT` is not an estimate — it is a deliberate null. The resource appears in the output as `⚠ UNKNOWN` in the table formatter and in the skipped section of the markdown PR comment, with the exact `unsupportedReason` explaining which instance type is missing and from which provider's ledger section.
+`LOW_ASSUMED_DEFAULT` is not an estimate. It is a deliberate null. The resource appears in the output as `⚠ UNKNOWN` in the table formatter and in the skipped section of the markdown PR comment, with the exact `unsupportedReason` explaining which instance type is missing and from which provider's ledger section.
 
 ### Why this matters for FinOps auditors
 
-The formula `embodied_gco2e = (1,200,000g / 35,040h / 48 vCPUs) × vcpus × 730h` is validated against the 71 instance types in the current ledger. Applying it blindly to unsupported instances — particularly memory-optimised families (AWS `r6i`, Azure `Standard_M` series, GCP `m2` series) with non-standard vCPU-to-memory ratios — would produce numbers that cannot be defended under CSRD audit.
+The formula `embodied_gco2e = (1,200,000g / 35,040h / 48 vCPUs) × vcpus × 730h` is validated against the 78 instance types in the current ledger. Applying it blindly to unsupported instances, particularly memory-optimised families (AWS `r6i`, Azure `Standard_M` series, GCP `m2` series) with non-standard vCPU-to-memory ratios, would produce numbers that cannot be defended under CSRD audit.
 
 The boundary is intentional. A tool that shows a wrong number is worse than a tool that shows no number.
 
@@ -258,9 +272,11 @@ These are the maximum-utilisation values. Actual emissions at typical utilisatio
 
 | Provider | Instance types | Notable gaps |
 |---|---|---|
-| AWS | 40 | r6i, c6i, m6i (Intel v3), Graviton 4 (m8g, c8g) |
+| AWS | 47 | r6i, c6i, m6i (Intel v3), Graviton 4 (m8g, c8g) |
 | Azure | 16 | Standard_M series, Standard_L series, Standard_NC (GPU) |
 | GCP | 15 | n1 series (legacy), m2/m3 memory-optimised, A2 (GPU) |
+
+GPU instance families and managed AI/ML compute (SageMaker, Vertex AI, Azure ML) are not yet in the ledger. Kubernetes node groups (EKS, AKS, GKE) resolve to the standard instance entries above; node count multiplies the output, see Kubernetes Node Groups above.
 
 All gaps are tracked as open issues. Coverage PRs are the fastest to merge.
 
@@ -268,12 +284,13 @@ All gaps are tracked as open issues. Coverage PRs are the fastest to merge.
 
 ## Known Limitations
 
-- **CPU-only power model.** Memory power draw is tracked in `factors.json` (`memory_gb`) but not yet included in calculations.
+- **No GPU or managed AI/ML compute model.** SageMaker, Vertex AI, Azure ML, and GPU-backed instance families (p4/p5, NC-series, A2/A3) are not yet in the ledger. This is the largest open gap as of this writing.
 - **Scope 2 only for region recommendations.** Embodied carbon does not change when shifting regions, so it is correctly excluded from the region-shift scoring.
 - **Annual average grid intensity.** Real-time marginal emissions are not used. Annual averages are more stable and reproducible, consistent with CCF methodology.
 - **WUE at data centre level.** Water figures cover direct data centre cooling withdrawal only.
-- **Azure and GCP coverage is initial.** AWS has 40 instance types; Azure and GCP each have 15–16. Enterprise-scale instance families (M-series, X-series, A2 High Memory) are not yet in the ledger.
+- **Azure and GCP coverage is smaller than AWS.** AWS has 47 instance types; Azure and GCP each have 15 to 16. Enterprise-scale instance families (M-series, X-series, A2 High Memory) are not yet in the ledger.
 - **Provider alias regions.** Multi-aliased provider configs may not resolve correctly. Standard single-provider configs are fully supported.
+- **Node group autoscaling is reported at minimum size.** EKS, AKS, and GKE node groups with autoscaling enabled report the minimum configured node count, not the desired or current count. Actual emissions at any given time may be higher if the autoscaler has scaled up.
 
 ---
 

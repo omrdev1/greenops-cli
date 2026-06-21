@@ -9,8 +9,8 @@ Analyses Terraform plans for **Scope 2 operational**, **Scope 3 embodied**, and 
 
 > | Metric | Monthly Total |
 > |---|---|
-> | 🔋 Scope 2 — Operational CO2e | **7.06kg** |
-> | 🏭 Scope 3 — Embodied CO2e | **1.88kg** |
+> | 🔋 Scope 2 (Operational CO2e) | **7.06kg** |
+> | 🏭 Scope 3 (Embodied CO2e) | **1.88kg** |
 > | 🌍 Total Lifecycle CO2e | **8.93kg** |
 > | 💧 Water Consumption | **7.5L** |
 > | 💰 Infrastructure Cost | **$126.29/month** |
@@ -39,9 +39,11 @@ Analyses Terraform plans for **Scope 2 operational**, **Scope 3 embodied**, and 
 
 | Provider | Regions | Instances | Resource Types |
 |---|---|---|---|
-| **AWS** | 14 | 47 | `aws_instance`, `aws_db_instance` |
-| **Azure** | 17 | 16 | `azurerm_linux_virtual_machine`, `azurerm_windows_virtual_machine`, `azurerm_virtual_machine` |
-| **GCP** | 15 | 15 | `google_compute_instance` |
+| **AWS** | 14 | 47 | `aws_instance`, `aws_db_instance`, `aws_eks_node_group`, `aws_lambda_function` |
+| **Azure** | 17 | 16 | `azurerm_linux_virtual_machine`, `azurerm_windows_virtual_machine`, `azurerm_virtual_machine`, `azurerm_kubernetes_cluster`, `azurerm_kubernetes_cluster_node_pool`, `azurerm_function_app`, `azurerm_linux_function_app`, `azurerm_windows_function_app` |
+| **GCP** | 15 | 15 | `google_compute_instance`, `google_container_node_pool`, `google_cloud_run_service`, `google_cloudfunctions_function`, `google_cloudfunctions2_function` |
+
+Kubernetes node groups (EKS, AKS, GKE) resolve to the same instance ledger as standalone VMs. Node count scales the output, not the per-node calculation. See [Kubernetes Node Groups](#-kubernetes-node-groups) below.
 
 Run `greenops-cli --coverage` for the full instance and region list per provider.
 
@@ -72,26 +74,26 @@ jobs:
           terraform show -json tfplan > plan.json
 
       - name: GreenOps Carbon Lint
-        uses: omrdev1/greenops-cli@v0.8.3
+        uses: omrdev1/greenops-cli@v0.9.0
         with:
           plan-file: plan.json
           github-token: ${{ secrets.GITHUB_TOKEN }}
 ```
 
-Works with AWS, Azure, and GCP plans — provider is detected automatically from resource types.
+Works with AWS, Azure, and GCP plans. Provider is detected automatically from resource types.
 
 ### Inline Terraform Suggestions
 
 ```yaml
       - name: GreenOps Carbon Lint
-        uses: omrdev1/greenops-cli@v0.8.3
+        uses: omrdev1/greenops-cli@v0.9.0
         with:
           plan-file: plan.json
           github-token: ${{ secrets.GITHUB_TOKEN }}
           post-suggestions: true
 ```
 
-When enabled, GreenOps posts an inline suggestion comment on the `instance_type`/`size`/`machine_type` line — the developer clicks **Commit suggestion** and the change is applied.
+When enabled, GreenOps posts an inline suggestion comment on the `instance_type`/`size`/`machine_type` line. The developer clicks **Commit suggestion** and the change is applied.
 
 ### Policy Budgets
 
@@ -125,7 +127,7 @@ All fields are optional. `fail_on_violation: true` exits with code 1, blocking m
 
 **GitHub Action** (recommended for CI):
 ```yaml
-uses: omrdev1/greenops-cli@v0.8.3
+uses: omrdev1/greenops-cli@v0.9.0
 ```
 
 **npm:**
@@ -148,7 +150,7 @@ Binaries available for `linux-x64`, `linux-arm64`, `darwin-arm64`, `darwin-x64`,
 
 All three environmental dimensions use the same formulas regardless of cloud provider:
 
-**Scope 2 — Operational (CPU power × grid intensity):**
+**Scope 2 (Operational): CPU power times grid intensity**
 ```
 W_cpu     = W_idle + (W_max - W_idle) × utilization    [CCF linear interpolation]
 W_memory  = memory_gb × 0.392                          [CCF constant, not utilization-dependent]
@@ -157,10 +159,10 @@ energy_kwh = W × PUE × 730h / 1000
 co2e_grams = energy_kwh × grid_intensity_gco2e_per_kwh
 ```
 
-**Scope 3 — Embodied (hardware manufacturing):**
+**Scope 3 (Embodied): hardware manufacturing**
 ```
 embodied_gco2e/month = (1,200,000g / 35,040h / 48 vCPUs) × vcpus × 730h
-                       × 0.80  [ARM64 discount — Graviton, Ampere, T2A]
+                       × 0.80  [ARM64 discount: Graviton, Ampere, T2A]
 ```
 _Note: these values are pre-computed per instance type and stored in the methodology ledger (`factors.json`). The formula above documents how ledger values are generated._
 
@@ -173,21 +175,40 @@ PUE differs by provider: AWS 1.13, Azure 1.125, GCP 1.10. All other coefficients
 
 ---
 
+## ☸️ Kubernetes Node Groups
+
+`aws_eks_node_group`, `azurerm_kubernetes_cluster`, `azurerm_kubernetes_cluster_node_pool`, and `google_container_node_pool` are analysed the same way as standalone instances, multiplied by node count.
+
+```
+aws_eks_node_group.workers
+  instance_types: ["m5.large"]
+  scaling_config: { desired_size: 3, min_size: 2, max_size: 6 }
+
+  -> reported as m5.large x 2
+```
+
+**Autoscaling groups are reported at minimum configured size, never desired or maximum.** This is intentional, not a limitation: a tool that overstates emissions is as misleading as one that understates them, and an autoscaler's actual node count at any given moment is unknown at plan time. The PR comment notes this explicitly whenever a node group is detected, so the reported figure is read as a floor, not an estimate of typical usage.
+
+ARM upgrade and region shift recommendations apply across the whole node group. A recommendation on a 4-node group reports 4x the per-node saving, calculated from the same per-instance delta used for standalone resources.
+
+---
+
 ## 🛑 What it doesn't cover
 
-- `aws_ecs_service`, `aws_eks_node_group`, `aws_launch_template`, `aws_autoscaling_group` (flagged as unsupported in output)
-- `azurerm_virtual_machine_scale_set`, `azurerm_kubernetes_cluster` (flagged)
-- `google_compute_instance_template`, `google_container_cluster` (flagged)
+- `aws_ecs_service`, `aws_launch_template`, `aws_autoscaling_group` (flagged as unsupported in output)
+- `azurerm_virtual_machine_scale_set` (flagged)
+- `google_compute_instance_template`, `google_container_cluster` (flagged; use `google_container_node_pool` for GKE workloads, which is supported)
+- AI and machine learning compute (GPU instances, managed inference endpoints). Not yet modeled. Tracked as an open item.
 - Real-time marginal grid intensity (annual averages used)
 - Multi-aliased Terraform provider configs may skip with `known_after_apply`
 
-> ⚡ **Lambda/serverless** (`aws_lambda_function`, `azurerm_function_app`, `azurerm_linux_function_app`, `azurerm_windows_function_app`, `google_cloud_run_service`, `google_cloudfunctions_function`, `google_cloudfunctions2_function`) are estimated using assumed defaults — flagged as `LOW_ASSUMED_DEFAULT` in output with assumptions shown.
+> ⚡ **Lambda/serverless** (`aws_lambda_function`, `azurerm_function_app`, `azurerm_linux_function_app`, `azurerm_windows_function_app`, `google_cloud_run_service`, `google_cloudfunctions_function`, `google_cloudfunctions2_function`) are estimated using assumed defaults, flagged as `LOW_ASSUMED_DEFAULT` in output with assumptions shown.
 
 ---
 
 ## 🧪 E2E Testing
 
-The `fixtures/` directory contains Terraform plan files for all three providers. The `.github/workflows/greenops-e2e.yml` workflow runs all three on every PR.
+The `fixtures/` directory contains Terraform plan files for all three providers plus a Kubernetes node group case. The `.github/workflows/greenops-e2e.yml` workflow runs all four on every PR.
 
 ```bash
 npm run build
@@ -200,6 +221,9 @@ node dist/index.cjs diff fixtures/tfplan.azure.e2e.json --format table
 
 # GCP
 node dist/index.cjs diff fixtures/tfplan.gcp.e2e.json --format table
+
+# AWS EKS node group
+node dist/index.cjs diff fixtures/tfplan.eks.e2e.json --format table
 ```
 
 ---
