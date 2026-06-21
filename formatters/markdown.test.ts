@@ -254,4 +254,48 @@ describe('formatMarkdown', () => {
     assert.ok(md.includes('Skipped Resource'), 'A genuinely unsupported instance (zero Scope 2) should stay in skipped section');
     assert.ok(md.includes('p9000.fictional'));
   });
+
+  it('shows a human-readable label for a managed_ai: SageMaker resource, not the raw internal encoding', () => {
+    const result = makeMockResult({
+      resources: [{
+        input: { resourceId: 'aws_sagemaker_endpoint_configuration.inference', instanceType: 'managed_ai:sagemaker:g5.xlarge', region: 'us-east-1', provider: 'aws' as const },
+        baseline: makeMockBaseline({
+          confidence: 'LOW_ASSUMED_DEFAULT' as const,
+          totalCo2eGramsPerMonth: 500,
+          embodiedCo2eGramsPerMonth: 0,
+          totalCostUsdPerMonth: 1481.90,
+          unsupportedReason: 'Managed AI service estimate (sagemaker) assumes the endpoint runs continuously. Embodied (Scope 3) carbon for "g5.xlarge" is not yet modeled.',
+        }),
+        recommendation: null,
+      }],
+      totals: makeMockTotals({ currentCo2eGramsPerMonth: 500, currentCostUsdPerMonth: 1481.90 }),
+    });
+    const md = formatMarkdown(result);
+    assert.ok(!md.includes('managed_ai:sagemaker:g5.xlarge'), 'Should NOT show the raw internal encoding string');
+    assert.ok(md.includes('ml.g5.xlarge (SageMaker)'), 'Should show the human-readable label');
+    assert.ok(!md.includes('Skipped Resource'), 'Real Scope 2 data should not be buried in skipped section');
+    assert.ok(md.includes('Managed AI services'), 'Should show the managed AI assumptions note');
+    assert.ok(md.includes('GPU instances'), 'Should also show the GPU embodied-carbon note (Embodied (Scope 3) appears in this resource\'s reason)');
+  });
+
+  it('shows a human-readable label for a gpu_attached: Vertex AI Workbench resource', () => {
+    const result = makeMockResult({
+      resources: [{
+        input: { resourceId: 'google_workbench_instance.gpu_notebook', instanceType: 'gpu_attached:n2-standard-2:70:1', region: 'us-central1', provider: 'gcp' as const },
+        baseline: makeMockBaseline({
+          confidence: 'LOW_ASSUMED_DEFAULT' as const,
+          totalCo2eGramsPerMonth: 300,
+          embodiedCo2eGramsPerMonth: 0,
+          totalCostUsdPerMonth: 326.31,
+          unsupportedReason: 'Embodied (Scope 3) carbon for the attached GPU is not yet modeled.',
+        }),
+        recommendation: null,
+      }],
+      totals: makeMockTotals({ currentCo2eGramsPerMonth: 300, currentCostUsdPerMonth: 326.31 }),
+    });
+    const md = formatMarkdown(result);
+    assert.ok(!md.includes('gpu_attached:n2-standard-2:70:1'), 'Should NOT show the raw internal encoding string');
+    assert.ok(md.includes('n2-standard-2 + 1x GPU'), 'Should show the human-readable label');
+    assert.ok(!md.includes('Skipped Resource'));
+  });
 });

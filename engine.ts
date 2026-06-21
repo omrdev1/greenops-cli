@@ -43,6 +43,14 @@ interface ProviderLedger {
   regions: Record<string, LedgerRegion>;
   instances: Record<string, LedgerInstance>;
   pricing_usd_per_hour: Record<string, Record<string, number>>;
+  /**
+   * Managed AI service pricing (SageMaker inference endpoints, Vertex AI
+   * Workbench, etc.), keyed by service name then region then the underlying
+   * base instance type. Always a real premium over raw compute pricing in
+   * pricing_usd_per_hour — managed AI services are priced separately by the
+   * provider, never derived from the underlying instance's compute price.
+   */
+  managed_ai_pricing_usd_per_hour?: Record<string, Record<string, Record<string, number>>>;
 }
 
 interface Ledger {
@@ -256,6 +264,244 @@ function calculateServerlessBaseline(
 }
 
 // ---------------------------------------------------------------------------
+// Managed AI Services (SageMaker inference endpoints, Vertex AI Workbench)
+// ---------------------------------------------------------------------------
+
+/**
+ * Parse a managed-AI instance type string into its service and base instance.
+ * Format: "managed_ai:{service}:{baseInstanceType}"
+ *
+ * The base instance type resolves to an existing entry in instances{} for
+ * power/embodied-carbon specs (SageMaker ml.* instances and the underlying
+ * EC2 instance family share identical vCPU/memory/GPU hardware — confirmed
+ * against AWS's own SageMaker instance documentation). Pricing is NOT
+ * derived from the base instance: managed AI services carry a real,
+ * separately-published premium (e.g. ml.g5.xlarge runs ~2x raw g5.xlarge
+ * on-demand pricing) and must use managed_ai_pricing_usd_per_hour.
+ */
+function parseManagedAiInstanceType(instanceType: string): {
+  service: string;
+  baseInstanceType: string;
+} | null {
+  if (!instanceType.startsWith('managed_ai:')) return null;
+  const match = instanceType.match(/^managed_ai:([a-z_]+):(.+)$/);
+  if (!match) return null;
+  return { service: match[1], baseInstanceType: match[2] };
+}
+
+function calculateManagedAiBaseline(
+  input: ResourceInput,
+  params: { service: string; baseInstanceType: string },
+  providerLedger: ProviderLedger,
+  regionData: LedgerRegion,
+  utilization: number,
+  hours: number,
+  provider: CloudProvider,
+  ledgerVersion: string
+): EmissionAndCostEstimate {
+  const { service, baseInstanceType } = params;
+
+  const instanceData = providerLedger.instances[baseInstanceType];
+  if (!instanceData) {
+    return {
+      totalCo2eGramsPerMonth: 0,
+      embodiedCo2eGramsPerMonth: 0,
+      totalLifecycleCo2eGramsPerMonth: 0,
+      waterLitresPerMonth: 0,
+      totalCostUsdPerMonth: 0,
+      confidence: 'LOW_ASSUMED_DEFAULT',
+      scope: 'SCOPE_2_AND_3',
+      unsupportedReason: `Managed AI service "${service}" base instance "${baseInstanceType}" is not present in the ${provider.toUpperCase()} section of the Open GreenOps Methodology Ledger v${ledgerVersion}.`,
+      assumptionsApplied: {
+        utilizationApplied: utilization,
+        gridIntensityApplied: regionData.grid_intensity_gco2e_per_kwh,
+        powerModelUsed: 'LINEAR_INTERPOLATION',
+        embodiedCo2ePerVcpuPerMonthApplied: 0,
+        waterIntensityLitresPerKwhApplied: regionData.water_intensity_litres_per_kwh,
+        memoryWattsApplied: 0,
+      },
+    };
+  }
+
+  const managedPrice = providerLedger.managed_ai_pricing_usd_per_hour?.[service]?.[input.region]?.[baseInstanceType];
+  if (managedPrice === undefined) {
+    return {
+      totalCo2eGramsPerMonth: 0,
+      embodiedCo2eGramsPerMonth: 0,
+      totalLifecycleCo2eGramsPerMonth: 0,
+      waterLitresPerMonth: 0,
+      totalCostUsdPerMonth: 0,
+      confidence: 'LOW_ASSUMED_DEFAULT',
+      scope: 'SCOPE_2_AND_3',
+      unsupportedReason: `No managed AI pricing data for "${service}" base instance "${baseInstanceType}" in "${input.region}" (${provider.toUpperCase()}).`,
+      assumptionsApplied: {
+        utilizationApplied: utilization,
+        gridIntensityApplied: regionData.grid_intensity_gco2e_per_kwh,
+        powerModelUsed: 'LINEAR_INTERPOLATION',
+        embodiedCo2ePerVcpuPerMonthApplied: instanceData.embodied_co2e_grams_per_month,
+        waterIntensityLitresPerKwhApplied: regionData.water_intensity_litres_per_kwh,
+        memoryWattsApplied: 0,
+      },
+    };
+  }
+
+  const effectiveWatts = effectiveTotalWatts(
+    instanceData.power_watts.idle, instanceData.power_watts.max, utilization, instanceData.memory_gb
+  );
+  const nodeCount = input.nodeCount ?? 1;
+
+  const totalCo2eGramsPerMonth = wattsToScope2Carbon(
+    effectiveWatts, hours, regionData.pue, regionData.grid_intensity_gco2e_per_kwh
+  ) * nodeCount;
+  const embodiedCo2eGramsPerMonth = instanceData.embodied_unmodeled
+    ? 0
+    : instanceData.embodied_co2e_grams_per_month * (hours / HOURS_PER_MONTH) * nodeCount;
+  const waterLitresPerMonth = wattsToWater(effectiveWatts, hours, regionData.water_intensity_litres_per_kwh) * nodeCount;
+  const totalLifecycleCo2eGramsPerMonth = totalCo2eGramsPerMonth + embodiedCo2eGramsPerMonth;
+  const totalCostUsdPerMonth = managedPrice * hours * nodeCount;
+
+  // Managed AI services are always LOW_ASSUMED_DEFAULT: usage is billed by
+  // actual invocation/runtime, not fixed instance-hours, and a Terraform plan
+  // cannot see real utilization. The figure here assumes the endpoint runs
+  // continuously at the ledger's default utilization — a ceiling estimate
+  // for always-on endpoints, not a measurement of actual usage.
+  const reasonParts = [
+    `Managed AI service estimate (${service}) assumes the endpoint runs continuously; actual emissions depend on real invocation/runtime patterns not visible in a Terraform plan.`,
+  ];
+  if (instanceData.embodied_unmodeled) {
+    reasonParts.push(`Embodied (Scope 3) carbon for "${baseInstanceType}" is not yet modeled — see GPU coverage notes in METHODOLOGY.md.`);
+  }
+
+  return {
+    totalCo2eGramsPerMonth,
+    embodiedCo2eGramsPerMonth,
+    totalLifecycleCo2eGramsPerMonth,
+    waterLitresPerMonth,
+    totalCostUsdPerMonth,
+    confidence: 'LOW_ASSUMED_DEFAULT',
+    scope: 'SCOPE_2_AND_3',
+    unsupportedReason: reasonParts.join(' '),
+    assumptionsApplied: {
+      utilizationApplied: utilization,
+      gridIntensityApplied: regionData.grid_intensity_gco2e_per_kwh,
+      powerModelUsed: 'LINEAR_INTERPOLATION',
+      embodiedCo2ePerVcpuPerMonthApplied: instanceData.embodied_co2e_grams_per_month,
+      waterIntensityLitresPerKwhApplied: regionData.water_intensity_litres_per_kwh,
+      memoryWattsApplied: instanceData.memory_gb * MEMORY_WATTS_PER_GB,
+    },
+  };
+}
+
+// ---------------------------------------------------------------------------
+// GPU-Attached Compute (Vertex AI Workbench accelerator_configs)
+// ---------------------------------------------------------------------------
+
+/**
+ * Parse a GPU-attached instance type string.
+ * Format: "gpu_attached:{baseMachineType}:{acceleratorWatts}:{coreCount}"
+ *
+ * Unlike SageMaker, Vertex AI Workbench has no managed-service price premium
+ * — Google bills it as the underlying Compute Engine machine plus a
+ * standalone per-GPU accelerator rate (confirmed: Workbench appears in GCP
+ * billing as Compute Engine charges with a product label, not a separate
+ * line item). So this path reuses raw pricing_usd_per_hour for the base
+ * machine and adds a real GPU accelerator rate on top, rather than needing
+ * a managed_ai-style separate pricing table.
+ */
+function parseGpuAttachedInstanceType(instanceType: string): {
+  baseMachineType: string;
+  acceleratorWatts: number;
+  coreCount: number;
+} | null {
+  if (!instanceType.startsWith('gpu_attached:')) return null;
+  const match = instanceType.match(/^gpu_attached:(.+):(\d+(?:\.\d+)?):(\d+)$/);
+  if (!match) return null;
+  return {
+    baseMachineType: match[1],
+    acceleratorWatts: parseFloat(match[2]),
+    coreCount: parseInt(match[3], 10),
+  };
+}
+
+function calculateGpuAttachedBaseline(
+  input: ResourceInput,
+  params: { baseMachineType: string; acceleratorWatts: number; coreCount: number },
+  providerLedger: ProviderLedger,
+  regionData: LedgerRegion,
+  utilization: number,
+  hours: number,
+  provider: CloudProvider,
+  ledgerVersion: string
+): EmissionAndCostEstimate {
+  const { baseMachineType, acceleratorWatts, coreCount } = params;
+
+  const instanceData = providerLedger.instances[baseMachineType];
+  const pricePerHour = providerLedger.pricing_usd_per_hour[input.region]?.[baseMachineType];
+
+  if (!instanceData || pricePerHour === undefined) {
+    return {
+      totalCo2eGramsPerMonth: 0,
+      embodiedCo2eGramsPerMonth: 0,
+      totalLifecycleCo2eGramsPerMonth: 0,
+      waterLitresPerMonth: 0,
+      totalCostUsdPerMonth: 0,
+      confidence: 'LOW_ASSUMED_DEFAULT',
+      scope: 'SCOPE_2_AND_3',
+      unsupportedReason: !instanceData
+        ? `GPU-attached base machine type "${baseMachineType}" is not present in the ${provider.toUpperCase()} section of the Open GreenOps Methodology Ledger v${ledgerVersion}.`
+        : `No pricing data for base machine type "${baseMachineType}" in "${input.region}" (${provider.toUpperCase()}).`,
+      assumptionsApplied: {
+        utilizationApplied: utilization,
+        gridIntensityApplied: regionData.grid_intensity_gco2e_per_kwh,
+        powerModelUsed: 'LINEAR_INTERPOLATION',
+        embodiedCo2ePerVcpuPerMonthApplied: instanceData?.embodied_co2e_grams_per_month ?? 0,
+        waterIntensityLitresPerKwhApplied: regionData.water_intensity_litres_per_kwh,
+        memoryWattsApplied: 0,
+      },
+    };
+  }
+
+  // Base machine watts (CPU interpolation + memory) plus the attached GPU's
+  // TDP at full draw — GPUs in inference/training workloads do not idle the
+  // way general CPU utilization does, so the accelerator contribution is not
+  // utilization-scaled, only the base machine's CPU portion is.
+  const baseWatts = effectiveTotalWatts(
+    instanceData.power_watts.idle, instanceData.power_watts.max, utilization, instanceData.memory_gb
+  );
+  const gpuWatts = acceleratorWatts * coreCount;
+  const totalWatts = baseWatts + gpuWatts;
+
+  const GPU_ACCELERATOR_PRICE_PER_HOUR = 0.35; // NVIDIA T4 standalone add-on rate, GCP public pricing
+  const totalPricePerHour = pricePerHour + (GPU_ACCELERATOR_PRICE_PER_HOUR * coreCount);
+
+  const totalCo2eGramsPerMonth = wattsToScope2Carbon(totalWatts, hours, regionData.pue, regionData.grid_intensity_gco2e_per_kwh);
+  const waterLitresPerMonth = wattsToWater(totalWatts, hours, regionData.water_intensity_litres_per_kwh);
+  // GPU embodied carbon is not modeled (same gap as the AWS GPU ledger entries).
+  const embodiedCo2eGramsPerMonth = 0;
+  const totalLifecycleCo2eGramsPerMonth = totalCo2eGramsPerMonth + embodiedCo2eGramsPerMonth;
+  const totalCostUsdPerMonth = totalPricePerHour * hours;
+
+  return {
+    totalCo2eGramsPerMonth,
+    embodiedCo2eGramsPerMonth,
+    totalLifecycleCo2eGramsPerMonth,
+    waterLitresPerMonth,
+    totalCostUsdPerMonth,
+    confidence: 'LOW_ASSUMED_DEFAULT',
+    scope: 'SCOPE_2_AND_3',
+    unsupportedReason: `Embodied (Scope 3) carbon for the attached GPU is not yet modeled (same gap as AWS GPU instances — see METHODOLOGY.md). Base machine "${baseMachineType}" embodied carbon is included; GPU embodied carbon is not.`,
+    assumptionsApplied: {
+      utilizationApplied: utilization,
+      gridIntensityApplied: regionData.grid_intensity_gco2e_per_kwh,
+      powerModelUsed: 'LINEAR_INTERPOLATION',
+      embodiedCo2ePerVcpuPerMonthApplied: instanceData.embodied_co2e_grams_per_month,
+      waterIntensityLitresPerKwhApplied: regionData.water_intensity_litres_per_kwh,
+      memoryWattsApplied: instanceData.memory_gb * MEMORY_WATTS_PER_GB,
+    },
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Core Engine
 // ---------------------------------------------------------------------------
 
@@ -296,6 +542,22 @@ export function calculateBaseline(
   const serverlessParams = parseServerlessInstanceType(input.instanceType);
   if (serverlessParams) {
     return calculateServerlessBaseline(input, serverlessParams, regionData);
+  }
+
+  // --- Managed AI service path (SageMaker) ---
+  const managedAiParams = parseManagedAiInstanceType(input.instanceType);
+  if (managedAiParams) {
+    return calculateManagedAiBaseline(
+      input, managedAiParams, providerLedger, regionData, utilization, hours, provider, ledger.metadata.ledger_version
+    );
+  }
+
+  // --- GPU-attached compute path (Vertex AI Workbench) ---
+  const gpuAttachedParams = parseGpuAttachedInstanceType(input.instanceType);
+  if (gpuAttachedParams) {
+    return calculateGpuAttachedBaseline(
+      input, gpuAttachedParams, providerLedger, regionData, utilization, hours, provider, ledger.metadata.ledger_version
+    );
   }
 
   const instanceData = providerLedger.instances[input.instanceType];

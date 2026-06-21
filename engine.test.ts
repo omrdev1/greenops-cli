@@ -520,3 +520,90 @@ describe('calculateBaseline: GPU instances', () => {
     assert.equal(rec, null, 'Recommendations require a confident baseline; GPU embodied-carbon gap should suppress them');
   });
 });
+
+describe('calculateBaseline: managed AI services (SageMaker)', () => {
+  it('calculates real Scope 2 carbon for a CPU SageMaker endpoint, using a SageMaker-specific price premium over raw EC2', () => {
+    const sagemaker = calculateBaseline({
+      resourceId: 'x', instanceType: 'managed_ai:sagemaker:m5.xlarge', region: 'us-east-1', provider: 'aws',
+    });
+    const rawEc2 = calculateBaseline({
+      resourceId: 'x', instanceType: 'm5.xlarge', region: 'us-east-1', provider: 'aws',
+    });
+    assert.ok(sagemaker.totalCo2eGramsPerMonth > 0, 'Should calculate real Scope 2 carbon');
+    assert.equal(sagemaker.confidence, 'LOW_ASSUMED_DEFAULT', 'Managed AI usage assumptions always downgrade confidence');
+    assert.ok(sagemaker.totalCostUsdPerMonth > rawEc2.totalCostUsdPerMonth,
+      'SageMaker pricing must be a real premium over raw EC2, never derived from it');
+  });
+
+  it('reuses GPU instance specs for a GPU-backed SageMaker endpoint and flags the same embodied-carbon gap', () => {
+    const result = calculateBaseline({
+      resourceId: 'x', instanceType: 'managed_ai:sagemaker:p4d.24xlarge', region: 'us-east-1', provider: 'aws',
+    });
+    assert.ok(result.totalCo2eGramsPerMonth > 1000, 'An 8x A100 SageMaker endpoint should have substantial Scope 2 carbon');
+    assert.equal(result.embodiedCo2eGramsPerMonth, 0, 'Embodied carbon gap applies the same as raw GPU instances');
+    assert.ok(result.unsupportedReason?.includes('not yet modeled'), 'Should mention the embodied-carbon gap specifically');
+  });
+
+  it('returns LOW_ASSUMED_DEFAULT with no cost/carbon for a base instance not in the ledger', () => {
+    const result = calculateBaseline({
+      resourceId: 'x', instanceType: 'managed_ai:sagemaker:c5.24xlarge', region: 'us-east-1', provider: 'aws',
+    });
+    assert.equal(result.totalCo2eGramsPerMonth, 0);
+    assert.equal(result.totalCostUsdPerMonth, 0);
+    assert.ok(result.unsupportedReason?.includes('not present in the AWS section'));
+  });
+
+  it('returns LOW_ASSUMED_DEFAULT with no cost/carbon when no managed AI pricing exists for the region', () => {
+    const result = calculateBaseline({
+      resourceId: 'x', instanceType: 'managed_ai:sagemaker:m5.xlarge', region: 'eu-west-1', provider: 'aws',
+    });
+    assert.equal(result.totalCostUsdPerMonth, 0);
+    assert.ok(result.unsupportedReason?.includes('No managed AI pricing data'));
+  });
+
+  it('does not generate an upgrade recommendation for managed AI services (LOW_ASSUMED_DEFAULT baselines excluded)', () => {
+    const baseline = calculateBaseline({
+      resourceId: 'x', instanceType: 'managed_ai:sagemaker:m5.xlarge', region: 'us-east-1', provider: 'aws',
+    });
+    const rec = generateRecommendation(
+      { resourceId: 'x', instanceType: 'managed_ai:sagemaker:m5.xlarge', region: 'us-east-1', provider: 'aws' },
+      baseline
+    );
+    assert.equal(rec, null);
+  });
+});
+
+describe('calculateBaseline: GPU-attached compute (Vertex AI Workbench)', () => {
+  it('adds T4 GPU wattage on top of the base machine, billed at raw GCE rate plus the standalone GPU add-on (no managed-service markup)', () => {
+    const withGpu = calculateBaseline({
+      resourceId: 'x', instanceType: 'gpu_attached:n2-standard-2:70:1', region: 'us-central1', provider: 'gcp',
+    });
+    const withoutGpu = calculateBaseline({
+      resourceId: 'x', instanceType: 'n2-standard-2', region: 'us-central1', provider: 'gcp',
+    });
+    assert.ok(withGpu.totalCo2eGramsPerMonth > withoutGpu.totalCo2eGramsPerMonth,
+      'GPU-attached carbon must exceed the base machine alone');
+    assert.ok(withGpu.totalCostUsdPerMonth > withoutGpu.totalCostUsdPerMonth,
+      'GPU-attached cost must exceed the base machine alone (real GPU add-on rate)');
+    assert.equal(withGpu.confidence, 'LOW_ASSUMED_DEFAULT');
+  });
+
+  it('multiple attached GPU cores scale both carbon and cost linearly', () => {
+    const oneGpu = calculateBaseline({
+      resourceId: 'x', instanceType: 'gpu_attached:n2-standard-2:70:1', region: 'us-central1', provider: 'gcp',
+    });
+    const twoGpu = calculateBaseline({
+      resourceId: 'x', instanceType: 'gpu_attached:n2-standard-2:70:2', region: 'us-central1', provider: 'gcp',
+    });
+    assert.ok(twoGpu.totalCo2eGramsPerMonth > oneGpu.totalCo2eGramsPerMonth);
+    assert.ok(twoGpu.totalCostUsdPerMonth > oneGpu.totalCostUsdPerMonth);
+  });
+
+  it('returns LOW_ASSUMED_DEFAULT with no cost/carbon for a base machine not in the ledger', () => {
+    const result = calculateBaseline({
+      resourceId: 'x', instanceType: 'gpu_attached:n1-standard-1:70:1', region: 'us-central1', provider: 'gcp',
+    });
+    assert.equal(result.totalCo2eGramsPerMonth, 0);
+    assert.ok(result.unsupportedReason?.includes('not present in the GCP section'));
+  });
+});

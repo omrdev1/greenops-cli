@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import * as assert from 'node:assert/strict';
-import { formatDelta, formatCostDelta, formatGrams } from './util.js';
+import { formatDelta, formatCostDelta, formatGrams, formatInstanceTypeLabel } from './util.js';
 
 describe('formatDelta', () => {
   it('formats zero as positive (+0.00kg)', () => {
@@ -37,5 +37,25 @@ describe('formatGrams', () => {
 
   it('handles zero', () => {
     assert.equal(formatGrams(0), '0.00kg');
+  });
+});
+
+describe('formatInstanceTypeLabel', () => {
+  it('renders serverless: encoding as plain "serverless"', () => {
+    assert.equal(formatInstanceTypeLabel('serverless:128mb:1000000inv:200ms'), 'serverless');
+  });
+
+  it('renders a managed_ai:sagemaker: encoding as "ml.<type> (SageMaker)"', () => {
+    assert.equal(formatInstanceTypeLabel('managed_ai:sagemaker:g5.xlarge'), 'ml.g5.xlarge (SageMaker)');
+  });
+
+  it('renders a gpu_attached: encoding as "<machine> + Nx GPU"', () => {
+    assert.equal(formatInstanceTypeLabel('gpu_attached:n2-standard-2:70:1'), 'n2-standard-2 + 1x GPU');
+    assert.equal(formatInstanceTypeLabel('gpu_attached:n2-standard-2:70:2'), 'n2-standard-2 + 2x GPU');
+  });
+
+  it('passes through a plain instance type unchanged', () => {
+    assert.equal(formatInstanceTypeLabel('m5.large'), 'm5.large');
+    assert.equal(formatInstanceTypeLabel('p4d.24xlarge'), 'p4d.24xlarge');
   });
 });

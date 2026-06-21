@@ -1,5 +1,5 @@
 import { PlanAnalysisResult } from '../types.js';
-import { formatDelta, formatCostDelta, formatGrams } from './util.js';
+import { formatDelta, formatCostDelta, formatGrams, formatInstanceTypeLabel } from './util.js';
 
 function truncate(str: string, len: number): string {
   const visible = str.replace(/\x1b\[[0-9;]*m/g, '');
@@ -23,9 +23,17 @@ export function formatTable(result: PlanAnalysisResult): string {
   out += `│ ${truncate('Resource', 36)} │ ${truncate('Instance', 18)} │ ${truncate('Region', 14)} │ ${truncate('Scope 2', 9)} │ ${truncate('Scope 3', 9)} │ ${truncate('Water', 7)} │ ${truncate('Action', 11)} │\n`;
   out += `├${'─'.repeat(38)}┼${'─'.repeat(20)}┼${'─'.repeat(16)}┼${'─'.repeat(11)}┼${'─'.repeat(11)}┼${'─'.repeat(9)}┼${'─'.repeat(13)}┤\n`;
 
-  // Separate analysed resources from LOW_ASSUMED_DEFAULT (unsupported instance/region)
-  const analysed = result.resources.filter(r => r.baseline.confidence !== 'LOW_ASSUMED_DEFAULT');
-  const unsupportedResources = result.resources.filter(r => r.baseline.confidence === 'LOW_ASSUMED_DEFAULT');
+  // Separate analysed resources from fully-unsupported ones. A
+  // LOW_ASSUMED_DEFAULT confidence with a real, non-zero Scope 2 figure
+  // (serverless, GPU, managed AI service) has real data worth showing —
+  // it should not be hidden as "UNKNOWN" alongside resources where nothing
+  // was calculated at all. Mirrors the same fix already applied to markdown.ts.
+  const analysed = result.resources.filter(r =>
+    r.baseline.confidence !== 'LOW_ASSUMED_DEFAULT' || r.baseline.totalCo2eGramsPerMonth > 0
+  );
+  const unsupportedResources = result.resources.filter(r =>
+    r.baseline.confidence === 'LOW_ASSUMED_DEFAULT' && r.baseline.totalCo2eGramsPerMonth === 0
+  );
 
   for (const r of analysed) {
     const scope2 = formatGrams(r.baseline.totalCo2eGramsPerMonth);
@@ -33,7 +41,8 @@ export function formatTable(result: PlanAnalysisResult): string {
     const water = formatWater(r.baseline.waterLitresPerMonth);
     const action = r.recommendation ? `\x1b[33mUPGRADE\x1b[0m` : `\x1b[32mOK\x1b[0m`;
     const nodeCount = r.input.nodeCount ?? 1;
-    const instanceLabel = nodeCount > 1 ? `${r.input.instanceType} ×${nodeCount}` : r.input.instanceType;
+    const baseLabel = formatInstanceTypeLabel(r.input.instanceType);
+    const instanceLabel = nodeCount > 1 ? `${baseLabel} ×${nodeCount}` : baseLabel;
     out += `│ ${truncate(r.input.resourceId, 36)} │ ${truncate(instanceLabel, 18)} │ ${truncate(r.input.region, 14)} │ ${truncate(scope2, 9)} │ ${truncate(scope3, 9)} │ ${truncate(water, 7)} │ ${truncate(action, 11)} │\n`;
   }
   // Skipped: known_after_apply and other runtime-unresolvable resources
@@ -42,7 +51,7 @@ export function formatTable(result: PlanAnalysisResult): string {
   }
   // Skipped: unsupported instance types not in the ledger
   for (const r of unsupportedResources) {
-    out += `│ \x1b[90m${truncate(r.input.resourceId, 36)}\x1b[0m │ \x1b[90m${truncate(r.input.instanceType, 18)}\x1b[0m │ \x1b[90m${truncate(r.input.region, 14)}\x1b[0m │ \x1b[90m${truncate('---', 9)}\x1b[0m │ \x1b[90m${truncate('---', 9)}\x1b[0m │ \x1b[90m${truncate('---', 7)}\x1b[0m │ \x1b[33m${truncate('⚠ UNKNOWN', 11)}\x1b[0m │\n`;
+    out += `│ \x1b[90m${truncate(r.input.resourceId, 36)}\x1b[0m │ \x1b[90m${truncate(formatInstanceTypeLabel(r.input.instanceType), 18)}\x1b[0m │ \x1b[90m${truncate(r.input.region, 14)}\x1b[0m │ \x1b[90m${truncate('---', 9)}\x1b[0m │ \x1b[90m${truncate('---', 9)}\x1b[0m │ \x1b[90m${truncate('---', 7)}\x1b[0m │ \x1b[33m${truncate('⚠ UNKNOWN', 11)}\x1b[0m │\n`;
   }
   out += `└${'─'.repeat(38)}┴${'─'.repeat(20)}┴${'─'.repeat(16)}┴${'─'.repeat(11)}┴${'─'.repeat(11)}┴${'─'.repeat(9)}┴${'─'.repeat(13)}┘\n\n`;
 

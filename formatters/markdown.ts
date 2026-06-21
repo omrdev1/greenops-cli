@@ -1,5 +1,5 @@
 import { PlanAnalysisResult } from '../types.js';
-import { formatDelta, formatCostDelta, formatGrams } from './util.js';
+import { formatDelta, formatCostDelta, formatGrams, formatInstanceTypeLabel } from './util.js';
 
 export interface FormatterOptions {
   repositoryUrl?: string;
@@ -64,8 +64,7 @@ export function formatMarkdown(result: PlanAnalysisResult, options: FormatterOpt
   for (const r of analysed) {
     const isServerless = r.input.instanceType.startsWith('serverless:');
     const nodeCount = r.input.nodeCount ?? 1;
-    const displayType = isServerless
-      ? `\`serverless\`` : `\`${r.input.instanceType}\`${nodeCount > 1 ? ` × ${nodeCount}` : ''}`;
+    const displayType = `\`${formatInstanceTypeLabel(r.input.instanceType)}\`${nodeCount > 1 ? ` × ${nodeCount}` : ''}`;
     const serverlessBadge = isServerless ? ' ⚡' : '';
     const action = r.recommendation ? `💡 [View Recommendation](#recommendations)` : `✅ Optimal`;
     out += `| \`${r.input.resourceId}\`${serverlessBadge} | ${displayType} | \`${r.input.region}\` | ${formatGrams(r.baseline.totalCo2eGramsPerMonth)} | ${formatGrams(r.baseline.embodiedCo2eGramsPerMonth)} | ${formatWater(r.baseline.waterLitresPerMonth)} | ${r.baseline.totalCostUsdPerMonth.toFixed(2)} | ${action} |\n`;
@@ -85,9 +84,15 @@ export function formatMarkdown(result: PlanAnalysisResult, options: FormatterOpt
   }
 
   // GPU embodied-carbon note
-  const gpuResources = analysed.filter(r => r.baseline.unsupportedReason?.startsWith('Embodied (Scope 3)'));
+  const gpuResources = analysed.filter(r => r.baseline.unsupportedReason?.includes('Embodied (Scope 3)'));
   if (gpuResources.length > 0) {
     out += `> 🖥️ **GPU instances**: Scope 2 (operational) carbon above uses real NVIDIA TDP specs. Scope 3 (embodied/manufacturing) carbon is shown as \`0\` because GPU hardware's manufacturing footprint differs substantially from this ledger's CPU-server baseline, and no equivalent public GPU baseline exists yet — this is an explicit gap, not a measured zero. Confidence is marked \`LOW_ASSUMED_DEFAULT\` accordingly.\n\n`;
+  }
+
+  // Managed AI service note
+  const managedAiResources = analysed.filter(r => r.input.instanceType.startsWith('managed_ai:'));
+  if (managedAiResources.length > 0) {
+    out += `> 🤖 **Managed AI services** (e.g. SageMaker endpoints) are estimated assuming the endpoint runs continuously at the ledger's default utilization. Actual emissions depend on real invocation/runtime patterns not visible in a Terraform plan. Pricing reflects the managed-service rate, not the underlying instance's raw compute price.\n\n`;
   }
 
   const totalSkipped = result.skipped.length + unsupportedResources.length;

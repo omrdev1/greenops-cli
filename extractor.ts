@@ -72,6 +72,28 @@ const SUPPORTED_NODE_GROUP_TYPES: Record<CloudProvider, string[]> = {
   gcp:   ['google_container_node_pool'],
 };
 
+// Managed AI service types — analysed via the underlying compute instance's
+// power/embodied specs, but with managed-AI-specific pricing (always a real
+// premium over raw compute). Azure ML is not yet supported (see METHODOLOGY.md).
+//
+// aws_sagemaker_endpoint_configuration carries the instance sizing
+// (production_variants[].instance_type); the deployed aws_sagemaker_endpoint
+// resource itself only references a config by name and carries no sizing data.
+const SUPPORTED_MANAGED_AI_TYPES: Record<CloudProvider, string[]> = {
+  aws:   ['aws_sagemaker_endpoint_configuration'],
+  azure: [],
+  gcp:   ['google_workbench_instance'],
+};
+
+// GPU accelerator TDP (watts), by NVIDIA model name as it appears in
+// Terraform's accelerator_configs[].type (Vertex AI Workbench) and the
+// equivalent EC2/GCE-side identifiers. Sourced from NVIDIA's published
+// datasheets — same provenance discipline as the AWS GPU ledger entries.
+const GPU_ACCELERATOR_TDP_WATTS: Record<string, number> = {
+  NVIDIA_TESLA_T4: 70,
+  NVIDIA_TESLA_A100: 400,
+};
+
 const COMPUTE_RELEVANT_TYPES = [
   'aws_launch_template', 'aws_autoscaling_group', 'aws_ecs_service',
   'azurerm_virtual_machine_scale_set',
@@ -255,6 +277,59 @@ function extractNodeGroupInput(
   return { instanceType, nodeCount };
 }
 
+/**
+ * Strip the "ml." prefix SageMaker uses on its instance type names, since the
+ * underlying hardware (vCPU/memory/GPU) is identical to the matching EC2
+ * instance family and the engine looks up power/embodied specs by that name.
+ */
+function stripSageMakerPrefix(mlInstanceType: string): string {
+  return mlInstanceType.startsWith('ml.') ? mlInstanceType.slice(3) : mlInstanceType;
+}
+
+function extractManagedAiInput(
+  res: TerraformResourceChange,
+  provider: CloudProvider
+): { instanceType: string | null; skipReason?: string } {
+  const after = res.change?.after ?? {};
+  const before = res.change?.before ?? {};
+
+  if (provider === 'aws') {
+    // aws_sagemaker_endpoint_configuration: production_variants is a list;
+    // a homogeneous endpoint resolves to a single variant in practice.
+    const variants = (after.production_variants ?? before.production_variants) as unknown;
+    const variant = Array.isArray(variants) ? variants[0] as Record<string, unknown> | undefined : undefined;
+    const rawType = variant?.instance_type;
+    if (typeof rawType !== 'string') return { instanceType: null, skipReason: 'known_after_apply' };
+    return { instanceType: `managed_ai:sagemaker:${stripSageMakerPrefix(rawType)}` };
+  }
+
+  // gcp: google_workbench_instance — machine_type and accelerator_configs
+  // both live inside the gce_setup{} block.
+  const gceSetup = (after.gce_setup ?? before.gce_setup) as unknown;
+  const setup = Array.isArray(gceSetup) ? gceSetup[0] as Record<string, unknown> | undefined : undefined;
+  const machineType = setup?.machine_type;
+  if (typeof machineType !== 'string') return { instanceType: null, skipReason: 'known_after_apply' };
+
+  const accelerators = setup?.accelerator_configs as unknown;
+  const accelerator = Array.isArray(accelerators) ? accelerators[0] as Record<string, unknown> | undefined : undefined;
+  const acceleratorType = accelerator?.type;
+  const coreCount = accelerator?.core_count;
+
+  if (typeof acceleratorType === 'string' && typeof coreCount === 'number') {
+    const watts = GPU_ACCELERATOR_TDP_WATTS[acceleratorType];
+    if (watts !== undefined) {
+      return { instanceType: `gpu_attached:${machineType}:${watts}:${coreCount}` };
+    }
+    // Unrecognized accelerator type (e.g. A100, V100, L4 — not yet in
+    // GPU_ACCELERATOR_TDP_WATTS). Encode it as unsupported rather than
+    // silently report only the base machine's carbon, which would
+    // understate the resource's real footprint without saying so.
+    return { instanceType: null, skipReason: `unsupported_accelerator:${acceleratorType}` };
+  }
+
+  return { instanceType: machineType };
+}
+
 function extractServerlessInput(
   res: TerraformResourceChange,
   provider: CloudProvider,
@@ -351,6 +426,7 @@ export function extractResourceInputs(planFilePath: string): ExtractorResult {
   const allSupportedTypes = Object.values(SUPPORTED_TYPES).flat();
   const allServerlessTypes = Object.values(SUPPORTED_SERVERLESS_TYPES).flat();
   const allNodeGroupTypes = Object.values(SUPPORTED_NODE_GROUP_TYPES).flat();
+  const allManagedAiTypes = Object.values(SUPPORTED_MANAGED_AI_TYPES).flat();
 
   for (const rawRes of typedPlan.resource_changes) {
     const res = rawRes as TerraformResourceChange;
@@ -392,6 +468,24 @@ export function extractResourceInputs(planFilePath: string): ExtractorResult {
         continue;
       }
       result.resources.push({ resourceId: res.address, instanceType, region, provider, nodeCount });
+      continue;
+    }
+
+    // --- Managed AI service path (SageMaker, Vertex AI Workbench) ---
+    if (allManagedAiTypes.includes(res.type)) {
+      if (!provider) continue;
+      const { instanceType, skipReason } = extractManagedAiInput(res, provider);
+      if (!instanceType) {
+        result.skipped.push({ resourceId: res.address, reason: skipReason ?? 'known_after_apply' });
+        continue;
+      }
+      const region = provider === 'aws' ? resolveAwsRegion(res.change, providerRegions.aws)
+        : resolveGcpRegion(res.change, providerRegions.gcp);
+      if (!region) {
+        result.skipped.push({ resourceId: res.address, reason: 'known_after_apply' });
+        continue;
+      }
+      result.resources.push({ resourceId: res.address, instanceType, region, provider });
       continue;
     }
 

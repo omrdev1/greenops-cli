@@ -638,4 +638,141 @@ describe('Node group extraction', () => {
     assert.equal(result.resources[0].instanceType, 'p4d.24xlarge');
     assert.equal(result.resources[0].provider, 'aws');
   });
+
+  test('extracts a SageMaker endpoint configuration, stripping the ml. prefix and falling back to the provider-block region', () => {
+    const fixture = {
+      resource_changes: [
+        {
+          address: 'aws_sagemaker_endpoint_configuration.inference',
+          type: 'aws_sagemaker_endpoint_configuration',
+          change: {
+            actions: ['create'],
+            after: {
+              production_variants: [
+                { instance_type: 'ml.m5.xlarge', initial_instance_count: 1, variant_name: 'AllTraffic' },
+              ],
+            },
+            after_unknown: {},
+          },
+        },
+      ],
+      configuration: {
+        provider_config: {
+          aws: { expressions: { region: { constant_value: 'us-east-1' } } },
+        },
+      },
+    };
+
+    const result = runFixtureTest(fixture);
+    assert.equal(result.error, undefined);
+    assert.equal(result.skipped.length, 0);
+    assert.equal(result.resources.length, 1);
+    assert.equal(result.resources[0].instanceType, 'managed_ai:sagemaker:m5.xlarge');
+    assert.equal(result.resources[0].region, 'us-east-1');
+    assert.equal(result.resources[0].provider, 'aws');
+  });
+
+  test('skips a SageMaker endpoint configuration when instance_type is known_after_apply', () => {
+    const fixture = {
+      resource_changes: [
+        {
+          address: 'aws_sagemaker_endpoint_configuration.pending',
+          type: 'aws_sagemaker_endpoint_configuration',
+          change: {
+            actions: ['create'],
+            after: { production_variants: [{ variant_name: 'AllTraffic' }] },
+            after_unknown: { production_variants: true },
+          },
+        },
+      ],
+    };
+
+    const result = runFixtureTest(fixture);
+    assert.equal(result.resources.length, 0);
+    assert.equal(result.skipped.length, 1);
+    assert.equal(result.skipped[0].reason, 'known_after_apply');
+  });
+
+  test('extracts a google_workbench_instance with a flat machine_type and no accelerator', () => {
+    const fixture = {
+      resource_changes: [
+        {
+          address: 'google_workbench_instance.notebook',
+          type: 'google_workbench_instance',
+          change: {
+            actions: ['create'],
+            after: { gce_setup: [{ machine_type: 'n2-standard-2' }] },
+            after_unknown: {},
+          },
+        },
+      ],
+      configuration: {
+        provider_config: {
+          google: { expressions: { region: { constant_value: 'us-central1' } } },
+        },
+      },
+    };
+
+    const result = runFixtureTest(fixture);
+    assert.equal(result.error, undefined);
+    assert.equal(result.resources.length, 1);
+    assert.equal(result.resources[0].instanceType, 'n2-standard-2');
+    assert.equal(result.resources[0].provider, 'gcp');
+  });
+
+  test('extracts a google_workbench_instance with an attached T4 GPU as gpu_attached:', () => {
+    const fixture = {
+      resource_changes: [
+        {
+          address: 'google_workbench_instance.gpu_notebook',
+          type: 'google_workbench_instance',
+          change: {
+            actions: ['create'],
+            after: {
+              gce_setup: [{
+                machine_type: 'n2-standard-2',
+                accelerator_configs: [{ type: 'NVIDIA_TESLA_T4', core_count: 1 }],
+              }],
+            },
+            after_unknown: {},
+          },
+        },
+      ],
+      configuration: {
+        provider_config: {
+          google: { expressions: { region: { constant_value: 'us-central1' } } },
+        },
+      },
+    };
+
+    const result = runFixtureTest(fixture);
+    assert.equal(result.resources.length, 1);
+    assert.equal(result.resources[0].instanceType, 'gpu_attached:n2-standard-2:70:1');
+  });
+
+  test('skips a google_workbench_instance with an unrecognized accelerator type, rather than silently understating carbon', () => {
+    const fixture = {
+      resource_changes: [
+        {
+          address: 'google_workbench_instance.a100_notebook',
+          type: 'google_workbench_instance',
+          change: {
+            actions: ['create'],
+            after: {
+              gce_setup: [{
+                machine_type: 'n2-standard-2',
+                accelerator_configs: [{ type: 'NVIDIA_A100_80GB', core_count: 1 }],
+              }],
+            },
+            after_unknown: {},
+          },
+        },
+      ],
+    };
+
+    const result = runFixtureTest(fixture);
+    assert.equal(result.resources.length, 0);
+    assert.equal(result.skipped.length, 1);
+    assert.ok(result.skipped[0].reason.includes('unsupported_accelerator'));
+  });
 });

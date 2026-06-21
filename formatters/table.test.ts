@@ -133,4 +133,43 @@ describe('formatTable', () => {
     assert.ok(table.includes('Scope 2'), 'Should show Scope 2 label');
     assert.ok(table.includes('Scope 3'), 'Should show Scope 3 label');
   });
+
+  it('shows GPU resources with real Scope 2 data as OK, not UNKNOWN, despite LOW_ASSUMED_DEFAULT confidence (regression: this bucketing bug was never fixed for table.ts when markdown.ts was fixed)', () => {
+    const result = makeMockResult({
+      resources: [{
+        input: { resourceId: 'aws_instance.gpu_worker', instanceType: 'g5.xlarge', region: 'us-east-1', provider: 'aws' as const },
+        baseline: makeMockBaseline({
+          confidence: 'LOW_ASSUMED_DEFAULT' as const,
+          totalCo2eGramsPerMonth: 500,
+          embodiedCo2eGramsPerMonth: 0,
+          totalCostUsdPerMonth: 734.38,
+          unsupportedReason: 'Embodied (Scope 3) carbon for "g5.xlarge" is not yet modeled.',
+        }),
+        recommendation: null,
+      }],
+      totals: makeMockTotals({ currentCo2eGramsPerMonth: 500, currentCostUsdPerMonth: 734.38 }),
+    });
+    const table = formatTable(result);
+    assert.ok(!table.includes('UNKNOWN'), 'GPU resource with real Scope 2 data should NOT be marked UNKNOWN');
+    assert.ok(table.includes('OK'), 'Should show OK since the resource has real, calculated data');
+    assert.ok(table.includes('g5.xlarge'));
+  });
+
+  it('shows a human-readable label for managed_ai: and gpu_attached: encodings instead of the raw internal string', () => {
+    const result = makeMockResult({
+      resources: [{
+        input: { resourceId: 'aws_sagemaker_endpoint_configuration.inference', instanceType: 'managed_ai:sagemaker:g5.xlarge', region: 'us-east-1', provider: 'aws' as const },
+        baseline: makeMockBaseline({
+          confidence: 'LOW_ASSUMED_DEFAULT' as const,
+          totalCo2eGramsPerMonth: 500,
+          totalCostUsdPerMonth: 1481.90,
+        }),
+        recommendation: null,
+      }],
+      totals: makeMockTotals({ currentCo2eGramsPerMonth: 500, currentCostUsdPerMonth: 1481.90 }),
+    });
+    const table = formatTable(result);
+    assert.ok(!table.includes('managed_ai:sagemaker:g5.xlarge'), 'Should NOT show the raw internal encoding string');
+    assert.ok(table.includes('ml.g5.xlarge'), 'Should show a truncated but readable label');
+  });
 });

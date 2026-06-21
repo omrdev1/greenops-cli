@@ -11,7 +11,8 @@
       "embodied": "cloud-carbon-footprint-v3-dell-r740-baseline",
       "water": "aws-sustainability-report-2023-wue",
       "gpu_tdp": "nvidia-aws-public-datasheets-2026-q2",
-      "gpu_pricing_aws": "aws-public-pricing-2026-q2"
+      "gpu_pricing_aws": "aws-public-pricing-2026-q2",
+      "managed_ai_pricing_aws": "aws-sagemaker-public-pricing-2026-q2"
     },
     "assumptions": {
       "default_utilization": {
@@ -1197,6 +1198,16 @@
         "c6g.xlarge": 0.2304,
         "r6g.large": 0.1706,
         "r6g.xlarge": 0.3412
+      }
+    },
+    "managed_ai_pricing_usd_per_hour": {
+      "sagemaker": {
+        "us-east-1": {
+          "m5.large": 0.115,
+          "m5.xlarge": 0.23,
+          "g5.xlarge": 2.03,
+          "p4d.24xlarge": 37.688
+        }
       }
     }
   },

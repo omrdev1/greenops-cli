@@ -19,3 +19,30 @@ export function formatCostDelta(usd: number): string {
 export function formatGrams(grams: number): string {
   return `${(grams / 1000).toFixed(2)}kg`;
 }
+
+/**
+ * Renders an internal instanceType lookup key as a human-readable label.
+ * Internal encodings (serverless:, managed_ai:, gpu_attached:) are engine
+ * lookup keys, not display strings — a PR comment showing
+ * "managed_ai:sagemaker:g5.xlarge" verbatim is unreadable to the engineer
+ * reviewing it.
+ */
+export function formatInstanceTypeLabel(instanceType: string): string {
+  if (instanceType.startsWith('serverless:')) return 'serverless';
+
+  const managedAiMatch = instanceType.match(/^managed_ai:([a-z_]+):(.+)$/);
+  if (managedAiMatch) {
+    const [, service, baseType] = managedAiMatch;
+    const serviceLabel = service === 'sagemaker' ? 'SageMaker' : service;
+    return `ml.${baseType} (${serviceLabel})`;
+  }
+
+  const gpuAttachedMatch = instanceType.match(/^gpu_attached:(.+):(\d+(?:\.\d+)?):(\d+)$/);
+  if (gpuAttachedMatch) {
+    const [, baseMachineType, , coreCount] = gpuAttachedMatch;
+    const gpuSuffix = coreCount === '1' ? '1x GPU' : `${coreCount}x GPU`;
+    return `${baseMachineType} + ${gpuSuffix}`;
+  }
+
+  return instanceType;
+}

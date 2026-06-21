@@ -18,7 +18,8 @@ var factors_default = {
       embodied: "cloud-carbon-footprint-v3-dell-r740-baseline",
       water: "aws-sustainability-report-2023-wue",
       gpu_tdp: "nvidia-aws-public-datasheets-2026-q2",
-      gpu_pricing_aws: "aws-public-pricing-2026-q2"
+      gpu_pricing_aws: "aws-public-pricing-2026-q2",
+      managed_ai_pricing_aws: "aws-sagemaker-public-pricing-2026-q2"
     },
     assumptions: {
       default_utilization: {
@@ -1205,6 +1206,16 @@ var factors_default = {
         "r6g.large": 0.1706,
         "r6g.xlarge": 0.3412
       }
+    },
+    managed_ai_pricing_usd_per_hour: {
+      sagemaker: {
+        "us-east-1": {
+          "m5.large": 0.115,
+          "m5.xlarge": 0.23,
+          "g5.xlarge": 2.03,
+          "p4d.24xlarge": 37.688
+        }
+      }
     }
   },
   azure: {
@@ -2168,7 +2179,7 @@ var factors_default = {
 // package.json
 var package_default = {
   name: "greenops-cli",
-  version: "0.10.0",
+  version: "0.11.0",
   description: "Carbon footprint linting for Terraform plans: AWS, Azure, and GCP. Analyses infrastructure changes including Kubernetes node groups for Scope 2, Scope 3, and water impact. Posts recommendations directly on GitHub PRs.",
   main: "dist/index.cjs",
   bin: {
@@ -2238,6 +2249,15 @@ var SUPPORTED_NODE_GROUP_TYPES = {
   aws: ["aws_eks_node_group"],
   azure: ["azurerm_kubernetes_cluster", "azurerm_kubernetes_cluster_node_pool"],
   gcp: ["google_container_node_pool"]
+};
+var SUPPORTED_MANAGED_AI_TYPES = {
+  aws: ["aws_sagemaker_endpoint_configuration"],
+  azure: [],
+  gcp: ["google_workbench_instance"]
+};
+var GPU_ACCELERATOR_TDP_WATTS = {
+  NVIDIA_TESLA_T4: 70,
+  NVIDIA_TESLA_A100: 400
 };
 var COMPUTE_RELEVANT_TYPES = [
   "aws_launch_template",
@@ -2404,6 +2424,38 @@ function extractNodeGroupInput(res, provider) {
     return { instanceType: null, nodeCount, skipReason: "known_after_apply" };
   return { instanceType, nodeCount };
 }
+function stripSageMakerPrefix(mlInstanceType) {
+  return mlInstanceType.startsWith("ml.") ? mlInstanceType.slice(3) : mlInstanceType;
+}
+function extractManagedAiInput(res, provider) {
+  const after = res.change?.after ?? {};
+  const before = res.change?.before ?? {};
+  if (provider === "aws") {
+    const variants = after.production_variants ?? before.production_variants;
+    const variant = Array.isArray(variants) ? variants[0] : void 0;
+    const rawType = variant?.instance_type;
+    if (typeof rawType !== "string")
+      return { instanceType: null, skipReason: "known_after_apply" };
+    return { instanceType: `managed_ai:sagemaker:${stripSageMakerPrefix(rawType)}` };
+  }
+  const gceSetup = after.gce_setup ?? before.gce_setup;
+  const setup = Array.isArray(gceSetup) ? gceSetup[0] : void 0;
+  const machineType = setup?.machine_type;
+  if (typeof machineType !== "string")
+    return { instanceType: null, skipReason: "known_after_apply" };
+  const accelerators = setup?.accelerator_configs;
+  const accelerator = Array.isArray(accelerators) ? accelerators[0] : void 0;
+  const acceleratorType = accelerator?.type;
+  const coreCount = accelerator?.core_count;
+  if (typeof acceleratorType === "string" && typeof coreCount === "number") {
+    const watts = GPU_ACCELERATOR_TDP_WATTS[acceleratorType];
+    if (watts !== void 0) {
+      return { instanceType: `gpu_attached:${machineType}:${watts}:${coreCount}` };
+    }
+    return { instanceType: null, skipReason: `unsupported_accelerator:${acceleratorType}` };
+  }
+  return { instanceType: machineType };
+}
 function extractServerlessInput(res, provider, providerRegions, plannedValuesMap) {
   const plannedValues = plannedValuesMap.get(res.address) ?? {};
   const after = res.change?.after ?? {};
@@ -2478,6 +2530,7 @@ function extractResourceInputs(planFilePath) {
   const allSupportedTypes = Object.values(SUPPORTED_TYPES).flat();
   const allServerlessTypes = Object.values(SUPPORTED_SERVERLESS_TYPES).flat();
   const allNodeGroupTypes = Object.values(SUPPORTED_NODE_GROUP_TYPES).flat();
+  const allManagedAiTypes = Object.values(SUPPORTED_MANAGED_AI_TYPES).flat();
   for (const rawRes of typedPlan.resource_changes) {
     const res = rawRes;
     const actions = res.change?.actions;
@@ -2515,6 +2568,22 @@ function extractResourceInputs(planFilePath) {
         continue;
       }
       result2.resources.push({ resourceId: res.address, instanceType: instanceType2, region: region2, provider, nodeCount });
+      continue;
+    }
+    if (allManagedAiTypes.includes(res.type)) {
+      if (!provider)
+        continue;
+      const { instanceType: instanceType2, skipReason: skipReason2 } = extractManagedAiInput(res, provider);
+      if (!instanceType2) {
+        result2.skipped.push({ resourceId: res.address, reason: skipReason2 ?? "known_after_apply" });
+        continue;
+      }
+      const region2 = provider === "aws" ? resolveAwsRegion(res.change, providerRegions.aws) : resolveGcpRegion(res.change, providerRegions.gcp);
+      if (!region2) {
+        result2.skipped.push({ resourceId: res.address, reason: "known_after_apply" });
+        continue;
+      }
+      result2.resources.push({ resourceId: res.address, instanceType: instanceType2, region: region2, provider });
       continue;
     }
     if (!allSupportedTypes.includes(res.type)) {
@@ -2688,6 +2757,170 @@ function calculateServerlessBaseline(input, params, regionData) {
     }
   };
 }
+function parseManagedAiInstanceType(instanceType) {
+  if (!instanceType.startsWith("managed_ai:"))
+    return null;
+  const match = instanceType.match(/^managed_ai:([a-z_]+):(.+)$/);
+  if (!match)
+    return null;
+  return { service: match[1], baseInstanceType: match[2] };
+}
+function calculateManagedAiBaseline(input, params, providerLedger, regionData, utilization, hours, provider, ledgerVersion) {
+  const { service, baseInstanceType } = params;
+  const instanceData = providerLedger.instances[baseInstanceType];
+  if (!instanceData) {
+    return {
+      totalCo2eGramsPerMonth: 0,
+      embodiedCo2eGramsPerMonth: 0,
+      totalLifecycleCo2eGramsPerMonth: 0,
+      waterLitresPerMonth: 0,
+      totalCostUsdPerMonth: 0,
+      confidence: "LOW_ASSUMED_DEFAULT",
+      scope: "SCOPE_2_AND_3",
+      unsupportedReason: `Managed AI service "${service}" base instance "${baseInstanceType}" is not present in the ${provider.toUpperCase()} section of the Open GreenOps Methodology Ledger v${ledgerVersion}.`,
+      assumptionsApplied: {
+        utilizationApplied: utilization,
+        gridIntensityApplied: regionData.grid_intensity_gco2e_per_kwh,
+        powerModelUsed: "LINEAR_INTERPOLATION",
+        embodiedCo2ePerVcpuPerMonthApplied: 0,
+        waterIntensityLitresPerKwhApplied: regionData.water_intensity_litres_per_kwh,
+        memoryWattsApplied: 0
+      }
+    };
+  }
+  const managedPrice = providerLedger.managed_ai_pricing_usd_per_hour?.[service]?.[input.region]?.[baseInstanceType];
+  if (managedPrice === void 0) {
+    return {
+      totalCo2eGramsPerMonth: 0,
+      embodiedCo2eGramsPerMonth: 0,
+      totalLifecycleCo2eGramsPerMonth: 0,
+      waterLitresPerMonth: 0,
+      totalCostUsdPerMonth: 0,
+      confidence: "LOW_ASSUMED_DEFAULT",
+      scope: "SCOPE_2_AND_3",
+      unsupportedReason: `No managed AI pricing data for "${service}" base instance "${baseInstanceType}" in "${input.region}" (${provider.toUpperCase()}).`,
+      assumptionsApplied: {
+        utilizationApplied: utilization,
+        gridIntensityApplied: regionData.grid_intensity_gco2e_per_kwh,
+        powerModelUsed: "LINEAR_INTERPOLATION",
+        embodiedCo2ePerVcpuPerMonthApplied: instanceData.embodied_co2e_grams_per_month,
+        waterIntensityLitresPerKwhApplied: regionData.water_intensity_litres_per_kwh,
+        memoryWattsApplied: 0
+      }
+    };
+  }
+  const effectiveWatts = effectiveTotalWatts(
+    instanceData.power_watts.idle,
+    instanceData.power_watts.max,
+    utilization,
+    instanceData.memory_gb
+  );
+  const nodeCount = input.nodeCount ?? 1;
+  const totalCo2eGramsPerMonth = wattsToScope2Carbon(
+    effectiveWatts,
+    hours,
+    regionData.pue,
+    regionData.grid_intensity_gco2e_per_kwh
+  ) * nodeCount;
+  const embodiedCo2eGramsPerMonth = instanceData.embodied_unmodeled ? 0 : instanceData.embodied_co2e_grams_per_month * (hours / HOURS_PER_MONTH) * nodeCount;
+  const waterLitresPerMonth = wattsToWater(effectiveWatts, hours, regionData.water_intensity_litres_per_kwh) * nodeCount;
+  const totalLifecycleCo2eGramsPerMonth = totalCo2eGramsPerMonth + embodiedCo2eGramsPerMonth;
+  const totalCostUsdPerMonth = managedPrice * hours * nodeCount;
+  const reasonParts = [
+    `Managed AI service estimate (${service}) assumes the endpoint runs continuously; actual emissions depend on real invocation/runtime patterns not visible in a Terraform plan.`
+  ];
+  if (instanceData.embodied_unmodeled) {
+    reasonParts.push(`Embodied (Scope 3) carbon for "${baseInstanceType}" is not yet modeled \u2014 see GPU coverage notes in METHODOLOGY.md.`);
+  }
+  return {
+    totalCo2eGramsPerMonth,
+    embodiedCo2eGramsPerMonth,
+    totalLifecycleCo2eGramsPerMonth,
+    waterLitresPerMonth,
+    totalCostUsdPerMonth,
+    confidence: "LOW_ASSUMED_DEFAULT",
+    scope: "SCOPE_2_AND_3",
+    unsupportedReason: reasonParts.join(" "),
+    assumptionsApplied: {
+      utilizationApplied: utilization,
+      gridIntensityApplied: regionData.grid_intensity_gco2e_per_kwh,
+      powerModelUsed: "LINEAR_INTERPOLATION",
+      embodiedCo2ePerVcpuPerMonthApplied: instanceData.embodied_co2e_grams_per_month,
+      waterIntensityLitresPerKwhApplied: regionData.water_intensity_litres_per_kwh,
+      memoryWattsApplied: instanceData.memory_gb * MEMORY_WATTS_PER_GB
+    }
+  };
+}
+function parseGpuAttachedInstanceType(instanceType) {
+  if (!instanceType.startsWith("gpu_attached:"))
+    return null;
+  const match = instanceType.match(/^gpu_attached:(.+):(\d+(?:\.\d+)?):(\d+)$/);
+  if (!match)
+    return null;
+  return {
+    baseMachineType: match[1],
+    acceleratorWatts: parseFloat(match[2]),
+    coreCount: parseInt(match[3], 10)
+  };
+}
+function calculateGpuAttachedBaseline(input, params, providerLedger, regionData, utilization, hours, provider, ledgerVersion) {
+  const { baseMachineType, acceleratorWatts, coreCount } = params;
+  const instanceData = providerLedger.instances[baseMachineType];
+  const pricePerHour = providerLedger.pricing_usd_per_hour[input.region]?.[baseMachineType];
+  if (!instanceData || pricePerHour === void 0) {
+    return {
+      totalCo2eGramsPerMonth: 0,
+      embodiedCo2eGramsPerMonth: 0,
+      totalLifecycleCo2eGramsPerMonth: 0,
+      waterLitresPerMonth: 0,
+      totalCostUsdPerMonth: 0,
+      confidence: "LOW_ASSUMED_DEFAULT",
+      scope: "SCOPE_2_AND_3",
+      unsupportedReason: !instanceData ? `GPU-attached base machine type "${baseMachineType}" is not present in the ${provider.toUpperCase()} section of the Open GreenOps Methodology Ledger v${ledgerVersion}.` : `No pricing data for base machine type "${baseMachineType}" in "${input.region}" (${provider.toUpperCase()}).`,
+      assumptionsApplied: {
+        utilizationApplied: utilization,
+        gridIntensityApplied: regionData.grid_intensity_gco2e_per_kwh,
+        powerModelUsed: "LINEAR_INTERPOLATION",
+        embodiedCo2ePerVcpuPerMonthApplied: instanceData?.embodied_co2e_grams_per_month ?? 0,
+        waterIntensityLitresPerKwhApplied: regionData.water_intensity_litres_per_kwh,
+        memoryWattsApplied: 0
+      }
+    };
+  }
+  const baseWatts = effectiveTotalWatts(
+    instanceData.power_watts.idle,
+    instanceData.power_watts.max,
+    utilization,
+    instanceData.memory_gb
+  );
+  const gpuWatts = acceleratorWatts * coreCount;
+  const totalWatts = baseWatts + gpuWatts;
+  const GPU_ACCELERATOR_PRICE_PER_HOUR = 0.35;
+  const totalPricePerHour = pricePerHour + GPU_ACCELERATOR_PRICE_PER_HOUR * coreCount;
+  const totalCo2eGramsPerMonth = wattsToScope2Carbon(totalWatts, hours, regionData.pue, regionData.grid_intensity_gco2e_per_kwh);
+  const waterLitresPerMonth = wattsToWater(totalWatts, hours, regionData.water_intensity_litres_per_kwh);
+  const embodiedCo2eGramsPerMonth = 0;
+  const totalLifecycleCo2eGramsPerMonth = totalCo2eGramsPerMonth + embodiedCo2eGramsPerMonth;
+  const totalCostUsdPerMonth = totalPricePerHour * hours;
+  return {
+    totalCo2eGramsPerMonth,
+    embodiedCo2eGramsPerMonth,
+    totalLifecycleCo2eGramsPerMonth,
+    waterLitresPerMonth,
+    totalCostUsdPerMonth,
+    confidence: "LOW_ASSUMED_DEFAULT",
+    scope: "SCOPE_2_AND_3",
+    unsupportedReason: `Embodied (Scope 3) carbon for the attached GPU is not yet modeled (same gap as AWS GPU instances \u2014 see METHODOLOGY.md). Base machine "${baseMachineType}" embodied carbon is included; GPU embodied carbon is not.`,
+    assumptionsApplied: {
+      utilizationApplied: utilization,
+      gridIntensityApplied: regionData.grid_intensity_gco2e_per_kwh,
+      powerModelUsed: "LINEAR_INTERPOLATION",
+      embodiedCo2ePerVcpuPerMonthApplied: instanceData.embodied_co2e_grams_per_month,
+      waterIntensityLitresPerKwhApplied: regionData.water_intensity_litres_per_kwh,
+      memoryWattsApplied: instanceData.memory_gb * MEMORY_WATTS_PER_GB
+    }
+  };
+}
 function calculateBaseline(input, ledger = factors_default) {
   const provider = input.provider ?? "aws";
   const providerLedger = ledger[provider];
@@ -2718,6 +2951,32 @@ function calculateBaseline(input, ledger = factors_default) {
   const serverlessParams = parseServerlessInstanceType(input.instanceType);
   if (serverlessParams) {
     return calculateServerlessBaseline(input, serverlessParams, regionData);
+  }
+  const managedAiParams = parseManagedAiInstanceType(input.instanceType);
+  if (managedAiParams) {
+    return calculateManagedAiBaseline(
+      input,
+      managedAiParams,
+      providerLedger,
+      regionData,
+      utilization,
+      hours,
+      provider,
+      ledger.metadata.ledger_version
+    );
+  }
+  const gpuAttachedParams = parseGpuAttachedInstanceType(input.instanceType);
+  if (gpuAttachedParams) {
+    return calculateGpuAttachedBaseline(
+      input,
+      gpuAttachedParams,
+      providerLedger,
+      regionData,
+      utilization,
+      hours,
+      provider,
+      ledger.metadata.ledger_version
+    );
   }
   const instanceData = providerLedger.instances[input.instanceType];
   if (!instanceData) {
@@ -3380,6 +3639,23 @@ function formatCostDelta2(usd) {
 function formatGrams(grams) {
   return `${(grams / 1e3).toFixed(2)}kg`;
 }
+function formatInstanceTypeLabel(instanceType) {
+  if (instanceType.startsWith("serverless:"))
+    return "serverless";
+  const managedAiMatch = instanceType.match(/^managed_ai:([a-z_]+):(.+)$/);
+  if (managedAiMatch) {
+    const [, service, baseType] = managedAiMatch;
+    const serviceLabel = service === "sagemaker" ? "SageMaker" : service;
+    return `ml.${baseType} (${serviceLabel})`;
+  }
+  const gpuAttachedMatch = instanceType.match(/^gpu_attached:(.+):(\d+(?:\.\d+)?):(\d+)$/);
+  if (gpuAttachedMatch) {
+    const [, baseMachineType, , coreCount] = gpuAttachedMatch;
+    const gpuSuffix = coreCount === "1" ? "1x GPU" : `${coreCount}x GPU`;
+    return `${baseMachineType} + ${gpuSuffix}`;
+  }
+  return instanceType;
+}
 
 // formatters/markdown.ts
 function formatWater(litres) {
@@ -3442,7 +3718,7 @@ function formatMarkdown(result2, options = {}) {
   for (const r of analysed) {
     const isServerless = r.input.instanceType.startsWith("serverless:");
     const nodeCount = r.input.nodeCount ?? 1;
-    const displayType = isServerless ? `\`serverless\`` : `\`${r.input.instanceType}\`${nodeCount > 1 ? ` \xD7 ${nodeCount}` : ""}`;
+    const displayType = `\`${formatInstanceTypeLabel(r.input.instanceType)}\`${nodeCount > 1 ? ` \xD7 ${nodeCount}` : ""}`;
     const serverlessBadge = isServerless ? " \u26A1" : "";
     const action = r.recommendation ? `\u{1F4A1} [View Recommendation](#recommendations)` : `\u2705 Optimal`;
     out += `| \`${r.input.resourceId}\`${serverlessBadge} | ${displayType} | \`${r.input.region}\` | ${formatGrams(r.baseline.totalCo2eGramsPerMonth)} | ${formatGrams(r.baseline.embodiedCo2eGramsPerMonth)} | ${formatWater(r.baseline.waterLitresPerMonth)} | ${r.baseline.totalCostUsdPerMonth.toFixed(2)} | ${action} |
@@ -3462,9 +3738,15 @@ function formatMarkdown(result2, options = {}) {
 
 `;
   }
-  const gpuResources = analysed.filter((r) => r.baseline.unsupportedReason?.startsWith("Embodied (Scope 3)"));
+  const gpuResources = analysed.filter((r) => r.baseline.unsupportedReason?.includes("Embodied (Scope 3)"));
   if (gpuResources.length > 0) {
     out += `> \u{1F5A5}\uFE0F **GPU instances**: Scope 2 (operational) carbon above uses real NVIDIA TDP specs. Scope 3 (embodied/manufacturing) carbon is shown as \`0\` because GPU hardware's manufacturing footprint differs substantially from this ledger's CPU-server baseline, and no equivalent public GPU baseline exists yet \u2014 this is an explicit gap, not a measured zero. Confidence is marked \`LOW_ASSUMED_DEFAULT\` accordingly.
+
+`;
+  }
+  const managedAiResources = analysed.filter((r) => r.input.instanceType.startsWith("managed_ai:"));
+  if (managedAiResources.length > 0) {
+    out += `> \u{1F916} **Managed AI services** (e.g. SageMaker endpoints) are estimated assuming the endpoint runs continuously at the ledger's default utilization. Actual emissions depend on real invocation/runtime patterns not visible in a Terraform plan. Pricing reflects the managed-service rate, not the underlying instance's raw compute price.
 
 `;
   }
@@ -3565,15 +3847,20 @@ function formatTable(result2) {
 `;
   out += `\u251C${"\u2500".repeat(38)}\u253C${"\u2500".repeat(20)}\u253C${"\u2500".repeat(16)}\u253C${"\u2500".repeat(11)}\u253C${"\u2500".repeat(11)}\u253C${"\u2500".repeat(9)}\u253C${"\u2500".repeat(13)}\u2524
 `;
-  const analysed = result2.resources.filter((r) => r.baseline.confidence !== "LOW_ASSUMED_DEFAULT");
-  const unsupportedResources = result2.resources.filter((r) => r.baseline.confidence === "LOW_ASSUMED_DEFAULT");
+  const analysed = result2.resources.filter(
+    (r) => r.baseline.confidence !== "LOW_ASSUMED_DEFAULT" || r.baseline.totalCo2eGramsPerMonth > 0
+  );
+  const unsupportedResources = result2.resources.filter(
+    (r) => r.baseline.confidence === "LOW_ASSUMED_DEFAULT" && r.baseline.totalCo2eGramsPerMonth === 0
+  );
   for (const r of analysed) {
     const scope2 = formatGrams(r.baseline.totalCo2eGramsPerMonth);
     const scope3 = formatGrams(r.baseline.embodiedCo2eGramsPerMonth);
     const water = formatWater2(r.baseline.waterLitresPerMonth);
     const action = r.recommendation ? `\x1B[33mUPGRADE\x1B[0m` : `\x1B[32mOK\x1B[0m`;
     const nodeCount = r.input.nodeCount ?? 1;
-    const instanceLabel = nodeCount > 1 ? `${r.input.instanceType} \xD7${nodeCount}` : r.input.instanceType;
+    const baseLabel = formatInstanceTypeLabel(r.input.instanceType);
+    const instanceLabel = nodeCount > 1 ? `${baseLabel} \xD7${nodeCount}` : baseLabel;
     out += `\u2502 ${truncate(r.input.resourceId, 36)} \u2502 ${truncate(instanceLabel, 18)} \u2502 ${truncate(r.input.region, 14)} \u2502 ${truncate(scope2, 9)} \u2502 ${truncate(scope3, 9)} \u2502 ${truncate(water, 7)} \u2502 ${truncate(action, 11)} \u2502
 `;
   }
@@ -3582,7 +3869,7 @@ function formatTable(result2) {
 `;
   }
   for (const r of unsupportedResources) {
-    out += `\u2502 \x1B[90m${truncate(r.input.resourceId, 36)}\x1B[0m \u2502 \x1B[90m${truncate(r.input.instanceType, 18)}\x1B[0m \u2502 \x1B[90m${truncate(r.input.region, 14)}\x1B[0m \u2502 \x1B[90m${truncate("---", 9)}\x1B[0m \u2502 \x1B[90m${truncate("---", 9)}\x1B[0m \u2502 \x1B[90m${truncate("---", 7)}\x1B[0m \u2502 \x1B[33m${truncate("\u26A0 UNKNOWN", 11)}\x1B[0m \u2502
+    out += `\u2502 \x1B[90m${truncate(r.input.resourceId, 36)}\x1B[0m \u2502 \x1B[90m${truncate(formatInstanceTypeLabel(r.input.instanceType), 18)}\x1B[0m \u2502 \x1B[90m${truncate(r.input.region, 14)}\x1B[0m \u2502 \x1B[90m${truncate("---", 9)}\x1B[0m \u2502 \x1B[90m${truncate("---", 9)}\x1B[0m \u2502 \x1B[90m${truncate("---", 7)}\x1B[0m \u2502 \x1B[33m${truncate("\u26A0 UNKNOWN", 11)}\x1B[0m \u2502
 `;
   }
   out += `\u2514${"\u2500".repeat(38)}\u2534${"\u2500".repeat(20)}\u2534${"\u2500".repeat(16)}\u2534${"\u2500".repeat(11)}\u2534${"\u2500".repeat(11)}\u2534${"\u2500".repeat(9)}\u2534${"\u2500".repeat(13)}\u2518

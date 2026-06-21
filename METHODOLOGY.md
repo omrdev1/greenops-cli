@@ -10,9 +10,9 @@ All maths in GreenOps is open, auditable, and reproducible from `factors.json`. 
 
 | Provider | Regions | Instances | Status |
 |---|---|---|---|
-| AWS | 14 | 50 | Full coverage for listed instance and node group types. 3 GPU instances (`g5.xlarge`, `p4d.24xlarge`, `p5.48xlarge`) Scope 2-only, `us-east-1` only — see [GPU Instances](#gpu-instances-scope-2-only) |
+| AWS | 14 | 50 | Full coverage for listed instance and node group types. 3 GPU instances (`g5.xlarge`, `p4d.24xlarge`, `p5.48xlarge`) Scope 2-only, `us-east-1` only — see [GPU Instances](#gpu-instances-scope-2-only). SageMaker endpoint configs (Scope 2-only, `us-east-1` only) — see [Managed AI Services](#managed-ai-services) |
 | Azure | 17 | 16 | Full coverage for listed instance and node group types |
-| GCP | 15 | 15 | Full coverage for listed instance and node group types |
+| GCP | 15 | 15 | Full coverage for listed instance and node group types. Vertex AI Workbench (Scope 2-only, T4 GPU only) — see [Managed AI Services](#managed-ai-services) |
 
 Run `greenops-cli --coverage` to see the full instance and region list per provider.
 
@@ -163,7 +163,29 @@ Idle power is modelled at ~12% of TDP, sourced from published idle-draw figures 
 
 **No GPU coverage yet for Azure or GCP.** Azure NC/ND-series and GCP A2/A3/G2 GPU families are not yet in the ledger. This is a scoping limit, not a technical one — the same `aws_instance`-style extraction-by-resource-type pattern applies equally to `azurerm_linux_virtual_machine` and `google_compute_instance`.
 
-**No managed AI service detection** (`aws_sagemaker_endpoint`, Azure ML compute, Vertex AI endpoints). Scoped as a future addition; likely needs the same `SERVERLESS_INVOCATION` power model already used for Lambda, since these are largely invocation-billed rather than instance-billed.
+---
+
+## Managed AI Services
+
+### AWS SageMaker (Scope 2 only)
+
+`aws_sagemaker_endpoint_configuration` carries the actual instance sizing (`production_variants[].instance_type`) — the deployed `aws_sagemaker_endpoint` resource itself only references a config by name and has no sizing data, so the configuration resource is what's analysed.
+
+SageMaker `ml.*` instance types share identical vCPU/memory/GPU hardware with the matching EC2 instance family (confirmed against AWS's own SageMaker documentation), so power and embodied-carbon specs are reused directly from the existing instance ledger — no duplicate hardware data. Pricing is NOT reused from EC2: SageMaker carries a real, separately-published premium (e.g. `ml.g5.xlarge` runs roughly 2x raw `g5.xlarge` on-demand pricing), tracked in its own `managed_ai_pricing_usd_per_hour` table, scoped to `us-east-1` for `m5.large`, `m5.xlarge`, `g5.xlarge`, and `p4d.24xlarge`.
+
+Every SageMaker estimate is `LOW_ASSUMED_DEFAULT`: the figure assumes the endpoint runs continuously at the ledger's default utilization, since real invocation/runtime patterns are not visible in a Terraform plan (the same limitation Lambda serverless estimates already carry). GPU-backed endpoints (e.g. `ml.p4d.24xlarge`) carry the same embodied-carbon gap as raw GPU instances — reported as `0`, not estimated.
+
+### GCP Vertex AI Workbench (Scope 2 only)
+
+`google_workbench_instance` nests its sizing inside a `gce_setup {}` block (`machine_type`, and separately `accelerator_configs[]` for any attached GPU). Unlike SageMaker, Workbench carries no managed-service price premium — Google bills it as the underlying Compute Engine machine plus a standalone per-GPU accelerator rate (confirmed: Workbench appears in GCP billing as Compute Engine charges with a product label, not a separate line item). So this path reuses the existing raw `pricing_usd_per_hour` table for the base machine, plus a real standalone GPU add-on rate.
+
+Currently supported: NVIDIA T4 (70W TDP, $0.35/hr standalone add-on, both GCP public figures) attached to any base machine type already in the GCP instance ledger. `n1-standard-*` is a common real-world Workbench default but is not yet in this ledger at all (separate gap, not specific to Workbench) — falls through honestly as `unsupported_instance`.
+
+**A100/V100/L4 accelerators are explicitly NOT supported.** GCP's standalone per-GPU add-on pricing for these accelerators could not be confidently distinguished from bundled A2-family instance pricing during research for this release — rather than risk citing a wrong number, a Workbench instance with an unrecognized `accelerator_configs[].type` is skipped with reason `unsupported_accelerator:<type>`, not silently reported using only the base machine's carbon (which would understate the resource's real footprint without saying so).
+
+### Explicitly out of scope this release
+
+Azure ML (`azurerm_machine_learning_compute_instance`/`compute_cluster`) — not yet researched. Vertex AI prediction endpoints (`google_vertex_ai_endpoint`) — the actual model-serving compute is provisioned through a separate model-deployment step with no flat instance-type field on the endpoint resource itself, genuinely harder to extract correctly than Workbench; deferred rather than force a fragile extraction.
 
 ---
 
