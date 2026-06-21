@@ -2196,13 +2196,16 @@ var SUPPORTED_SERVERLESS_TYPES = {
   azure: ["azurerm_function_app", "azurerm_linux_function_app", "azurerm_windows_function_app"],
   gcp: ["google_cloudfunctions_function", "google_cloudfunctions2_function", "google_cloud_run_service"]
 };
+var SUPPORTED_NODE_GROUP_TYPES = {
+  aws: ["aws_eks_node_group"],
+  azure: ["azurerm_kubernetes_cluster", "azurerm_kubernetes_cluster_node_pool"],
+  gcp: ["google_container_node_pool"]
+};
 var COMPUTE_RELEVANT_TYPES = [
   "aws_launch_template",
   "aws_autoscaling_group",
   "aws_ecs_service",
-  "aws_eks_node_group",
   "azurerm_virtual_machine_scale_set",
-  "azurerm_kubernetes_cluster",
   "google_compute_instance_template",
   "google_container_cluster"
 ];
@@ -2323,6 +2326,46 @@ function extractGcpInstanceType(res) {
     return { instanceType: null, skipReason: "known_after_apply" };
   return { instanceType: machineType };
 }
+function extractNodeGroupInput(res, provider) {
+  const after = res.change?.after ?? {};
+  const before = res.change?.before ?? {};
+  if (provider === "aws") {
+    const instanceTypes = after.instance_types ?? before.instance_types;
+    const instanceType2 = Array.isArray(instanceTypes) && typeof instanceTypes[0] === "string" ? instanceTypes[0] : null;
+    const scalingConfig = after.scaling_config ?? before.scaling_config;
+    const scaling = Array.isArray(scalingConfig) ? scalingConfig[0] : void 0;
+    const desiredSize = scaling?.desired_size;
+    const minSize = scaling?.min_size;
+    const nodeCount2 = typeof minSize === "number" ? minSize : typeof desiredSize === "number" ? desiredSize : 1;
+    if (!instanceType2)
+      return { instanceType: null, nodeCount: nodeCount2, skipReason: "known_after_apply" };
+    return { instanceType: instanceType2, nodeCount: nodeCount2 };
+  }
+  if (provider === "azure") {
+    const defaultPool = after.default_node_pool ?? before.default_node_pool;
+    const pool = Array.isArray(defaultPool) ? defaultPool[0] : void 0;
+    const vmSize = pool?.vm_size ?? after.vm_size ?? before.vm_size;
+    const instanceType2 = typeof vmSize === "string" ? vmSize : null;
+    const nodeCountField = pool?.node_count ?? after.node_count ?? before.node_count;
+    const minCountField = pool?.min_count ?? after.min_count ?? before.min_count;
+    const nodeCount2 = typeof minCountField === "number" ? minCountField : typeof nodeCountField === "number" ? nodeCountField : 1;
+    if (!instanceType2)
+      return { instanceType: null, nodeCount: nodeCount2, skipReason: "known_after_apply" };
+    return { instanceType: instanceType2, nodeCount: nodeCount2 };
+  }
+  const nodeConfig = after.node_config ?? before.node_config;
+  const config = Array.isArray(nodeConfig) ? nodeConfig[0] : void 0;
+  const machineType = config?.machine_type ?? after.machine_type ?? before.machine_type;
+  const instanceType = typeof machineType === "string" ? machineType : null;
+  const initialNodeCount = after.initial_node_count ?? before.initial_node_count;
+  const autoscaling = after.autoscaling ?? before.autoscaling;
+  const autoscalingConfig = Array.isArray(autoscaling) ? autoscaling[0] : void 0;
+  const minNodeCount = autoscalingConfig?.min_node_count;
+  const nodeCount = typeof minNodeCount === "number" ? minNodeCount : typeof initialNodeCount === "number" ? initialNodeCount : 1;
+  if (!instanceType)
+    return { instanceType: null, nodeCount, skipReason: "known_after_apply" };
+  return { instanceType, nodeCount };
+}
 function extractServerlessInput(res, provider, providerRegions, plannedValuesMap) {
   const plannedValues = plannedValuesMap.get(res.address) ?? {};
   const after = res.change?.after ?? {};
@@ -2396,6 +2439,7 @@ function extractResourceInputs(planFilePath) {
   }
   const allSupportedTypes = Object.values(SUPPORTED_TYPES).flat();
   const allServerlessTypes = Object.values(SUPPORTED_SERVERLESS_TYPES).flat();
+  const allNodeGroupTypes = Object.values(SUPPORTED_NODE_GROUP_TYPES).flat();
   for (const rawRes of typedPlan.resource_changes) {
     const res = rawRes;
     const actions = res.change?.actions;
@@ -2417,6 +2461,22 @@ function extractResourceInputs(planFilePath) {
       } else {
         result2.skipped.push({ resourceId: res.address, reason: skipReason2 ?? "known_after_apply" });
       }
+      continue;
+    }
+    if (allNodeGroupTypes.includes(res.type)) {
+      if (!provider)
+        continue;
+      const { instanceType: instanceType2, nodeCount, skipReason: skipReason2 } = extractNodeGroupInput(res, provider);
+      if (!instanceType2) {
+        result2.skipped.push({ resourceId: res.address, reason: skipReason2 ?? "known_after_apply" });
+        continue;
+      }
+      const region2 = provider === "aws" ? resolveAwsRegion(res.change, providerRegions.aws) : provider === "azure" ? resolveAzureRegion(res.change, providerRegions.azure) : resolveGcpRegion(res.change, providerRegions.gcp);
+      if (!region2) {
+        result2.skipped.push({ resourceId: res.address, reason: "known_after_apply" });
+        continue;
+      }
+      result2.resources.push({ resourceId: res.address, instanceType: instanceType2, region: region2, provider, nodeCount });
       continue;
     }
     if (!allSupportedTypes.includes(res.type)) {
@@ -2646,16 +2706,17 @@ function calculateBaseline(input, ledger = factors_default) {
     utilization,
     instanceData.memory_gb
   );
+  const nodeCount = input.nodeCount ?? 1;
   const totalCo2eGramsPerMonth = wattsToScope2Carbon(
     effectiveWatts,
     hours,
     regionData.pue,
     regionData.grid_intensity_gco2e_per_kwh
-  );
-  const embodiedCo2eGramsPerMonth = instanceData.embodied_co2e_grams_per_month * (hours / HOURS_PER_MONTH);
-  const waterLitresPerMonth = wattsToWater(effectiveWatts, hours, regionData.water_intensity_litres_per_kwh);
+  ) * nodeCount;
+  const embodiedCo2eGramsPerMonth = instanceData.embodied_co2e_grams_per_month * (hours / HOURS_PER_MONTH) * nodeCount;
+  const waterLitresPerMonth = wattsToWater(effectiveWatts, hours, regionData.water_intensity_litres_per_kwh) * nodeCount;
   const totalLifecycleCo2eGramsPerMonth = totalCo2eGramsPerMonth + embodiedCo2eGramsPerMonth;
-  const totalCostUsdPerMonth = pricePerHour * hours;
+  const totalCostUsdPerMonth = pricePerHour * hours * nodeCount;
   const confidence = input.avgUtilization !== void 0 ? "MEDIUM" : "HIGH";
   return {
     totalCo2eGramsPerMonth,
@@ -3339,7 +3400,8 @@ function formatMarkdown(result2, options = {}) {
 `;
   for (const r of analysed) {
     const isServerless = r.input.instanceType.startsWith("serverless:");
-    const displayType = isServerless ? `\`serverless\`` : `\`${r.input.instanceType}\``;
+    const nodeCount = r.input.nodeCount ?? 1;
+    const displayType = isServerless ? `\`serverless\`` : `\`${r.input.instanceType}\`${nodeCount > 1 ? ` \xD7 ${nodeCount}` : ""}`;
     const serverlessBadge = isServerless ? " \u26A1" : "";
     const action = r.recommendation ? `\u{1F4A1} [View Recommendation](#recommendations)` : `\u2705 Optimal`;
     out += `| \`${r.input.resourceId}\`${serverlessBadge} | ${displayType} | \`${r.input.region}\` | ${formatGrams(r.baseline.totalCo2eGramsPerMonth)} | ${formatGrams(r.baseline.embodiedCo2eGramsPerMonth)} | ${formatWater(r.baseline.waterLitresPerMonth)} | ${r.baseline.totalCostUsdPerMonth.toFixed(2)} | ${action} |
@@ -3350,6 +3412,12 @@ function formatMarkdown(result2, options = {}) {
   const serverlessResources = analysed.filter((r) => r.input.instanceType.startsWith("serverless:"));
   if (serverlessResources.length > 0) {
     out += `> \u26A1 **Serverless resources** are estimated using assumed defaults (1M invocations/month, 200ms avg duration). Actual emissions depend on real invocation patterns. Values are marked \`LOW_ASSUMED_DEFAULT\`.
+
+`;
+  }
+  const nodeGroupResources = analysed.filter((r) => (r.input.nodeCount ?? 1) > 1);
+  if (nodeGroupResources.length > 0) {
+    out += `> \u{1F9EE} **Node group totals** reflect the minimum configured size for autoscaling groups (\`min_size\` / \`min_count\` / \`autoscaling.min_node_count\`), never the desired or maximum size. Actual emissions scale up with autoscaler activity above this floor.
 
 `;
   }
@@ -3384,9 +3452,11 @@ function formatMarkdown(result2, options = {}) {
 `;
     for (const r of result2.resources) {
       if (r.recommendation) {
+        const nodeCount = r.input.nodeCount ?? 1;
+        const nodeSuffix = nodeCount > 1 ? ` \xD7 ${nodeCount} nodes` : "";
         out += `#### \`${r.input.resourceId}\`
 `;
-        out += `- **Current:** \`${r.input.instanceType}\` in \`${r.input.region}\`
+        out += `- **Current:** \`${r.input.instanceType}\`${nodeSuffix} in \`${r.input.region}\`
 `;
         const sugRegion = r.recommendation.suggestedRegion || r.input.region;
         const sugInst = r.recommendation.suggestedInstanceType || r.input.instanceType;
@@ -3455,7 +3525,9 @@ function formatTable(result2) {
     const scope3 = formatGrams(r.baseline.embodiedCo2eGramsPerMonth);
     const water = formatWater2(r.baseline.waterLitresPerMonth);
     const action = r.recommendation ? `\x1B[33mUPGRADE\x1B[0m` : `\x1B[32mOK\x1B[0m`;
-    out += `\u2502 ${truncate(r.input.resourceId, 36)} \u2502 ${truncate(r.input.instanceType, 18)} \u2502 ${truncate(r.input.region, 14)} \u2502 ${truncate(scope2, 9)} \u2502 ${truncate(scope3, 9)} \u2502 ${truncate(water, 7)} \u2502 ${truncate(action, 11)} \u2502
+    const nodeCount = r.input.nodeCount ?? 1;
+    const instanceLabel = nodeCount > 1 ? `${r.input.instanceType} \xD7${nodeCount}` : r.input.instanceType;
+    out += `\u2502 ${truncate(r.input.resourceId, 36)} \u2502 ${truncate(instanceLabel, 18)} \u2502 ${truncate(r.input.region, 14)} \u2502 ${truncate(scope2, 9)} \u2502 ${truncate(scope3, 9)} \u2502 ${truncate(water, 7)} \u2502 ${truncate(action, 11)} \u2502
 `;
   }
   for (const s of result2.skipped) {

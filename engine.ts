@@ -313,13 +313,18 @@ export function calculateBaseline(
     instanceData.memory_gb
   );
 
+  // Node groups (EKS/AKS/GKE) provision N instances of this type. All output
+  // figures scale linearly with node count; the power/cost model itself is
+  // identical to a single instance.
+  const nodeCount = input.nodeCount ?? 1;
+
   const totalCo2eGramsPerMonth = wattsToScope2Carbon(
     effectiveWatts, hours, regionData.pue, regionData.grid_intensity_gco2e_per_kwh
-  );
-  const embodiedCo2eGramsPerMonth = instanceData.embodied_co2e_grams_per_month * (hours / HOURS_PER_MONTH);
-  const waterLitresPerMonth = wattsToWater(effectiveWatts, hours, regionData.water_intensity_litres_per_kwh);
+  ) * nodeCount;
+  const embodiedCo2eGramsPerMonth = instanceData.embodied_co2e_grams_per_month * (hours / HOURS_PER_MONTH) * nodeCount;
+  const waterLitresPerMonth = wattsToWater(effectiveWatts, hours, regionData.water_intensity_litres_per_kwh) * nodeCount;
   const totalLifecycleCo2eGramsPerMonth = totalCo2eGramsPerMonth + embodiedCo2eGramsPerMonth;
-  const totalCostUsdPerMonth = pricePerHour * hours;
+  const totalCostUsdPerMonth = pricePerHour * hours * nodeCount;
   const confidence: ConfidenceLevel = input.avgUtilization !== undefined ? 'MEDIUM' : 'HIGH';
 
   return {

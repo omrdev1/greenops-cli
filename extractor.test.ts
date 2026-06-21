@@ -467,3 +467,152 @@ describe('Terraform Plan Extractor', () => {
     assert.equal(gcp!.instanceType, 'n2-standard-2');
   });
 });
+
+// ---------------------------------------------------------------------------
+// Kubernetes node group tests (EKS, AKS, GKE)
+// ---------------------------------------------------------------------------
+
+describe('Node group extraction', () => {
+  test('aws_eks_node_group: extracts instance type, region, and minimum node count', () => {
+    const fixture = {
+      resource_changes: [
+        {
+          address: 'aws_eks_node_group.workers',
+          type: 'aws_eks_node_group',
+          change: {
+            actions: ['create'],
+            after: {
+              instance_types: ['m5.large'],
+              scaling_config: [{ desired_size: 3, max_size: 6, min_size: 2 }],
+            },
+          },
+        },
+      ],
+      configuration: {
+        provider_config: {
+          aws: { name: 'aws', expressions: { region: { constant_value: 'us-east-1' } } },
+        },
+      },
+    };
+
+    const result = runFixtureTest(fixture);
+    assert.equal(result.error, undefined);
+    assert.equal(result.resources.length, 1);
+
+    const [node] = result.resources;
+    assert.equal(node.instanceType, 'm5.large');
+    assert.equal(node.region, 'us-east-1');
+    assert.equal(node.provider, 'aws');
+    // Autoscaling honesty rule: use min_size (2), never desired_size (3) or max_size (6).
+    assert.equal(node.nodeCount, 2);
+  });
+
+  test('aws_eks_node_group: falls back to desired_size when min_size is absent', () => {
+    const fixture = {
+      resource_changes: [
+        {
+          address: 'aws_eks_node_group.fixed',
+          type: 'aws_eks_node_group',
+          change: {
+            actions: ['create'],
+            after: {
+              instance_types: ['m6g.large'],
+              scaling_config: [{ desired_size: 4, max_size: 4 }],
+            },
+          },
+        },
+      ],
+      configuration: {
+        provider_config: {
+          aws: { name: 'aws', expressions: { region: { constant_value: 'eu-west-1' } } },
+        },
+      },
+    };
+
+    const result = runFixtureTest(fixture);
+    assert.equal(result.resources[0].nodeCount, 4);
+  });
+
+  test('azurerm_kubernetes_cluster: extracts default_node_pool vm_size and min_count', () => {
+    const fixture = {
+      resource_changes: [
+        {
+          address: 'azurerm_kubernetes_cluster.main',
+          type: 'azurerm_kubernetes_cluster',
+          change: {
+            actions: ['create'],
+            after: {
+              location: 'eastus',
+              default_node_pool: [{ vm_size: 'Standard_D2s_v3', node_count: 3, min_count: 1, max_count: 5 }],
+            },
+          },
+        },
+      ],
+    };
+
+    const result = runFixtureTest(fixture);
+    assert.equal(result.error, undefined);
+    assert.equal(result.resources.length, 1);
+
+    const [node] = result.resources;
+    assert.equal(node.instanceType, 'Standard_D2s_v3');
+    assert.equal(node.region, 'eastus');
+    assert.equal(node.provider, 'azure');
+    assert.equal(node.nodeCount, 1, 'should use min_count, not node_count or max_count');
+  });
+
+  test('google_container_node_pool: extracts machine_type and autoscaling min_node_count', () => {
+    const fixture = {
+      resource_changes: [
+        {
+          address: 'google_container_node_pool.workers',
+          type: 'google_container_node_pool',
+          change: {
+            actions: ['create'],
+            after: {
+              node_config: [{ machine_type: 'n2-standard-2' }],
+              initial_node_count: 3,
+              autoscaling: [{ min_node_count: 1, max_node_count: 5 }],
+            },
+          },
+        },
+      ],
+      configuration: {
+        provider_config: {
+          google: { name: 'google', expressions: { region: { constant_value: 'us-central1' } } },
+        },
+      },
+    };
+
+    const result = runFixtureTest(fixture);
+    assert.equal(result.error, undefined);
+    assert.equal(result.resources.length, 1);
+
+    const [node] = result.resources;
+    assert.equal(node.instanceType, 'n2-standard-2');
+    assert.equal(node.region, 'us-central1');
+    assert.equal(node.provider, 'gcp');
+    assert.equal(node.nodeCount, 1, 'should use autoscaling.min_node_count, not initial_node_count');
+  });
+
+  test('node group with unresolved instance type is skipped, not crashed', () => {
+    const fixture = {
+      resource_changes: [
+        {
+          address: 'aws_eks_node_group.pending',
+          type: 'aws_eks_node_group',
+          change: {
+            actions: ['create'],
+            after: { scaling_config: [{ desired_size: 2 }] },
+            after_unknown: { instance_types: true },
+          },
+        },
+      ],
+    };
+
+    const result = runFixtureTest(fixture);
+    assert.equal(result.resources.length, 0);
+    assert.equal(result.skipped.length, 1);
+    assert.equal(result.skipped[0].reason, 'known_after_apply');
+  });
+});

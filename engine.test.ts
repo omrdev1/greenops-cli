@@ -400,4 +400,66 @@ describe('calculateBaseline', () => {
     const rec = generateRecommendation(input, baseline);
     assert.ok(rec !== null, 'Should recommend region shift or ARM upgrade for t2.micro in us-east-1');
   });
+
+  // ---------------------------------------------------------------------------
+  // nodeCount — Kubernetes node group support (EKS/AKS/GKE)
+  // ---------------------------------------------------------------------------
+
+  it('nodeCount defaults to 1 when absent (backward compatible)', () => {
+    const withCount = calculateBaseline({
+      resourceId: 'x', instanceType: 'm5.large', region: 'us-east-1', provider: 'aws', nodeCount: 1,
+    });
+    const withoutCount = calculateBaseline({
+      resourceId: 'x', instanceType: 'm5.large', region: 'us-east-1', provider: 'aws',
+    });
+    assert.equal(withCount.totalCo2eGramsPerMonth, withoutCount.totalCo2eGramsPerMonth);
+    assert.equal(withCount.totalCostUsdPerMonth, withoutCount.totalCostUsdPerMonth);
+  });
+
+  it('nodeCount scales Scope 2, Scope 3, water, and cost linearly', () => {
+    const single = calculateBaseline({
+      resourceId: 'x', instanceType: 'm5.large', region: 'us-east-1', provider: 'aws',
+    });
+    const triple = calculateBaseline({
+      resourceId: 'x', instanceType: 'm5.large', region: 'us-east-1', provider: 'aws', nodeCount: 3,
+    });
+
+    assert.equal(triple.totalCo2eGramsPerMonth, single.totalCo2eGramsPerMonth * 3);
+    assert.equal(triple.embodiedCo2eGramsPerMonth, single.embodiedCo2eGramsPerMonth * 3);
+    assert.equal(triple.waterLitresPerMonth, single.waterLitresPerMonth * 3);
+    assert.equal(triple.totalCostUsdPerMonth, single.totalCostUsdPerMonth * 3);
+    assert.equal(
+      triple.totalLifecycleCo2eGramsPerMonth,
+      triple.totalCo2eGramsPerMonth + triple.embodiedCo2eGramsPerMonth
+    );
+  });
+
+  it('nodeCount does not change confidence or assumptions metadata, only output magnitude', () => {
+    const single = calculateBaseline({
+      resourceId: 'x', instanceType: 'm5.large', region: 'us-east-1', provider: 'aws',
+    });
+    const five = calculateBaseline({
+      resourceId: 'x', instanceType: 'm5.large', region: 'us-east-1', provider: 'aws', nodeCount: 5,
+    });
+    assert.equal(five.confidence, single.confidence);
+    assert.deepEqual(five.assumptionsApplied, single.assumptionsApplied);
+  });
+
+  it('recommendation deltas scale with nodeCount (ARM upgrade on a 4-node group)', () => {
+    const input = {
+      resourceId: 'aws_eks_node_group.workers', instanceType: 'm5.large', region: 'us-east-1',
+      provider: 'aws' as const, nodeCount: 4,
+    };
+    const singleInput = { ...input, nodeCount: 1 };
+
+    const baseline = calculateBaseline(input);
+    const singleBaseline = calculateBaseline(singleInput);
+    const rec = generateRecommendation(input, baseline);
+    const singleRec = generateRecommendation(singleInput, singleBaseline);
+
+    assert.ok(rec !== null && singleRec !== null, 'Both should recommend an upgrade');
+    // The per-node delta should be identical; the node-group delta should be 4x.
+    assert.equal(rec!.co2eDeltaGramsPerMonth, singleRec!.co2eDeltaGramsPerMonth * 4);
+    assert.equal(rec!.costDeltaUsdPerMonth, singleRec!.costDeltaUsdPerMonth * 4);
+  });
 });

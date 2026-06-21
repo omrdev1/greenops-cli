@@ -32,7 +32,9 @@ export function formatTable(result: PlanAnalysisResult): string {
     const scope3 = formatGrams(r.baseline.embodiedCo2eGramsPerMonth);
     const water = formatWater(r.baseline.waterLitresPerMonth);
     const action = r.recommendation ? `\x1b[33mUPGRADE\x1b[0m` : `\x1b[32mOK\x1b[0m`;
-    out += `│ ${truncate(r.input.resourceId, 36)} │ ${truncate(r.input.instanceType, 18)} │ ${truncate(r.input.region, 14)} │ ${truncate(scope2, 9)} │ ${truncate(scope3, 9)} │ ${truncate(water, 7)} │ ${truncate(action, 11)} │\n`;
+    const nodeCount = r.input.nodeCount ?? 1;
+    const instanceLabel = nodeCount > 1 ? `${r.input.instanceType} ×${nodeCount}` : r.input.instanceType;
+    out += `│ ${truncate(r.input.resourceId, 36)} │ ${truncate(instanceLabel, 18)} │ ${truncate(r.input.region, 14)} │ ${truncate(scope2, 9)} │ ${truncate(scope3, 9)} │ ${truncate(water, 7)} │ ${truncate(action, 11)} │\n`;
   }
   // Skipped: known_after_apply and other runtime-unresolvable resources
   for (const s of result.skipped) {

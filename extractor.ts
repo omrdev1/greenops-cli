@@ -63,10 +63,18 @@ const SUPPORTED_SERVERLESS_TYPES: Record<CloudProvider, string[]> = {
   gcp:   ['google_cloudfunctions_function', 'google_cloudfunctions2_function', 'google_cloud_run_service'],
 };
 
+// Kubernetes node group types — one Terraform resource provisions N instances
+// of the same type. Resolves to the standard instance ledger; nodeCount scales
+// the output linearly (see calculateBaseline in engine.ts).
+const SUPPORTED_NODE_GROUP_TYPES: Record<CloudProvider, string[]> = {
+  aws:   ['aws_eks_node_group'],
+  azure: ['azurerm_kubernetes_cluster', 'azurerm_kubernetes_cluster_node_pool'],
+  gcp:   ['google_container_node_pool'],
+};
+
 const COMPUTE_RELEVANT_TYPES = [
   'aws_launch_template', 'aws_autoscaling_group', 'aws_ecs_service',
-  'aws_eks_node_group',
-  'azurerm_virtual_machine_scale_set', 'azurerm_kubernetes_cluster',
+  'azurerm_virtual_machine_scale_set',
   'google_compute_instance_template', 'google_container_cluster',
 ];
 
@@ -174,6 +182,79 @@ function extractGcpInstanceType(res: TerraformResourceChange): { instanceType: s
   return { instanceType: machineType };
 }
 
+/**
+ * Extracts instance type and node count for a Kubernetes node group resource.
+ *
+ * Node count honesty rule: for autoscaling node groups, the MINIMUM configured
+ * size is used as the baseline, never max or average. This follows the
+ * project's LOW_ASSUMED_DEFAULT philosophy (a tool that shows a wrong number
+ * is worse than a tool that shows no number) — actual emissions scale with
+ * autoscaler activity above this floor, and the PR comment should make that
+ * explicit rather than silently assuming a higher figure.
+ */
+function extractNodeGroupInput(
+  res: TerraformResourceChange,
+  provider: CloudProvider
+): { instanceType: string | null; nodeCount: number; skipReason?: string } {
+  const after = res.change?.after ?? {};
+  const before = res.change?.before ?? {};
+
+  if (provider === 'aws') {
+    // aws_eks_node_group: instance_types is a list; Terraform plans typically
+    // resolve it to a single-element array for a homogeneous node group.
+    const instanceTypes = (after.instance_types ?? before.instance_types) as unknown;
+    const instanceType = Array.isArray(instanceTypes) && typeof instanceTypes[0] === 'string'
+      ? instanceTypes[0] : null;
+
+    const scalingConfig = (after.scaling_config ?? before.scaling_config) as unknown;
+    const scaling = Array.isArray(scalingConfig) ? scalingConfig[0] as Record<string, unknown> | undefined : undefined;
+    const desiredSize = scaling?.desired_size;
+    const minSize = scaling?.min_size;
+    const nodeCount = typeof minSize === 'number' ? minSize
+      : typeof desiredSize === 'number' ? desiredSize
+      : 1;
+
+    if (!instanceType) return { instanceType: null, nodeCount, skipReason: 'known_after_apply' };
+    return { instanceType, nodeCount };
+  }
+
+  if (provider === 'azure') {
+    // azurerm_kubernetes_cluster (default_node_pool block) or
+    // azurerm_kubernetes_cluster_node_pool (additional pools) — same field
+    // names in both resource types.
+    const defaultPool = (after.default_node_pool ?? before.default_node_pool) as unknown;
+    const pool = Array.isArray(defaultPool) ? defaultPool[0] as Record<string, unknown> | undefined : undefined;
+    const vmSize = pool?.vm_size ?? after.vm_size ?? before.vm_size;
+    const instanceType = typeof vmSize === 'string' ? vmSize : null;
+
+    const nodeCountField = pool?.node_count ?? after.node_count ?? before.node_count;
+    const minCountField = pool?.min_count ?? after.min_count ?? before.min_count;
+    const nodeCount = typeof minCountField === 'number' ? minCountField
+      : typeof nodeCountField === 'number' ? nodeCountField
+      : 1;
+
+    if (!instanceType) return { instanceType: null, nodeCount, skipReason: 'known_after_apply' };
+    return { instanceType, nodeCount };
+  }
+
+  // gcp: google_container_node_pool
+  const nodeConfig = (after.node_config ?? before.node_config) as unknown;
+  const config = Array.isArray(nodeConfig) ? nodeConfig[0] as Record<string, unknown> | undefined : undefined;
+  const machineType = config?.machine_type ?? after.machine_type ?? before.machine_type;
+  const instanceType = typeof machineType === 'string' ? machineType : null;
+
+  const initialNodeCount = after.initial_node_count ?? before.initial_node_count;
+  const autoscaling = (after.autoscaling ?? before.autoscaling) as unknown;
+  const autoscalingConfig = Array.isArray(autoscaling) ? autoscaling[0] as Record<string, unknown> | undefined : undefined;
+  const minNodeCount = autoscalingConfig?.min_node_count;
+  const nodeCount = typeof minNodeCount === 'number' ? minNodeCount
+    : typeof initialNodeCount === 'number' ? initialNodeCount
+    : 1;
+
+  if (!instanceType) return { instanceType: null, nodeCount, skipReason: 'known_after_apply' };
+  return { instanceType, nodeCount };
+}
+
 function extractServerlessInput(
   res: TerraformResourceChange,
   provider: CloudProvider,
@@ -269,6 +350,7 @@ export function extractResourceInputs(planFilePath: string): ExtractorResult {
 
   const allSupportedTypes = Object.values(SUPPORTED_TYPES).flat();
   const allServerlessTypes = Object.values(SUPPORTED_SERVERLESS_TYPES).flat();
+  const allNodeGroupTypes = Object.values(SUPPORTED_NODE_GROUP_TYPES).flat();
 
   for (const rawRes of typedPlan.resource_changes) {
     const res = rawRes as TerraformResourceChange;
@@ -291,6 +373,25 @@ export function extractResourceInputs(planFilePath: string): ExtractorResult {
       } else {
         result.skipped.push({ resourceId: res.address, reason: skipReason ?? 'known_after_apply' });
       }
+      continue;
+    }
+
+    // --- Kubernetes node group path ---
+    if (allNodeGroupTypes.includes(res.type)) {
+      if (!provider) continue;
+      const { instanceType, nodeCount, skipReason } = extractNodeGroupInput(res, provider);
+      if (!instanceType) {
+        result.skipped.push({ resourceId: res.address, reason: skipReason ?? 'known_after_apply' });
+        continue;
+      }
+      const region = provider === 'aws' ? resolveAwsRegion(res.change, providerRegions.aws)
+        : provider === 'azure' ? resolveAzureRegion(res.change, providerRegions.azure)
+        : resolveGcpRegion(res.change, providerRegions.gcp);
+      if (!region) {
+        result.skipped.push({ resourceId: res.address, reason: 'known_after_apply' });
+        continue;
+      }
+      result.resources.push({ resourceId: res.address, instanceType, region, provider, nodeCount });
       continue;
     }
 

@@ -25,6 +25,13 @@ export interface ResourceInput {
   provider?: CloudProvider; // Default: 'aws' — backward compatible
   hoursPerMonth?: number;   // Default: 730 (full calendar month)
   avgUtilization?: number;  // Uses factors.json metadata default (50%) if omitted
+  /**
+   * Number of nodes this resource represents (default: 1).
+   * Used for Kubernetes node groups (aws_eks_node_group, azurerm_kubernetes_cluster,
+   * google_container_node_pool), where one Terraform resource provisions N instances
+   * of the same type. All output figures scale linearly with nodeCount.
+   */
+  nodeCount?: number;
 }
 
 export interface EmissionAndCostEstimate {

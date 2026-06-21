@@ -1,0 +1,106 @@
+{
+  "format_version": "1.2",
+  "terraform_version": "1.7.5",
+  "planned_values": {
+    "root_module": {
+      "resources": [
+        {
+          "address": "aws_eks_node_group.workers",
+          "mode": "managed",
+          "type": "aws_eks_node_group",
+          "name": "workers",
+          "provider_name": "registry.terraform.io/hashicorp/aws",
+          "schema_version": 0,
+          "values": {
+            "instance_types": ["m5.large"],
+            "scaling_config": [
+              {
+                "desired_size": 3,
+                "max_size": 6,
+                "min_size": 2
+              }
+            ],
+            "tags": {
+              "Name": "greenops-e2e-eks-workers"
+            }
+          }
+        }
+      ]
+    }
+  },
+  "resource_changes": [
+    {
+      "address": "aws_eks_node_group.workers",
+      "mode": "managed",
+      "type": "aws_eks_node_group",
+      "name": "workers",
+      "provider_name": "registry.terraform.io/hashicorp/aws",
+      "change": {
+        "actions": ["create"],
+        "before": null,
+        "after": {
+          "instance_types": ["m5.large"],
+          "scaling_config": [
+            {
+              "desired_size": 3,
+              "max_size": 6,
+              "min_size": 2
+            }
+          ],
+          "tags": {
+            "Name": "greenops-e2e-eks-workers"
+          }
+        },
+        "after_unknown": {
+          "arn": true,
+          "id": true,
+          "node_group_name": true,
+          "resources": true,
+          "status": true
+        },
+        "before_sensitive": false,
+        "after_sensitive": {}
+      }
+    }
+  ],
+  "configuration": {
+    "provider_config": {
+      "aws": {
+        "name": "aws",
+        "full_name": "registry.terraform.io/hashicorp/aws",
+        "version_constraint": "~> 5.0",
+        "expressions": {
+          "region": {
+            "constant_value": "us-east-1"
+          }
+        }
+      }
+    },
+    "root_module": {
+      "resources": [
+        {
+          "address": "aws_eks_node_group.workers",
+          "mode": "managed",
+          "type": "aws_eks_node_group",
+          "name": "workers",
+          "provider_config_key": "aws",
+          "expressions": {
+            "instance_types": {
+              "constant_value": ["m5.large"]
+            },
+            "scaling_config": [
+              {
+                "desired_size": { "constant_value": 3 },
+                "max_size": { "constant_value": 6 },
+                "min_size": { "constant_value": 2 }
+              }
+            ]
+          },
+          "schema_version": 0
+        }
+      ]
+    }
+  },
+  "timestamp": "2026-06-21T00:00:00Z",
+  "errored": false
+}

@@ -181,4 +181,36 @@ describe('formatMarkdown', () => {
     const md = formatMarkdown(result);
     assert.ok(!md.includes('Coverage note'), 'Should NOT show coverage note when skipped is only known_after_apply');
   });
+
+  it('shows node count multiplier and node group note for EKS/AKS/GKE resources', () => {
+    const result = makeMockResult({
+      resources: [{
+        input: { resourceId: 'aws_eks_node_group.workers', instanceType: 'm5.large', region: 'us-east-1', nodeCount: 3 },
+        baseline: makeMockBaseline({ totalCo2eGramsPerMonth: 3000, totalCostUsdPerMonth: 150 }),
+        recommendation: {
+          suggestedInstanceType: 'm6g.large',
+          co2eDeltaGramsPerMonth: -900,
+          costDeltaUsdPerMonth: -30,
+          rationale: 'Switch to ARM for lower power draw.',
+        },
+      }],
+    });
+    const md = formatMarkdown(result);
+    assert.ok(md.includes('m5.large` × 3'), 'Resource breakdown should show the node count multiplier');
+    assert.ok(md.includes('Node group totals'), 'Should show the node group autoscaling-minimum note');
+    assert.ok(md.includes('m5.large` × 3 nodes'), 'Recommendation section should show node count');
+  });
+
+  it('does not show node group note for single-instance resources (nodeCount absent)', () => {
+    const result = makeMockResult({
+      resources: [{
+        input: { resourceId: 'aws_instance.web', instanceType: 'm5.large', region: 'us-east-1' },
+        baseline: makeMockBaseline(),
+        recommendation: null,
+      }],
+    });
+    const md = formatMarkdown(result);
+    assert.ok(!md.includes('Node group totals'), 'Should NOT show node group note for a plain single instance');
+    assert.ok(!md.includes('×'), 'Should NOT show a multiplier badge for a plain single instance');
+  });
 });

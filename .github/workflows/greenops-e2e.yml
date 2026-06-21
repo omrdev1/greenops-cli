@@ -41,3 +41,10 @@ jobs:
           plan-file: fixtures/tfplan.gcp.e2e.json
           github-token: ${{ secrets.GITHUB_TOKEN }}
           api-key: ${{ secrets.GREENOPS_API_KEY }}
+
+      - name: Run GreenOps — AWS EKS node group fixture
+        uses: ./
+        with:
+          plan-file: fixtures/tfplan.eks.e2e.json
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          api-key: ${{ secrets.GREENOPS_API_KEY }}

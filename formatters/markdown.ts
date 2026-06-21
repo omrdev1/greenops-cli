@@ -57,8 +57,9 @@ export function formatMarkdown(result: PlanAnalysisResult, options: FormatterOpt
   out += `|---|---|---|---|---|---|---|---|\n`;
   for (const r of analysed) {
     const isServerless = r.input.instanceType.startsWith('serverless:');
+    const nodeCount = r.input.nodeCount ?? 1;
     const displayType = isServerless
-      ? `\`serverless\`` : `\`${r.input.instanceType}\``;
+      ? `\`serverless\`` : `\`${r.input.instanceType}\`${nodeCount > 1 ? ` × ${nodeCount}` : ''}`;
     const serverlessBadge = isServerless ? ' ⚡' : '';
     const action = r.recommendation ? `💡 [View Recommendation](#recommendations)` : `✅ Optimal`;
     out += `| \`${r.input.resourceId}\`${serverlessBadge} | ${displayType} | \`${r.input.region}\` | ${formatGrams(r.baseline.totalCo2eGramsPerMonth)} | ${formatGrams(r.baseline.embodiedCo2eGramsPerMonth)} | ${formatWater(r.baseline.waterLitresPerMonth)} | ${r.baseline.totalCostUsdPerMonth.toFixed(2)} | ${action} |\n`;
@@ -69,6 +70,12 @@ export function formatMarkdown(result: PlanAnalysisResult, options: FormatterOpt
   const serverlessResources = analysed.filter(r => r.input.instanceType.startsWith('serverless:'));
   if (serverlessResources.length > 0) {
     out += `> ⚡ **Serverless resources** are estimated using assumed defaults (1M invocations/month, 200ms avg duration). Actual emissions depend on real invocation patterns. Values are marked \`LOW_ASSUMED_DEFAULT\`.\n\n`;
+  }
+
+  // Node group note
+  const nodeGroupResources = analysed.filter(r => (r.input.nodeCount ?? 1) > 1);
+  if (nodeGroupResources.length > 0) {
+    out += `> 🧮 **Node group totals** reflect the minimum configured size for autoscaling groups (\`min_size\` / \`min_count\` / \`autoscaling.min_node_count\`), never the desired or maximum size. Actual emissions scale up with autoscaler activity above this floor.\n\n`;
   }
 
   const totalSkipped = result.skipped.length + unsupportedResources.length;
@@ -90,8 +97,10 @@ export function formatMarkdown(result: PlanAnalysisResult, options: FormatterOpt
     out += `### Recommendations\n\n`;
     for (const r of result.resources) {
       if (r.recommendation) {
+        const nodeCount = r.input.nodeCount ?? 1;
+        const nodeSuffix = nodeCount > 1 ? ` × ${nodeCount} nodes` : '';
         out += `#### \`${r.input.resourceId}\`\n`;
-        out += `- **Current:** \`${r.input.instanceType}\` in \`${r.input.region}\`\n`;
+        out += `- **Current:** \`${r.input.instanceType}\`${nodeSuffix} in \`${r.input.region}\`\n`;
         const sugRegion = r.recommendation.suggestedRegion || r.input.region;
         const sugInst = r.recommendation.suggestedInstanceType || r.input.instanceType;
         out += `- **Suggested:** \`${sugInst}\` in \`${sugRegion}\`\n`;
