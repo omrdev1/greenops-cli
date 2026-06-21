@@ -9,9 +9,11 @@ coverage/
 .claude/settings.local.json
 */.claude/settings.local.json
 
-# Terraform plan outputs — may contain account IDs, ARNs, and internal topology
-tfplan.json
-tfplan*.json
+# Terraform plan outputs — may contain account IDs, ARNs, and internal topology.
+# Excludes locally generated plan.json/tfplan.json at the repo root only.
+# Does NOT exclude fixtures/tfplan*.json — those are committed, sanitized test fixtures.
+/tfplan.json
+/plan.json
 
 # Ad-hoc & Demo Files
 launch_*.md

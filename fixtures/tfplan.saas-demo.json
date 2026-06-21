@@ -1,0 +1,383 @@
+{
+  "format_version": "1.2",
+  "terraform_version": "1.7.5",
+  "planned_values": {
+    "root_module": {
+      "resources": [
+        {
+          "address": "aws_instance.web_1",
+          "mode": "managed",
+          "type": "aws_instance",
+          "name": "web_1",
+          "provider_name": "registry.terraform.io/hashicorp/aws",
+          "schema_version": 1,
+          "values": {
+            "ami": "ami-0c02fb55956c7d316",
+            "instance_type": "m5.2xlarge",
+            "availability_zone": "us-east-1a",
+            "tags": { "Name": "acme-web-1", "Env": "production", "Team": "platform" },
+            "tags_all": { "Name": "acme-web-1", "Env": "production", "Team": "platform" }
+          }
+        },
+        {
+          "address": "aws_instance.web_2",
+          "mode": "managed",
+          "type": "aws_instance",
+          "name": "web_2",
+          "provider_name": "registry.terraform.io/hashicorp/aws",
+          "schema_version": 1,
+          "values": {
+            "ami": "ami-0c02fb55956c7d316",
+            "instance_type": "m5.2xlarge",
+            "availability_zone": "us-east-1b",
+            "tags": { "Name": "acme-web-2", "Env": "production", "Team": "platform" },
+            "tags_all": { "Name": "acme-web-2", "Env": "production", "Team": "platform" }
+          }
+        },
+        {
+          "address": "aws_instance.api_1",
+          "mode": "managed",
+          "type": "aws_instance",
+          "name": "api_1",
+          "provider_name": "registry.terraform.io/hashicorp/aws",
+          "schema_version": 1,
+          "values": {
+            "ami": "ami-0c02fb55956c7d316",
+            "instance_type": "c5.4xlarge",
+            "availability_zone": "us-east-1a",
+            "tags": { "Name": "acme-api-1", "Env": "production", "Team": "backend" },
+            "tags_all": { "Name": "acme-api-1", "Env": "production", "Team": "backend" }
+          }
+        },
+        {
+          "address": "aws_instance.api_2",
+          "mode": "managed",
+          "type": "aws_instance",
+          "name": "api_2",
+          "provider_name": "registry.terraform.io/hashicorp/aws",
+          "schema_version": 1,
+          "values": {
+            "ami": "ami-0c02fb55956c7d316",
+            "instance_type": "c5.4xlarge",
+            "availability_zone": "us-east-1b",
+            "tags": { "Name": "acme-api-2", "Env": "production", "Team": "backend" },
+            "tags_all": { "Name": "acme-api-2", "Env": "production", "Team": "backend" }
+          }
+        },
+        {
+          "address": "aws_instance.api_3",
+          "mode": "managed",
+          "type": "aws_instance",
+          "name": "api_3",
+          "provider_name": "registry.terraform.io/hashicorp/aws",
+          "schema_version": 1,
+          "values": {
+            "ami": "ami-0c02fb55956c7d316",
+            "instance_type": "c5.4xlarge",
+            "availability_zone": "us-east-1c",
+            "tags": { "Name": "acme-api-3", "Env": "production", "Team": "backend" },
+            "tags_all": { "Name": "acme-api-3", "Env": "production", "Team": "backend" }
+          }
+        },
+        {
+          "address": "aws_instance.db_primary",
+          "mode": "managed",
+          "type": "aws_instance",
+          "name": "db_primary",
+          "provider_name": "registry.terraform.io/hashicorp/aws",
+          "schema_version": 1,
+          "values": {
+            "ami": "ami-0c02fb55956c7d316",
+            "instance_type": "r5.4xlarge",
+            "availability_zone": "us-east-1a",
+            "tags": { "Name": "acme-db-primary", "Env": "production", "Team": "data" },
+            "tags_all": { "Name": "acme-db-primary", "Env": "production", "Team": "data" }
+          }
+        },
+        {
+          "address": "aws_instance.db_replica",
+          "mode": "managed",
+          "type": "aws_instance",
+          "name": "db_replica",
+          "provider_name": "registry.terraform.io/hashicorp/aws",
+          "schema_version": 1,
+          "values": {
+            "ami": "ami-0c02fb55956c7d316",
+            "instance_type": "r5.4xlarge",
+            "availability_zone": "us-east-1b",
+            "tags": { "Name": "acme-db-replica", "Env": "production", "Team": "data" },
+            "tags_all": { "Name": "acme-db-replica", "Env": "production", "Team": "data" }
+          }
+        },
+        {
+          "address": "aws_instance.worker_1",
+          "mode": "managed",
+          "type": "aws_instance",
+          "name": "worker_1",
+          "provider_name": "registry.terraform.io/hashicorp/aws",
+          "schema_version": 1,
+          "values": {
+            "ami": "ami-0c02fb55956c7d316",
+            "instance_type": "m5.xlarge",
+            "availability_zone": "us-east-1a",
+            "tags": { "Name": "acme-worker-1", "Env": "production", "Team": "backend" },
+            "tags_all": { "Name": "acme-worker-1", "Env": "production", "Team": "backend" }
+          }
+        },
+        {
+          "address": "aws_instance.worker_2",
+          "mode": "managed",
+          "type": "aws_instance",
+          "name": "worker_2",
+          "provider_name": "registry.terraform.io/hashicorp/aws",
+          "schema_version": 1,
+          "values": {
+            "ami": "ami-0c02fb55956c7d316",
+            "instance_type": "m5.xlarge",
+            "availability_zone": "us-east-1b",
+            "tags": { "Name": "acme-worker-2", "Env": "production", "Team": "backend" },
+            "tags_all": { "Name": "acme-worker-2", "Env": "production", "Team": "backend" }
+          }
+        },
+        {
+          "address": "aws_instance.cache",
+          "mode": "managed",
+          "type": "aws_instance",
+          "name": "cache",
+          "provider_name": "registry.terraform.io/hashicorp/aws",
+          "schema_version": 1,
+          "values": {
+            "ami": "ami-0c02fb55956c7d316",
+            "instance_type": "r5.2xlarge",
+            "availability_zone": "us-east-1a",
+            "tags": { "Name": "acme-cache", "Env": "production", "Team": "platform" },
+            "tags_all": { "Name": "acme-cache", "Env": "production", "Team": "platform" }
+          }
+        }
+      ]
+    }
+  },
+  "resource_changes": [
+    {
+      "address": "aws_instance.web_1",
+      "mode": "managed",
+      "type": "aws_instance",
+      "name": "web_1",
+      "provider_name": "registry.terraform.io/hashicorp/aws",
+      "change": {
+        "actions": ["create"],
+        "before": null,
+        "after": {
+          "ami": "ami-0c02fb55956c7d316",
+          "instance_type": "m5.2xlarge",
+          "availability_zone": "us-east-1a",
+          "tags": { "Name": "acme-web-1", "Env": "production", "Team": "platform" },
+          "tags_all": { "Name": "acme-web-1", "Env": "production", "Team": "platform" }
+        },
+        "after_unknown": { "arn": true, "id": true, "private_ip": true, "public_ip": true },
+        "before_sensitive": false,
+        "after_sensitive": {}
+      }
+    },
+    {
+      "address": "aws_instance.web_2",
+      "mode": "managed",
+      "type": "aws_instance",
+      "name": "web_2",
+      "provider_name": "registry.terraform.io/hashicorp/aws",
+      "change": {
+        "actions": ["create"],
+        "before": null,
+        "after": {
+          "ami": "ami-0c02fb55956c7d316",
+          "instance_type": "m5.2xlarge",
+          "availability_zone": "us-east-1b",
+          "tags": { "Name": "acme-web-2", "Env": "production", "Team": "platform" },
+          "tags_all": { "Name": "acme-web-2", "Env": "production", "Team": "platform" }
+        },
+        "after_unknown": { "arn": true, "id": true, "private_ip": true, "public_ip": true },
+        "before_sensitive": false,
+        "after_sensitive": {}
+      }
+    },
+    {
+      "address": "aws_instance.api_1",
+      "mode": "managed",
+      "type": "aws_instance",
+      "name": "api_1",
+      "provider_name": "registry.terraform.io/hashicorp/aws",
+      "change": {
+        "actions": ["create"],
+        "before": null,
+        "after": {
+          "ami": "ami-0c02fb55956c7d316",
+          "instance_type": "c5.4xlarge",
+          "availability_zone": "us-east-1a",
+          "tags": { "Name": "acme-api-1", "Env": "production", "Team": "backend" },
+          "tags_all": { "Name": "acme-api-1", "Env": "production", "Team": "backend" }
+        },
+        "after_unknown": { "arn": true, "id": true, "private_ip": true, "public_ip": true },
+        "before_sensitive": false,
+        "after_sensitive": {}
+      }
+    },
+    {
+      "address": "aws_instance.api_2",
+      "mode": "managed",
+      "type": "aws_instance",
+      "name": "api_2",
+      "provider_name": "registry.terraform.io/hashicorp/aws",
+      "change": {
+        "actions": ["create"],
+        "before": null,
+        "after": {
+          "ami": "ami-0c02fb55956c7d316",
+          "instance_type": "c5.4xlarge",
+          "availability_zone": "us-east-1b",
+          "tags": { "Name": "acme-api-2", "Env": "production", "Team": "backend" },
+          "tags_all": { "Name": "acme-api-2", "Env": "production", "Team": "backend" }
+        },
+        "after_unknown": { "arn": true, "id": true, "private_ip": true, "public_ip": true },
+        "before_sensitive": false,
+        "after_sensitive": {}
+      }
+    },
+    {
+      "address": "aws_instance.api_3",
+      "mode": "managed",
+      "type": "aws_instance",
+      "name": "api_3",
+      "provider_name": "registry.terraform.io/hashicorp/aws",
+      "change": {
+        "actions": ["create"],
+        "before": null,
+        "after": {
+          "ami": "ami-0c02fb55956c7d316",
+          "instance_type": "c5.4xlarge",
+          "availability_zone": "us-east-1c",
+          "tags": { "Name": "acme-api-3", "Env": "production", "Team": "backend" },
+          "tags_all": { "Name": "acme-api-3", "Env": "production", "Team": "backend" }
+        },
+        "after_unknown": { "arn": true, "id": true, "private_ip": true, "public_ip": true },
+        "before_sensitive": false,
+        "after_sensitive": {}
+      }
+    },
+    {
+      "address": "aws_instance.db_primary",
+      "mode": "managed",
+      "type": "aws_instance",
+      "name": "db_primary",
+      "provider_name": "registry.terraform.io/hashicorp/aws",
+      "change": {
+        "actions": ["create"],
+        "before": null,
+        "after": {
+          "ami": "ami-0c02fb55956c7d316",
+          "instance_type": "r5.4xlarge",
+          "availability_zone": "us-east-1a",
+          "tags": { "Name": "acme-db-primary", "Env": "production", "Team": "data" },
+          "tags_all": { "Name": "acme-db-primary", "Env": "production", "Team": "data" }
+        },
+        "after_unknown": { "arn": true, "id": true, "private_ip": true, "public_ip": true },
+        "before_sensitive": false,
+        "after_sensitive": {}
+      }
+    },
+    {
+      "address": "aws_instance.db_replica",
+      "mode": "managed",
+      "type": "aws_instance",
+      "name": "db_replica",
+      "provider_name": "registry.terraform.io/hashicorp/aws",
+      "change": {
+        "actions": ["create"],
+        "before": null,
+        "after": {
+          "ami": "ami-0c02fb55956c7d316",
+          "instance_type": "r5.4xlarge",
+          "availability_zone": "us-east-1b",
+          "tags": { "Name": "acme-db-replica", "Env": "production", "Team": "data" },
+          "tags_all": { "Name": "acme-db-replica", "Env": "production", "Team": "data" }
+        },
+        "after_unknown": { "arn": true, "id": true, "private_ip": true, "public_ip": true },
+        "before_sensitive": false,
+        "after_sensitive": {}
+      }
+    },
+    {
+      "address": "aws_instance.worker_1",
+      "mode": "managed",
+      "type": "aws_instance",
+      "name": "worker_1",
+      "provider_name": "registry.terraform.io/hashicorp/aws",
+      "change": {
+        "actions": ["create"],
+        "before": null,
+        "after": {
+          "ami": "ami-0c02fb55956c7d316",
+          "instance_type": "m5.xlarge",
+          "availability_zone": "us-east-1a",
+          "tags": { "Name": "acme-worker-1", "Env": "production", "Team": "backend" },
+          "tags_all": { "Name": "acme-worker-1", "Env": "production", "Team": "backend" }
+        },
+        "after_unknown": { "arn": true, "id": true, "private_ip": true, "public_ip": true },
+        "before_sensitive": false,
+        "after_sensitive": {}
+      }
+    },
+    {
+      "address": "aws_instance.worker_2",
+      "mode": "managed",
+      "type": "aws_instance",
+      "name": "worker_2",
+      "provider_name": "registry.terraform.io/hashicorp/aws",
+      "change": {
+        "actions": ["create"],
+        "before": null,
+        "after": {
+          "ami": "ami-0c02fb55956c7d316",
+          "instance_type": "m5.xlarge",
+          "availability_zone": "us-east-1b",
+          "tags": { "Name": "acme-worker-2", "Env": "production", "Team": "backend" },
+          "tags_all": { "Name": "acme-worker-2", "Env": "production", "Team": "backend" }
+        },
+        "after_unknown": { "arn": true, "id": true, "private_ip": true, "public_ip": true },
+        "before_sensitive": false,
+        "after_sensitive": {}
+      }
+    },
+    {
+      "address": "aws_instance.cache",
+      "mode": "managed",
+      "type": "aws_instance",
+      "name": "cache",
+      "provider_name": "registry.terraform.io/hashicorp/aws",
+      "change": {
+        "actions": ["create"],
+        "before": null,
+        "after": {
+          "ami": "ami-0c02fb55956c7d316",
+          "instance_type": "r5.2xlarge",
+          "availability_zone": "us-east-1a",
+          "tags": { "Name": "acme-cache", "Env": "production", "Team": "platform" },
+          "tags_all": { "Name": "acme-cache", "Env": "production", "Team": "platform" }
+        },
+        "after_unknown": { "arn": true, "id": true, "private_ip": true, "public_ip": true },
+        "before_sensitive": false,
+        "after_sensitive": {}
+      }
+    }
+  ],
+  "configuration": {
+    "provider_config": {
+      "aws": {
+        "name": "aws",
+        "full_name": "registry.terraform.io/hashicorp/aws",
+        "expressions": {
+          "region": { "constant_value": "us-east-1" }
+        }
+      }
+    }
+  }
+}
