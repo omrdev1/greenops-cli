@@ -42,14 +42,20 @@ export function formatMarkdown(result: PlanAnalysisResult, options: FormatterOpt
     out += `> ✅ **Already optimally configured.** No upgrades recommended.\n\n`;
   }
 
-  // Separate fully-analysed, serverless-estimated, and unsupported resources
+  // Separate fully-analysed, serverless-estimated, partially-analysed (e.g. GPU
+  // Scope 2 with unmodeled embodied carbon), and fully-unsupported resources.
+  // A LOW_ASSUMED_DEFAULT baseline with a non-zero Scope 2 figure has real data
+  // worth showing in the table — it should not be buried in "Skipped Resources"
+  // alongside resources where nothing was calculated at all.
   const analysed = result.resources.filter(r =>
     r.baseline.confidence !== 'LOW_ASSUMED_DEFAULT' ||
-    r.input.instanceType.startsWith('serverless:')
+    r.input.instanceType.startsWith('serverless:') ||
+    r.baseline.totalCo2eGramsPerMonth > 0
   );
   const unsupportedResources = result.resources.filter(r =>
     r.baseline.confidence === 'LOW_ASSUMED_DEFAULT' &&
-    !r.input.instanceType.startsWith('serverless:')
+    !r.input.instanceType.startsWith('serverless:') &&
+    r.baseline.totalCo2eGramsPerMonth === 0
   );
 
   out += `### Resource Breakdown\n\n`;
@@ -76,6 +82,12 @@ export function formatMarkdown(result: PlanAnalysisResult, options: FormatterOpt
   const nodeGroupResources = analysed.filter(r => (r.input.nodeCount ?? 1) > 1);
   if (nodeGroupResources.length > 0) {
     out += `> 🧮 **Node group totals** reflect the minimum configured size for autoscaling groups (\`min_size\` / \`min_count\` / \`autoscaling.min_node_count\`), never the desired or maximum size. Actual emissions scale up with autoscaler activity above this floor.\n\n`;
+  }
+
+  // GPU embodied-carbon note
+  const gpuResources = analysed.filter(r => r.baseline.unsupportedReason?.startsWith('Embodied (Scope 3)'));
+  if (gpuResources.length > 0) {
+    out += `> 🖥️ **GPU instances**: Scope 2 (operational) carbon above uses real NVIDIA TDP specs. Scope 3 (embodied/manufacturing) carbon is shown as \`0\` because GPU hardware's manufacturing footprint differs substantially from this ledger's CPU-server baseline, and no equivalent public GPU baseline exists yet — this is an explicit gap, not a measured zero. Confidence is marked \`LOW_ASSUMED_DEFAULT\` accordingly.\n\n`;
   }
 
   const totalSkipped = result.skipped.length + unsupportedResources.length;

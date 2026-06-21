@@ -213,4 +213,45 @@ describe('formatMarkdown', () => {
     assert.ok(!md.includes('Node group totals'), 'Should NOT show node group note for a plain single instance');
     assert.ok(!md.includes('×'), 'Should NOT show a multiplier badge for a plain single instance');
   });
+
+  it('shows GPU resources in the resource breakdown table, not buried in skipped section, despite LOW_ASSUMED_DEFAULT confidence', () => {
+    const result = makeMockResult({
+      resources: [{
+        input: { resourceId: 'aws_instance.gpu_worker', instanceType: 'g5.xlarge', region: 'us-east-1', provider: 'aws' as const },
+        baseline: makeMockBaseline({
+          confidence: 'LOW_ASSUMED_DEFAULT' as const,
+          totalCo2eGramsPerMonth: 500,
+          embodiedCo2eGramsPerMonth: 0,
+          totalCostUsdPerMonth: 734.38,
+          unsupportedReason: 'Embodied (Scope 3) carbon for "g5.xlarge" is not yet modeled — GPU manufacturing footprint differs substantially from the CCF Dell R740 CPU-server baseline used elsewhere in this ledger, and no equivalent public GPU baseline exists yet. Scope 2 operational carbon above uses real NVIDIA TDP specs and is not affected.',
+        }),
+        recommendation: null,
+      }],
+      totals: makeMockTotals({ currentCo2eGramsPerMonth: 500, currentCostUsdPerMonth: 734.38 }),
+    });
+    const md = formatMarkdown(result);
+    assert.ok(!md.includes('Skipped Resource'), 'GPU resource with real Scope 2 data should NOT be in skipped section');
+    assert.ok(md.includes('g5.xlarge'), 'Should show the GPU instance type in the breakdown table');
+    assert.ok(md.includes('GPU instances'), 'Should show the GPU embodied-carbon explanatory note');
+    assert.ok(md.includes('LOW_ASSUMED_DEFAULT') || md.includes('not yet modeled'), 'Should still flag the embodied-carbon gap honestly');
+  });
+
+  it('still buries a fully-unsupported GPU-adjacent instance (zero Scope 2 too) in skipped section', () => {
+    const result = makeMockResult({
+      resources: [{
+        input: { resourceId: 'aws_instance.unknown_gpu', instanceType: 'p9000.fictional', region: 'us-east-1', provider: 'aws' as const },
+        baseline: makeMockBaseline({
+          confidence: 'LOW_ASSUMED_DEFAULT' as const,
+          totalCo2eGramsPerMonth: 0,
+          embodiedCo2eGramsPerMonth: 0,
+          totalCostUsdPerMonth: 0,
+          unsupportedReason: 'Instance type "p9000.fictional" is not present in the AWS section of the Open GreenOps Methodology Ledger.',
+        }),
+        recommendation: null,
+      }],
+    });
+    const md = formatMarkdown(result);
+    assert.ok(md.includes('Skipped Resource'), 'A genuinely unsupported instance (zero Scope 2) should stay in skipped section');
+    assert.ok(md.includes('p9000.fictional'));
+  });
 });

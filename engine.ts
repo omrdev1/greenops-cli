@@ -19,6 +19,17 @@ interface LedgerInstance {
   memory_gb: number;
   power_watts: { idle: number; max: number };
   embodied_co2e_grams_per_month: number;
+  /**
+   * GPU instances: true when embodied carbon is not yet modeled.
+   * CCF's Dell R740 CPU-server baseline does not represent a GPU server's
+   * manufacturing footprint, and no equivalent public GPU baseline exists yet.
+   * Reporting 0 here is an explicit "not yet modeled" signal, not a measured
+   * zero — calculateBaseline() downgrades confidence and adds unsupportedReason
+   * when this is set, consistent with the project's refusal to estimate without
+   * a real source. Scope 2 (operational, GPU-specific TDP) remains HIGH/MEDIUM
+   * confidence since NVIDIA's published TDP specs are a real source.
+   */
+  embodied_unmodeled?: boolean;
 }
 
 interface LedgerRegion {
@@ -325,7 +336,9 @@ export function calculateBaseline(
   const waterLitresPerMonth = wattsToWater(effectiveWatts, hours, regionData.water_intensity_litres_per_kwh) * nodeCount;
   const totalLifecycleCo2eGramsPerMonth = totalCo2eGramsPerMonth + embodiedCo2eGramsPerMonth;
   const totalCostUsdPerMonth = pricePerHour * hours * nodeCount;
-  const confidence: ConfidenceLevel = input.avgUtilization !== undefined ? 'MEDIUM' : 'HIGH';
+  const confidence: ConfidenceLevel = instanceData.embodied_unmodeled
+    ? 'LOW_ASSUMED_DEFAULT'
+    : (input.avgUtilization !== undefined ? 'MEDIUM' : 'HIGH');
 
   return {
     totalCo2eGramsPerMonth,
@@ -335,6 +348,9 @@ export function calculateBaseline(
     totalCostUsdPerMonth,
     confidence,
     scope: 'SCOPE_2_AND_3',
+    ...(instanceData.embodied_unmodeled && {
+      unsupportedReason: `Embodied (Scope 3) carbon for "${input.instanceType}" is not yet modeled — GPU manufacturing footprint differs substantially from the CCF Dell R740 CPU-server baseline used elsewhere in this ledger, and no equivalent public GPU baseline exists yet. Scope 2 operational carbon above uses real NVIDIA TDP specs and is not affected.`,
+    }),
     assumptionsApplied: {
       utilizationApplied: utilization,
       gridIntensityApplied: regionData.grid_intensity_gco2e_per_kwh,

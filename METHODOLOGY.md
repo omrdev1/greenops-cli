@@ -10,7 +10,7 @@ All maths in GreenOps is open, auditable, and reproducible from `factors.json`. 
 
 | Provider | Regions | Instances | Status |
 |---|---|---|---|
-| AWS | 14 | 47 | Full coverage for listed instance and node group types |
+| AWS | 14 | 50 | Full coverage for listed instance and node group types. 3 GPU instances (`g5.xlarge`, `p4d.24xlarge`, `p5.48xlarge`) Scope 2-only, `us-east-1` only — see [GPU Instances](#gpu-instances-scope-2-only) |
 | Azure | 17 | 16 | Full coverage for listed instance and node group types |
 | GCP | 15 | 15 | Full coverage for listed instance and node group types |
 
@@ -136,6 +136,34 @@ node_group_co2e_per_month = per_node_co2e_per_month × node_count
 Node count for autoscaling groups is read from the minimum configured size (`min_size`, `min_count`, or `autoscaling.min_node_count`), never the desired or maximum size. This is a deliberate floor, not an estimate of typical usage: an autoscaler's actual node count at any given moment cannot be known from a Terraform plan, and reporting the maximum would overstate the footprint in the common case where the group is not fully scaled up. The PR comment notes this explicitly whenever a node group is detected.
 
 ARM upgrade and region shift recommendations apply the same scoring as standalone instances (see Recommendation Engine below), with the resulting delta multiplied by node count.
+
+---
+
+## GPU Instances (Scope 2 only)
+
+GPU-accelerated instances (`g5.xlarge`, `p4d.24xlarge`, `p5.48xlarge`) are detected through the same `aws_instance` extraction path as any other instance — no special-casing is required, since `instance_type` is a free-form ledger lookup key, not an allowlist.
+
+### What is covered
+
+Scope 2 (operational) carbon, using the GPU's published TDP as the power ceiling:
+
+| Instance | GPUs | TDP per GPU | Total GPU power | Source |
+|---|---|---|---|---|
+| `g5.xlarge` | 1× NVIDIA A10G | 300W | 300W | AWS/NVIDIA A10G datasheet |
+| `p4d.24xlarge` | 8× NVIDIA A100 40GB | 400W | 3,200W | NVIDIA A100 datasheet |
+| `p5.48xlarge` | 8× NVIDIA H100 80GB | 700W | 5,600W | NVIDIA H100 datasheet |
+
+Idle power is modelled at ~12% of TDP, sourced from published idle-draw figures for H100/A100 (NVIDIA forum and vendor reporting indicate idle draw under 100W on a 700W-TDP H100). This is a GPU-specific ratio, deliberately not reused from the ~30% idle/max ratio applied to CPU instances elsewhere in this ledger — GPUs idle proportionally lower than CPUs as a hardware characteristic, and forcing the CPU convention onto GPU entries would overstate idle draw.
+
+### What is NOT covered (explicit gap, not a measured zero)
+
+**Embodied (Scope 3) carbon is reported as `0` for all GPU instances.** This ledger's existing embodied-carbon model is calibrated to a generic CPU server (CCF's Dell R740 baseline, ~1,200kg CO2e/server, prorated per vCPU). A GPU server's manufacturing footprint is a fundamentally different hardware class — substantially higher per unit, dominated by the GPU dies themselves rather than CPU silicon — and no equivalent public CCF-style GPU baseline exists yet to cite honestly. Rather than apply the CPU baseline (which would understate embodied carbon) or guess a multiplier without a real source, GreenOps CLI reports `0` and marks the resource `LOW_ASSUMED_DEFAULT` confidence with an explicit `unsupportedReason`. The PR comment surfaces this distinctly so it cannot be mistaken for "no embodied carbon."
+
+**Pricing and instance coverage is currently scoped to `us-east-1` only.** GPU instance availability and pricing vary meaningfully by region and were not uniformly verifiable across all 14 AWS regions already covered for CPU instances; rather than publish a guessed regional spread, only the region with the clearest, most consistently-cited public pricing was added. Other regions will report `unsupported_region` for these instance types until verified and added.
+
+**No GPU coverage yet for Azure or GCP.** Azure NC/ND-series and GCP A2/A3/G2 GPU families are not yet in the ledger. This is a scoping limit, not a technical one — the same `aws_instance`-style extraction-by-resource-type pattern applies equally to `azurerm_linux_virtual_machine` and `google_compute_instance`.
+
+**No managed AI service detection** (`aws_sagemaker_endpoint`, Azure ML compute, Vertex AI endpoints). Scoped as a future addition; likely needs the same `SERVERLESS_INVOCATION` power model already used for Lambda, since these are largely invocation-billed rather than instance-billed.
 
 ---
 

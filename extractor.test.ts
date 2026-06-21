@@ -615,4 +615,27 @@ describe('Node group extraction', () => {
     assert.equal(result.skipped.length, 1);
     assert.equal(result.skipped[0].reason, 'known_after_apply');
   });
+
+  test('extracts a GPU instance (aws_instance with a p-family/g-family type) via the existing aws_instance path, no special-casing needed', () => {
+    const fixture = {
+      resource_changes: [
+        {
+          address: 'aws_instance.gpu_training',
+          type: 'aws_instance',
+          change: {
+            actions: ['create'],
+            after: { instance_type: 'p4d.24xlarge', availability_zone: 'us-east-1a' },
+            after_unknown: { instance_type: false },
+          },
+        },
+      ],
+    };
+
+    const result = runFixtureTest(fixture);
+    assert.equal(result.error, undefined);
+    assert.equal(result.skipped.length, 0);
+    assert.equal(result.resources.length, 1);
+    assert.equal(result.resources[0].instanceType, 'p4d.24xlarge');
+    assert.equal(result.resources[0].provider, 'aws');
+  });
 });

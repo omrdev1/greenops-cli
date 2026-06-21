@@ -16,7 +16,9 @@ var factors_default = {
       pricing_azure: "azure-public-pricing-api-2026-q1",
       pricing_gcp: "gcp-public-pricing-api-2026-q1",
       embodied: "cloud-carbon-footprint-v3-dell-r740-baseline",
-      water: "aws-sustainability-report-2023-wue"
+      water: "aws-sustainability-report-2023-wue",
+      gpu_tdp: "nvidia-aws-public-datasheets-2026-q2",
+      gpu_pricing_aws: "aws-public-pricing-2026-q2"
     },
     assumptions: {
       default_utilization: {
@@ -583,6 +585,39 @@ var factors_default = {
           max: 30
         },
         embodied_co2e_grams_per_month: 1666.7
+      },
+      "g5.xlarge": {
+        architecture: "x86_64",
+        vcpus: 4,
+        memory_gb: 16,
+        power_watts: {
+          idle: 36,
+          max: 300
+        },
+        embodied_co2e_grams_per_month: 0,
+        embodied_unmodeled: true
+      },
+      "p4d.24xlarge": {
+        architecture: "x86_64",
+        vcpus: 96,
+        memory_gb: 1152,
+        power_watts: {
+          idle: 384,
+          max: 3200
+        },
+        embodied_co2e_grams_per_month: 0,
+        embodied_unmodeled: true
+      },
+      "p5.48xlarge": {
+        architecture: "x86_64",
+        vcpus: 192,
+        memory_gb: 2048,
+        power_watts: {
+          idle: 672,
+          max: 5600
+        },
+        embodied_co2e_grams_per_month: 0,
+        embodied_unmodeled: true
       }
     },
     pricing_usd_per_hour: {
@@ -633,7 +668,10 @@ var factors_default = {
         "c7g.large": 0.0725,
         "c7g.xlarge": 0.145,
         "r6g.large": 0.1008,
-        "r6g.xlarge": 0.2016
+        "r6g.xlarge": 0.2016,
+        "g5.xlarge": 1.006,
+        "p4d.24xlarge": 21.9576,
+        "p5.48xlarge": 55.04
       },
       "us-east-2": {
         "t2.micro": 0.0116,
@@ -2130,7 +2168,7 @@ var factors_default = {
 // package.json
 var package_default = {
   name: "greenops-cli",
-  version: "0.9.1",
+  version: "0.10.0",
   description: "Carbon footprint linting for Terraform plans: AWS, Azure, and GCP. Analyses infrastructure changes including Kubernetes node groups for Scope 2, Scope 3, and water impact. Posts recommendations directly on GitHub PRs.",
   main: "dist/index.cjs",
   bin: {
@@ -2717,7 +2755,7 @@ function calculateBaseline(input, ledger = factors_default) {
   const waterLitresPerMonth = wattsToWater(effectiveWatts, hours, regionData.water_intensity_litres_per_kwh) * nodeCount;
   const totalLifecycleCo2eGramsPerMonth = totalCo2eGramsPerMonth + embodiedCo2eGramsPerMonth;
   const totalCostUsdPerMonth = pricePerHour * hours * nodeCount;
-  const confidence = input.avgUtilization !== void 0 ? "MEDIUM" : "HIGH";
+  const confidence = instanceData.embodied_unmodeled ? "LOW_ASSUMED_DEFAULT" : input.avgUtilization !== void 0 ? "MEDIUM" : "HIGH";
   return {
     totalCo2eGramsPerMonth,
     embodiedCo2eGramsPerMonth,
@@ -2726,6 +2764,9 @@ function calculateBaseline(input, ledger = factors_default) {
     totalCostUsdPerMonth,
     confidence,
     scope: "SCOPE_2_AND_3",
+    ...instanceData.embodied_unmodeled && {
+      unsupportedReason: `Embodied (Scope 3) carbon for "${input.instanceType}" is not yet modeled \u2014 GPU manufacturing footprint differs substantially from the CCF Dell R740 CPU-server baseline used elsewhere in this ledger, and no equivalent public GPU baseline exists yet. Scope 2 operational carbon above uses real NVIDIA TDP specs and is not affected.`
+    },
     assumptionsApplied: {
       utilizationApplied: utilization,
       gridIntensityApplied: regionData.grid_intensity_gco2e_per_kwh,
@@ -3386,10 +3427,10 @@ function formatMarkdown(result2, options = {}) {
 `;
   }
   const analysed = result2.resources.filter(
-    (r) => r.baseline.confidence !== "LOW_ASSUMED_DEFAULT" || r.input.instanceType.startsWith("serverless:")
+    (r) => r.baseline.confidence !== "LOW_ASSUMED_DEFAULT" || r.input.instanceType.startsWith("serverless:") || r.baseline.totalCo2eGramsPerMonth > 0
   );
   const unsupportedResources = result2.resources.filter(
-    (r) => r.baseline.confidence === "LOW_ASSUMED_DEFAULT" && !r.input.instanceType.startsWith("serverless:")
+    (r) => r.baseline.confidence === "LOW_ASSUMED_DEFAULT" && !r.input.instanceType.startsWith("serverless:") && r.baseline.totalCo2eGramsPerMonth === 0
   );
   out += `### Resource Breakdown
 
@@ -3418,6 +3459,12 @@ function formatMarkdown(result2, options = {}) {
   const nodeGroupResources = analysed.filter((r) => (r.input.nodeCount ?? 1) > 1);
   if (nodeGroupResources.length > 0) {
     out += `> \u{1F9EE} **Node group totals** reflect the minimum configured size for autoscaling groups (\`min_size\` / \`min_count\` / \`autoscaling.min_node_count\`), never the desired or maximum size. Actual emissions scale up with autoscaler activity above this floor.
+
+`;
+  }
+  const gpuResources = analysed.filter((r) => r.baseline.unsupportedReason?.startsWith("Embodied (Scope 3)"));
+  if (gpuResources.length > 0) {
+    out += `> \u{1F5A5}\uFE0F **GPU instances**: Scope 2 (operational) carbon above uses real NVIDIA TDP specs. Scope 3 (embodied/manufacturing) carbon is shown as \`0\` because GPU hardware's manufacturing footprint differs substantially from this ledger's CPU-server baseline, and no equivalent public GPU baseline exists yet \u2014 this is an explicit gap, not a measured zero. Confidence is marked \`LOW_ASSUMED_DEFAULT\` accordingly.
 
 `;
   }

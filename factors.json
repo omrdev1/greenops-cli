@@ -9,7 +9,9 @@
       "pricing_azure": "azure-public-pricing-api-2026-q1",
       "pricing_gcp": "gcp-public-pricing-api-2026-q1",
       "embodied": "cloud-carbon-footprint-v3-dell-r740-baseline",
-      "water": "aws-sustainability-report-2023-wue"
+      "water": "aws-sustainability-report-2023-wue",
+      "gpu_tdp": "nvidia-aws-public-datasheets-2026-q2",
+      "gpu_pricing_aws": "aws-public-pricing-2026-q2"
     },
     "assumptions": {
       "default_utilization": {
@@ -576,6 +578,39 @@
           "max": 30.0
         },
         "embodied_co2e_grams_per_month": 1666.7
+      },
+      "g5.xlarge": {
+        "architecture": "x86_64",
+        "vcpus": 4,
+        "memory_gb": 16,
+        "power_watts": {
+          "idle": 36.0,
+          "max": 300.0
+        },
+        "embodied_co2e_grams_per_month": 0,
+        "embodied_unmodeled": true
+      },
+      "p4d.24xlarge": {
+        "architecture": "x86_64",
+        "vcpus": 96,
+        "memory_gb": 1152,
+        "power_watts": {
+          "idle": 384.0,
+          "max": 3200.0
+        },
+        "embodied_co2e_grams_per_month": 0,
+        "embodied_unmodeled": true
+      },
+      "p5.48xlarge": {
+        "architecture": "x86_64",
+        "vcpus": 192,
+        "memory_gb": 2048,
+        "power_watts": {
+          "idle": 672.0,
+          "max": 5600.0
+        },
+        "embodied_co2e_grams_per_month": 0,
+        "embodied_unmodeled": true
       }
     },
     "pricing_usd_per_hour": {
@@ -626,7 +661,10 @@
         "c7g.large": 0.0725,
         "c7g.xlarge": 0.145,
         "r6g.large": 0.1008,
-        "r6g.xlarge": 0.2016
+        "r6g.xlarge": 0.2016,
+        "g5.xlarge": 1.006,
+        "p4d.24xlarge": 21.9576,
+        "p5.48xlarge": 55.04
       },
       "us-east-2": {
         "t2.micro": 0.0116,

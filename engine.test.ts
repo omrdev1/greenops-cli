@@ -463,3 +463,60 @@ describe('calculateBaseline', () => {
     assert.equal(rec!.costDeltaUsdPerMonth, singleRec!.costDeltaUsdPerMonth * 4);
   });
 });
+
+describe('calculateBaseline: GPU instances', () => {
+  it('calculates real Scope 2 carbon for g5.xlarge using NVIDIA A10G TDP, but flags embodied as not yet modeled', () => {
+    const result = calculateBaseline({
+      resourceId: 'aws_instance.gpu_worker', instanceType: 'g5.xlarge', region: 'us-east-1', provider: 'aws',
+    });
+    assert.ok(result.totalCo2eGramsPerMonth > 0, 'Scope 2 should be calculated from real GPU TDP');
+    assert.equal(result.embodiedCo2eGramsPerMonth, 0, 'Embodied carbon not yet modeled for GPU hardware');
+    assert.equal(result.confidence, 'LOW_ASSUMED_DEFAULT', 'Unmodeled embodied carbon must downgrade confidence');
+    assert.ok(result.unsupportedReason?.includes('Embodied'), 'Reason must explain the embodied-carbon gap specifically');
+    assert.ok(result.totalCostUsdPerMonth > 0, 'Real pricing should still be applied');
+  });
+
+  it('p4d.24xlarge (8x A100) produces far higher Scope 2 carbon than a CPU instance of similar vCPU count', () => {
+    const gpu = calculateBaseline({
+      resourceId: 'x', instanceType: 'p4d.24xlarge', region: 'us-east-1', provider: 'aws',
+    });
+    const cpu = calculateBaseline({
+      resourceId: 'x', instanceType: 'c5.4xlarge', region: 'us-east-1', provider: 'aws',
+    });
+    assert.ok(gpu.totalCo2eGramsPerMonth > cpu.totalCo2eGramsPerMonth * 10,
+      'An 8x A100 node should be at least an order of magnitude more carbon-intensive than a CPU instance');
+  });
+
+  it('p5.48xlarge (8x H100) produces higher Scope 2 carbon than p4d.24xlarge (8x A100), matching real TDP ratio', () => {
+    const h100 = calculateBaseline({
+      resourceId: 'x', instanceType: 'p5.48xlarge', region: 'us-east-1', provider: 'aws',
+    });
+    const a100 = calculateBaseline({
+      resourceId: 'x', instanceType: 'p4d.24xlarge', region: 'us-east-1', provider: 'aws',
+    });
+    assert.ok(h100.totalCo2eGramsPerMonth > a100.totalCo2eGramsPerMonth,
+      'H100 (700W TDP) should draw more power than A100 (400W TDP) per GPU');
+  });
+
+  it('GPU node groups (EKS/AKS/GKE) scale GPU carbon linearly with nodeCount, same as CPU node groups', () => {
+    const single = calculateBaseline({
+      resourceId: 'x', instanceType: 'g5.xlarge', region: 'us-east-1', provider: 'aws',
+    });
+    const triple = calculateBaseline({
+      resourceId: 'x', instanceType: 'g5.xlarge', region: 'us-east-1', provider: 'aws', nodeCount: 3,
+    });
+    assert.equal(triple.totalCo2eGramsPerMonth, single.totalCo2eGramsPerMonth * 3);
+    assert.equal(triple.confidence, single.confidence, 'GPU node groups stay LOW_ASSUMED_DEFAULT regardless of node count');
+  });
+
+  it('does not generate an upgrade recommendation for GPU instances (LOW_ASSUMED_DEFAULT baselines are excluded)', () => {
+    const baseline = calculateBaseline({
+      resourceId: 'x', instanceType: 'g5.xlarge', region: 'us-east-1', provider: 'aws',
+    });
+    const rec = generateRecommendation(
+      { resourceId: 'x', instanceType: 'g5.xlarge', region: 'us-east-1', provider: 'aws' },
+      baseline
+    );
+    assert.equal(rec, null, 'Recommendations require a confident baseline; GPU embodied-carbon gap should suppress them');
+  });
+});
