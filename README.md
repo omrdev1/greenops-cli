@@ -39,11 +39,13 @@ Analyses Terraform plans for **Scope 2 operational**, **Scope 3 embodied**, and 
 
 | Provider | Regions | Instances | Resource Types |
 |---|---|---|---|
-| **AWS** | 14 | 47 | `aws_instance`, `aws_db_instance`, `aws_eks_node_group`, `aws_lambda_function` |
+| **AWS** | 14 | 50 | `aws_instance`, `aws_db_instance`, `aws_eks_node_group`, `aws_lambda_function`, `aws_sagemaker_endpoint_configuration` |
 | **Azure** | 17 | 16 | `azurerm_linux_virtual_machine`, `azurerm_windows_virtual_machine`, `azurerm_virtual_machine`, `azurerm_kubernetes_cluster`, `azurerm_kubernetes_cluster_node_pool`, `azurerm_function_app`, `azurerm_linux_function_app`, `azurerm_windows_function_app` |
-| **GCP** | 15 | 15 | `google_compute_instance`, `google_container_node_pool`, `google_cloud_run_service`, `google_cloudfunctions_function`, `google_cloudfunctions2_function` |
+| **GCP** | 15 | 15 | `google_compute_instance`, `google_container_node_pool`, `google_cloud_run_service`, `google_cloudfunctions_function`, `google_cloudfunctions2_function`, `google_workbench_instance` |
 
 Kubernetes node groups (EKS, AKS, GKE) resolve to the same instance ledger as standalone VMs. Node count scales the output, not the per-node calculation. See [Kubernetes Node Groups](#-kubernetes-node-groups) below.
+
+GPU instances (`g5.xlarge`, `p4d.24xlarge`, `p5.48xlarge`) and managed AI services (SageMaker, Vertex AI Workbench) are also supported, Scope 2 only — see [AI & GPU Workloads](#-ai--gpu-workloads) below.
 
 Run `greenops-cli --coverage` for the full instance and region list per provider.
 
@@ -193,12 +195,29 @@ ARM upgrade and region shift recommendations apply across the whole node group. 
 
 ---
 
+## 🤖 AI & GPU Workloads
+
+GPU instances and managed AI services are detected through the same extraction patterns as everything else — no special config needed — but are deliberately scoped to **Scope 2 (operational) carbon only**.
+
+**GPU instances** (`g5.xlarge`, `p4d.24xlarge`, `p5.48xlarge`, AWS `us-east-1` only): power draw is calculated from real NVIDIA TDP specs (A10G 300W, A100 400W, H100 700W per GPU), not estimated.
+
+**SageMaker** (`aws_sagemaker_endpoint_configuration`): reuses the underlying EC2 instance's hardware specs (`ml.g5.xlarge` and `g5.xlarge` are the same hardware) but tracks SageMaker's real, separately-published pricing premium — never derived from raw EC2 pricing. Assumes the endpoint runs continuously, since a Terraform plan can't see actual invocation volume.
+
+**Vertex AI Workbench** (`google_workbench_instance`, GCP `us-central1` only): billed at standard Compute Engine rates, no managed-service markup. NVIDIA T4 GPU attachments are supported; A100/V100/L4 are not yet (no confidently-sourced standalone add-on price — explicitly skipped rather than guessed).
+
+**Embodied (Scope 3) carbon is not modeled for any GPU, whether standalone, in SageMaker, or attached to a Workbench instance.** This ledger's embodied-carbon formula is calibrated to a generic CPU server; a GPU's manufacturing footprint is a different hardware class entirely, and no equivalent public baseline exists yet to cite honestly. Every GPU-touching resource is reported with embodied carbon as `0` and confidence `LOW_ASSUMED_DEFAULT`, with the gap stated explicitly in the PR comment — not silently approximated. Full detail in [METHODOLOGY.md](./METHODOLOGY.md#gpu-instances-scope-2-only).
+
+Not yet supported: Azure GPU instances (NC/ND-series), Azure ML, GCP Vertex AI prediction endpoints (the model-serving compute itself, as opposed to Workbench notebooks).
+
+---
+
 ## 🛑 What it doesn't cover
 
 - `aws_ecs_service`, `aws_launch_template`, `aws_autoscaling_group` (flagged as unsupported in output)
 - `azurerm_virtual_machine_scale_set` (flagged)
 - `google_compute_instance_template`, `google_container_cluster` (flagged; use `google_container_node_pool` for GKE workloads, which is supported)
-- AI and machine learning compute (GPU instances, managed inference endpoints). Not yet modeled. Tracked as an open item.
+- Azure GPU instances, Azure ML, and GCP Vertex AI prediction endpoints — see [AI & GPU Workloads](#-ai--gpu-workloads) above for what IS covered
+- Embodied (Scope 3) carbon for any GPU — explicit gap, not a measured zero, see above
 - Real-time marginal grid intensity (annual averages used)
 - Multi-aliased Terraform provider configs may skip with `known_after_apply`
 
