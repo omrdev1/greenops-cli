@@ -322,11 +322,11 @@ These are the maximum-utilisation values. Actual emissions at typical utilisatio
 
 | Provider | Instance types | Notable gaps |
 |---|---|---|
-| AWS | 47 | r6i, c6i, m6i (Intel v3), Graviton 4 (m8g, c8g) |
-| Azure | 16 | Standard_M series, Standard_L series, Standard_NC (GPU) |
-| GCP | 15 | n1 series (legacy), m2/m3 memory-optimised, A2 (GPU) |
+| AWS | 50 (47 general-purpose + 3 GPU) | r6i, c6i, m6i (Intel v3), Graviton 4 (m8g, c8g), Azure/GCP-equivalent GPU generations |
+| Azure | 16 | Standard_M series, Standard_L series, Standard_NC (GPU), Azure ML compute |
+| GCP | 15 + Vertex AI Workbench (T4 only) | n1 series (legacy), m2/m3 memory-optimised, A2/A3 GPU families, Vertex AI prediction endpoints |
 
-GPU instance families and managed AI/ML compute (SageMaker, Vertex AI, Azure ML) are not yet in the ledger. Kubernetes node groups (EKS, AKS, GKE) resolve to the standard instance entries above; node count multiplies the output, see Kubernetes Node Groups above.
+GPU instances (AWS `g5.xlarge`/`p4d.24xlarge`/`p5.48xlarge`) and managed AI services (AWS SageMaker, GCP Vertex AI Workbench) are in the ledger as of v0.10.0/v0.11.0, Scope 2 only — see [GPU Instances](#gpu-instances-scope-2-only) and [Managed AI Services](#managed-ai-services) above. Azure GPU instances, Azure ML, and GCP Vertex AI prediction endpoints remain unsupported. Kubernetes node groups (EKS, AKS, GKE) resolve to the standard instance entries above; node count multiplies the output, see Kubernetes Node Groups above.
 
 All gaps are tracked as open issues. Coverage PRs are the fastest to merge.
 
@@ -334,11 +334,11 @@ All gaps are tracked as open issues. Coverage PRs are the fastest to merge.
 
 ## Known Limitations
 
-- **No GPU or managed AI/ML compute model.** SageMaker, Vertex AI, Azure ML, and GPU-backed instance families (p4/p5, NC-series, A2/A3) are not yet in the ledger. This is the largest open gap as of this writing.
+- **Partial GPU and managed AI/ML compute model.** AWS GPU instances (`g5.xlarge`, `p4d.24xlarge`, `p5.48xlarge`), AWS SageMaker endpoint configs, and GCP Vertex AI Workbench (NVIDIA T4 only) are modeled, Scope 2 only — see [GPU Instances](#gpu-instances-scope-2-only) and [Managed AI Services](#managed-ai-services) above. Azure GPU instances (NC/ND-series), Azure ML, GCP Vertex AI prediction endpoints (the model-serving compute itself), and GPU embodied (Scope 3) carbon anywhere in the stack remain unmodeled. This is the largest open gap as of this writing.
 - **Scope 2 only for region recommendations.** Embodied carbon does not change when shifting regions, so it is correctly excluded from the region-shift scoring.
 - **Annual average grid intensity.** Real-time marginal emissions are not used. Annual averages are more stable and reproducible, consistent with CCF methodology.
 - **WUE at data centre level.** Water figures cover direct data centre cooling withdrawal only.
-- **Azure and GCP coverage is smaller than AWS.** AWS has 47 instance types; Azure and GCP each have 15 to 16. Enterprise-scale instance families (M-series, X-series, A2 High Memory) are not yet in the ledger.
+- **Azure and GCP coverage is smaller than AWS.** AWS has 50 instance types (47 general-purpose + 3 GPU); Azure and GCP each have 15 to 16. Enterprise-scale instance families (M-series, X-series, A2 High Memory) are not yet in the ledger.
 - **Provider alias regions.** Multi-aliased provider configs may not resolve correctly. Standard single-provider configs are fully supported.
 - **Node group autoscaling is reported at minimum size.** EKS, AKS, and GKE node groups with autoscaling enabled report the minimum configured node count, not the desired or current count. Actual emissions at any given time may be higher if the autoscaler has scaled up.
 
