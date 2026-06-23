@@ -232,8 +232,8 @@ describe('formatMarkdown', () => {
     const md = formatMarkdown(result);
     assert.ok(!md.includes('Skipped Resource'), 'GPU resource with real Scope 2 data should NOT be in skipped section');
     assert.ok(md.includes('g5.xlarge'), 'Should show the GPU instance type in the breakdown table');
-    assert.ok(md.includes('GPU instances'), 'Should show the GPU embodied-carbon explanatory note');
-    assert.ok(md.includes('LOW_ASSUMED_DEFAULT') || md.includes('not yet modeled'), 'Should still flag the embodied-carbon gap honestly');
+    assert.ok(md.includes('AI Infrastructure Carbon Impact'), 'Should show the dedicated AI Infrastructure Carbon Impact section');
+    assert.ok(md.includes('Embodied carbon gap'), 'Should still flag the embodied-carbon gap honestly');
   });
 
   it('still buries a fully-unsupported GPU-adjacent instance (zero Scope 2 too) in skipped section', () => {
@@ -274,8 +274,9 @@ describe('formatMarkdown', () => {
     assert.ok(!md.includes('managed_ai:sagemaker:g5.xlarge'), 'Should NOT show the raw internal encoding string');
     assert.ok(md.includes('ml.g5.xlarge (SageMaker)'), 'Should show the human-readable label');
     assert.ok(!md.includes('Skipped Resource'), 'Real Scope 2 data should not be buried in skipped section');
-    assert.ok(md.includes('Managed AI services'), 'Should show the managed AI assumptions note');
-    assert.ok(md.includes('GPU instances'), 'Should also show the GPU embodied-carbon note (Embodied (Scope 3) appears in this resource\'s reason)');
+    assert.ok(md.includes('AI Infrastructure Carbon Impact'), 'Should show the dedicated AI Infrastructure Carbon Impact section');
+    assert.ok(md.includes('Managed AI service estimates'), 'Should show the managed AI assumptions note');
+    assert.ok(md.includes('Embodied carbon gap'), 'Should also flag the embodied-carbon gap (Embodied (Scope 3) appears in this resource\'s reason)');
   });
 
   it('shows a human-readable label for a gpu_attached: Vertex AI Workbench resource', () => {
@@ -297,5 +298,54 @@ describe('formatMarkdown', () => {
     assert.ok(!md.includes('gpu_attached:n2-standard-2:70:1'), 'Should NOT show the raw internal encoding string');
     assert.ok(md.includes('n2-standard-2 + 1x GPU'), 'Should show the human-readable label');
     assert.ok(!md.includes('Skipped Resource'));
+    assert.ok(md.includes('AI Infrastructure Carbon Impact'), 'Vertex AI Workbench resources should also surface in the dedicated section');
+  });
+
+  it('omits the AI Infrastructure Carbon Impact section entirely when no AI/GPU resources are present', () => {
+    const result = makeMockResult({
+      resources: [{
+        input: { resourceId: 'aws_instance.web', instanceType: 'm5.large', region: 'us-east-1', provider: 'aws' as const },
+        baseline: makeMockBaseline({ totalCo2eGramsPerMonth: 1000, totalCostUsdPerMonth: 50 }),
+        recommendation: null,
+      }],
+      totals: makeMockTotals({ currentCo2eGramsPerMonth: 1000, currentCostUsdPerMonth: 50 }),
+    });
+    const md = formatMarkdown(result);
+    assert.ok(!md.includes('AI Infrastructure Carbon Impact'), 'Should not show the AI section for a plan with no AI/GPU resources');
+  });
+
+  it('aggregates multiple AI/GPU resources into one combined total in the dedicated section', () => {
+    const result = makeMockResult({
+      resources: [
+        {
+          input: { resourceId: 'aws_instance.gpu_worker', instanceType: 'g5.xlarge', region: 'us-east-1', provider: 'aws' as const },
+          baseline: makeMockBaseline({
+            confidence: 'LOW_ASSUMED_DEFAULT' as const,
+            totalCo2eGramsPerMonth: 500,
+            embodiedCo2eGramsPerMonth: 0,
+            totalCostUsdPerMonth: 734.38,
+            unsupportedReason: 'Embodied (Scope 3) carbon for "g5.xlarge" is not yet modeled.',
+          }),
+          recommendation: null,
+        },
+        {
+          input: { resourceId: 'aws_sagemaker_endpoint_configuration.inference', instanceType: 'managed_ai:sagemaker:g5.xlarge', region: 'us-east-1', provider: 'aws' as const },
+          baseline: makeMockBaseline({
+            confidence: 'LOW_ASSUMED_DEFAULT' as const,
+            totalCo2eGramsPerMonth: 500,
+            embodiedCo2eGramsPerMonth: 0,
+            totalCostUsdPerMonth: 1481.90,
+            unsupportedReason: 'Managed AI service estimate (sagemaker) assumes the endpoint runs continuously. Embodied (Scope 3) carbon for "g5.xlarge" is not yet modeled.',
+          }),
+          recommendation: null,
+        },
+      ],
+      totals: makeMockTotals({ currentCo2eGramsPerMonth: 1000, currentCostUsdPerMonth: 2216.28 }),
+    });
+    const md = formatMarkdown(result);
+    assert.ok(md.includes('Detected **2** AI/GPU resources'), 'Should count both AI/GPU resources');
+    assert.ok(md.includes('1.00kg CO2e/month'), 'Should sum Scope 2 across both resources (500g + 500g = 1000g = 1.00kg)');
+    assert.ok(md.includes('$2216.28/month'), 'Should sum cost across both resources');
+    assert.ok(md.includes('Embodied carbon gap:** 2 of 2'), 'Should report both resources as having the embodied-carbon gap');
   });
 });

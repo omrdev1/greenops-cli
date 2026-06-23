@@ -2179,7 +2179,7 @@ var factors_default = {
 // package.json
 var package_default = {
   name: "greenops-cli",
-  version: "0.11.0",
+  version: "0.12.0",
   description: "Carbon footprint linting for Terraform plans: AWS, Azure, and GCP. Analyses infrastructure changes including Kubernetes node groups for Scope 2, Scope 3, and water impact. Posts recommendations directly on GitHub PRs.",
   main: "dist/index.cjs",
   bin: {
@@ -3663,6 +3663,17 @@ function formatWater(litres) {
     return `${(litres / 1e3).toFixed(2)}m\xB3`;
   return `${litres.toFixed(1)}L`;
 }
+var RAW_GPU_INSTANCE_TYPES = /* @__PURE__ */ new Set(["g5.xlarge", "p4d.24xlarge", "p5.48xlarge"]);
+function isAiResource(instanceType) {
+  return RAW_GPU_INSTANCE_TYPES.has(instanceType) || instanceType.startsWith("managed_ai:") || instanceType.startsWith("gpu_attached:");
+}
+function aiResourceKind(instanceType) {
+  if (instanceType.startsWith("managed_ai:"))
+    return "SageMaker";
+  if (instanceType.startsWith("gpu_attached:"))
+    return "Vertex AI Workbench";
+  return "GPU";
+}
 function formatMarkdown(result2, options = {}) {
   const METHODOLOGY_URL = options.repositoryUrl || "https://github.com/omrdev1/greenops-cli/blob/main/METHODOLOGY.md";
   const analysedForCount = result2.resources.filter((r) => r.baseline.confidence !== "LOW_ASSUMED_DEFAULT");
@@ -3738,15 +3749,44 @@ function formatMarkdown(result2, options = {}) {
 
 `;
   }
-  const gpuResources = analysed.filter((r) => r.baseline.unsupportedReason?.includes("Embodied (Scope 3)"));
-  if (gpuResources.length > 0) {
-    out += `> \u{1F5A5}\uFE0F **GPU instances**: Scope 2 (operational) carbon above uses real NVIDIA TDP specs. Scope 3 (embodied/manufacturing) carbon is shown as \`0\` because GPU hardware's manufacturing footprint differs substantially from this ledger's CPU-server baseline, and no equivalent public GPU baseline exists yet \u2014 this is an explicit gap, not a measured zero. Confidence is marked \`LOW_ASSUMED_DEFAULT\` accordingly.
+  const aiResources = analysed.filter((r) => isAiResource(r.input.instanceType));
+  if (aiResources.length > 0) {
+    const aiCo2e = aiResources.reduce((sum, r) => sum + r.baseline.totalCo2eGramsPerMonth, 0);
+    const aiCost = aiResources.reduce((sum, r) => sum + r.baseline.totalCostUsdPerMonth, 0);
+    const embodiedGapCount = aiResources.filter((r) => r.baseline.unsupportedReason?.includes("Embodied (Scope 3)")).length;
+    out += `### \u{1F916} AI Infrastructure Carbon Impact
 
 `;
-  }
-  const managedAiResources = analysed.filter((r) => r.input.instanceType.startsWith("managed_ai:"));
-  if (managedAiResources.length > 0) {
-    out += `> \u{1F916} **Managed AI services** (e.g. SageMaker endpoints) are estimated assuming the endpoint runs continuously at the ledger's default utilization. Actual emissions depend on real invocation/runtime patterns not visible in a Terraform plan. Pricing reflects the managed-service rate, not the underlying instance's raw compute price.
+    out += `Detected **${aiResources.length}** AI/GPU ${aiResources.length === 1 ? "resource" : "resources"} in this plan, totalling **${formatGrams(aiCo2e)} CO2e/month** (Scope 2) and **$${aiCost.toFixed(2)}/month**.
+
+`;
+    out += `| Resource | Type | Region | Scope 2 CO2e | Embodied (Scope 3) | Cost/mo |
+`;
+    out += `|---|---|---|---|---|---|
+`;
+    for (const r of aiResources) {
+      const kind = aiResourceKind(r.input.instanceType);
+      const typeLabel = formatInstanceTypeLabel(r.input.instanceType);
+      const typeCell = kind === "GPU" ? `GPU: \`${typeLabel}\`` : `\`${typeLabel}\``;
+      const embodiedGap = r.baseline.unsupportedReason?.includes("Embodied (Scope 3)");
+      const embodiedCell = embodiedGap ? "\u26A0\uFE0F not modeled" : formatGrams(r.baseline.embodiedCo2eGramsPerMonth);
+      out += `| \`${r.input.resourceId}\` | ${typeCell} | \`${r.input.region}\` | ${formatGrams(r.baseline.totalCo2eGramsPerMonth)} | ${embodiedCell} | ${r.baseline.totalCostUsdPerMonth.toFixed(2)} |
+`;
+    }
+    out += `
+`;
+    if (embodiedGapCount > 0) {
+      out += `> \u26A0\uFE0F **Embodied carbon gap:** ${embodiedGapCount} of ${aiResources.length} AI/GPU ${embodiedGapCount === 1 ? "resource" : "resources"} above ${embodiedGapCount === 1 ? "has" : "have"} manufacturing-footprint (Scope 3) carbon explicitly **not modeled** \u2014 GPU hardware's embodied footprint differs substantially from this ledger's CPU-server baseline, and no equivalent public GPU baseline exists yet to cite honestly. This is a stated gap, not a measured zero.
+
+`;
+    }
+    const hasManagedAi = aiResources.some((r) => r.input.instanceType.startsWith("managed_ai:"));
+    if (hasManagedAi) {
+      out += `> Managed AI service estimates (e.g. SageMaker) assume the endpoint runs continuously at the ledger's default utilization \u2014 real invocation/runtime patterns aren't visible in a Terraform plan. Pricing reflects the managed-service rate, not the underlying instance's raw compute price.
+
+`;
+    }
+    out += `> Putting this in front of you here, before these resources are provisioned, is the point: no other carbon-tooling vendor surfaces AI infrastructure cost at PR time. See the [Methodology](${METHODOLOGY_URL}) for full coverage and limitations.
 
 `;
   }

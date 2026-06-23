@@ -11,6 +11,29 @@ function formatWater(litres: number): string {
   return `${litres.toFixed(1)}L`;
 }
 
+const RAW_GPU_INSTANCE_TYPES = new Set(['g5.xlarge', 'p4d.24xlarge', 'p5.48xlarge']);
+
+/**
+ * A resource is AI/GPU infrastructure if it's a raw GPU instance, a managed
+ * AI service (SageMaker), or a GPU-attached managed instance (Vertex AI
+ * Workbench). This is the set of resources the dedicated AI Infrastructure
+ * Carbon Impact section surfaces, instead of leaving them to blend into the
+ * generic resource table.
+ */
+function isAiResource(instanceType: string): boolean {
+  return (
+    RAW_GPU_INSTANCE_TYPES.has(instanceType) ||
+    instanceType.startsWith('managed_ai:') ||
+    instanceType.startsWith('gpu_attached:')
+  );
+}
+
+function aiResourceKind(instanceType: string): 'GPU' | 'SageMaker' | 'Vertex AI Workbench' {
+  if (instanceType.startsWith('managed_ai:')) return 'SageMaker';
+  if (instanceType.startsWith('gpu_attached:')) return 'Vertex AI Workbench';
+  return 'GPU';
+}
+
 export function formatMarkdown(result: PlanAnalysisResult, options: FormatterOptions = {}): string {
   const METHODOLOGY_URL = options.repositoryUrl || 'https://github.com/omrdev1/greenops-cli/blob/main/METHODOLOGY.md';
   const analysedForCount = result.resources.filter(r => r.baseline.confidence !== 'LOW_ASSUMED_DEFAULT');
@@ -83,16 +106,44 @@ export function formatMarkdown(result: PlanAnalysisResult, options: FormatterOpt
     out += `> 🧮 **Node group totals** reflect the minimum configured size for autoscaling groups (\`min_size\` / \`min_count\` / \`autoscaling.min_node_count\`), never the desired or maximum size. Actual emissions scale up with autoscaler activity above this floor.\n\n`;
   }
 
-  // GPU embodied-carbon note
-  const gpuResources = analysed.filter(r => r.baseline.unsupportedReason?.includes('Embodied (Scope 3)'));
-  if (gpuResources.length > 0) {
-    out += `> 🖥️ **GPU instances**: Scope 2 (operational) carbon above uses real NVIDIA TDP specs. Scope 3 (embodied/manufacturing) carbon is shown as \`0\` because GPU hardware's manufacturing footprint differs substantially from this ledger's CPU-server baseline, and no equivalent public GPU baseline exists yet — this is an explicit gap, not a measured zero. Confidence is marked \`LOW_ASSUMED_DEFAULT\` accordingly.\n\n`;
-  }
+  // AI Infrastructure Carbon Impact — dedicated callout, not folded into the
+  // generic resource table. This is the part of the AI differentiation
+  // strategy that actually puts the carbon/cost tradeoff of an AI
+  // infrastructure decision in front of the engineer reviewing the PR,
+  // rather than leaving it to blend in among ordinary compute resources.
+  const aiResources = analysed.filter(r => isAiResource(r.input.instanceType));
+  if (aiResources.length > 0) {
+    const aiCo2e = aiResources.reduce((sum, r) => sum + r.baseline.totalCo2eGramsPerMonth, 0);
+    const aiCost = aiResources.reduce((sum, r) => sum + r.baseline.totalCostUsdPerMonth, 0);
+    const embodiedGapCount = aiResources.filter(r => r.baseline.unsupportedReason?.includes('Embodied (Scope 3)')).length;
 
-  // Managed AI service note
-  const managedAiResources = analysed.filter(r => r.input.instanceType.startsWith('managed_ai:'));
-  if (managedAiResources.length > 0) {
-    out += `> 🤖 **Managed AI services** (e.g. SageMaker endpoints) are estimated assuming the endpoint runs continuously at the ledger's default utilization. Actual emissions depend on real invocation/runtime patterns not visible in a Terraform plan. Pricing reflects the managed-service rate, not the underlying instance's raw compute price.\n\n`;
+    out += `### 🤖 AI Infrastructure Carbon Impact\n\n`;
+    out += `Detected **${aiResources.length}** AI/GPU ${aiResources.length === 1 ? 'resource' : 'resources'} in this plan, totalling **${formatGrams(aiCo2e)} CO2e/month** (Scope 2) and **$${aiCost.toFixed(2)}/month**.\n\n`;
+    out += `| Resource | Type | Region | Scope 2 CO2e | Embodied (Scope 3) | Cost/mo |\n`;
+    out += `|---|---|---|---|---|---|\n`;
+    for (const r of aiResources) {
+      // Managed AI types already carry their service name via
+      // formatInstanceTypeLabel (e.g. "ml.g5.xlarge (SageMaker)") — only
+      // raw GPU instances need the "GPU:" prefix added here to identify them.
+      const kind = aiResourceKind(r.input.instanceType);
+      const typeLabel = formatInstanceTypeLabel(r.input.instanceType);
+      const typeCell = kind === 'GPU' ? `GPU: \`${typeLabel}\`` : `\`${typeLabel}\``;
+      const embodiedGap = r.baseline.unsupportedReason?.includes('Embodied (Scope 3)');
+      const embodiedCell = embodiedGap ? '⚠️ not modeled' : formatGrams(r.baseline.embodiedCo2eGramsPerMonth);
+      out += `| \`${r.input.resourceId}\` | ${typeCell} | \`${r.input.region}\` | ${formatGrams(r.baseline.totalCo2eGramsPerMonth)} | ${embodiedCell} | ${r.baseline.totalCostUsdPerMonth.toFixed(2)} |\n`;
+    }
+    out += `\n`;
+
+    if (embodiedGapCount > 0) {
+      out += `> ⚠️ **Embodied carbon gap:** ${embodiedGapCount} of ${aiResources.length} AI/GPU ${embodiedGapCount === 1 ? 'resource' : 'resources'} above ${embodiedGapCount === 1 ? 'has' : 'have'} manufacturing-footprint (Scope 3) carbon explicitly **not modeled** — GPU hardware's embodied footprint differs substantially from this ledger's CPU-server baseline, and no equivalent public GPU baseline exists yet to cite honestly. This is a stated gap, not a measured zero.\n\n`;
+    }
+
+    const hasManagedAi = aiResources.some(r => r.input.instanceType.startsWith('managed_ai:'));
+    if (hasManagedAi) {
+      out += `> Managed AI service estimates (e.g. SageMaker) assume the endpoint runs continuously at the ledger's default utilization — real invocation/runtime patterns aren't visible in a Terraform plan. Pricing reflects the managed-service rate, not the underlying instance's raw compute price.\n\n`;
+    }
+
+    out += `> Putting this in front of you here, before these resources are provisioned, is the point: no other carbon-tooling vendor surfaces AI infrastructure cost at PR time. See the [Methodology](${METHODOLOGY_URL}) for full coverage and limitations.\n\n`;
   }
 
   const totalSkipped = result.skipped.length + unsupportedResources.length;
