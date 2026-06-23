@@ -1483,6 +1483,39 @@ var factors_default = {
           max: 48
         },
         embodied_co2e_grams_per_month: 2083.3
+      },
+      Standard_NC4as_T4_v3: {
+        architecture: "x86_64",
+        vcpus: 4,
+        memory_gb: 28,
+        power_watts: {
+          idle: 8.4,
+          max: 70
+        },
+        embodied_co2e_grams_per_month: 0,
+        embodied_unmodeled: true
+      },
+      Standard_NC8as_T4_v3: {
+        architecture: "x86_64",
+        vcpus: 8,
+        memory_gb: 56,
+        power_watts: {
+          idle: 8.4,
+          max: 70
+        },
+        embodied_co2e_grams_per_month: 0,
+        embodied_unmodeled: true
+      },
+      Standard_NC16as_T4_v3: {
+        architecture: "x86_64",
+        vcpus: 16,
+        memory_gb: 110,
+        power_watts: {
+          idle: 8.4,
+          max: 70
+        },
+        embodied_co2e_grams_per_month: 0,
+        embodied_unmodeled: true
       }
     },
     pricing_usd_per_hour: {
@@ -1493,6 +1526,9 @@ var factors_default = {
         Standard_D2s_v3: 0.096,
         Standard_D4s_v3: 0.192,
         Standard_D8s_v3: 0.384,
+        Standard_NC4as_T4_v3: 0.526,
+        Standard_NC8as_T4_v3: 0.752,
+        Standard_NC16as_T4_v3: 1.204,
         Standard_D2s_v4: 0.091,
         Standard_D4s_v4: 0.182,
         Standard_D2ps_v5: 0.077,
@@ -2179,7 +2215,7 @@ var factors_default = {
 // package.json
 var package_default = {
   name: "greenops-cli",
-  version: "0.12.0",
+  version: "0.13.0",
   description: "Carbon footprint linting for Terraform plans: AWS, Azure, and GCP. Analyses infrastructure changes including Kubernetes node groups for Scope 2, Scope 3, and water impact. Posts recommendations directly on GitHub PRs.",
   main: "dist/index.cjs",
   bin: {
@@ -3663,7 +3699,14 @@ function formatWater(litres) {
     return `${(litres / 1e3).toFixed(2)}m\xB3`;
   return `${litres.toFixed(1)}L`;
 }
-var RAW_GPU_INSTANCE_TYPES = /* @__PURE__ */ new Set(["g5.xlarge", "p4d.24xlarge", "p5.48xlarge"]);
+var RAW_GPU_INSTANCE_TYPES = /* @__PURE__ */ new Set([
+  "g5.xlarge",
+  "p4d.24xlarge",
+  "p5.48xlarge",
+  "Standard_NC4as_T4_v3",
+  "Standard_NC8as_T4_v3",
+  "Standard_NC16as_T4_v3"
+]);
 function isAiResource(instanceType) {
   return RAW_GPU_INSTANCE_TYPES.has(instanceType) || instanceType.startsWith("managed_ai:") || instanceType.startsWith("gpu_attached:");
 }

@@ -521,6 +521,37 @@ describe('calculateBaseline: GPU instances', () => {
   });
 });
 
+describe('calculateBaseline: Azure GPU instances (NCasT4_v3 series)', () => {
+  it('calculates real Scope 2 carbon for Standard_NC8as_T4_v3 using NVIDIA T4 TDP, but flags embodied as not yet modeled', () => {
+    const result = calculateBaseline({
+      resourceId: 'azurerm_linux_virtual_machine.gpu_worker', instanceType: 'Standard_NC8as_T4_v3', region: 'eastus', provider: 'azure',
+    });
+    assert.ok(result.totalCo2eGramsPerMonth > 0, 'Scope 2 should be calculated from real GPU TDP');
+    assert.equal(result.embodiedCo2eGramsPerMonth, 0, 'Embodied carbon not yet modeled for GPU hardware');
+    assert.equal(result.confidence, 'LOW_ASSUMED_DEFAULT', 'Unmodeled embodied carbon must downgrade confidence');
+    assert.ok(result.unsupportedReason?.includes('Embodied'), 'Reason must explain the embodied-carbon gap specifically');
+    assert.ok(result.totalCostUsdPerMonth > 0, 'Real pricing should still be applied');
+  });
+
+  it('Standard_NC4as_T4_v3, NC8as_T4_v3, and NC16as_T4_v3 all carry the same single-T4 GPU draw (only host vCPU/memory differs)', () => {
+    const nc4 = calculateBaseline({ resourceId: 'x', instanceType: 'Standard_NC4as_T4_v3', region: 'eastus', provider: 'azure' });
+    const nc16 = calculateBaseline({ resourceId: 'x', instanceType: 'Standard_NC16as_T4_v3', region: 'eastus', provider: 'azure' });
+    assert.ok(nc16.totalCostUsdPerMonth > nc4.totalCostUsdPerMonth,
+      'NC16as (16 vCPU) should cost more per month than NC4as (4 vCPU) despite the same single GPU');
+  });
+
+  it('does not generate an upgrade recommendation for Azure GPU instances (LOW_ASSUMED_DEFAULT baselines are excluded)', () => {
+    const baseline = calculateBaseline({
+      resourceId: 'x', instanceType: 'Standard_NC8as_T4_v3', region: 'eastus', provider: 'azure',
+    });
+    const rec = generateRecommendation(
+      { resourceId: 'x', instanceType: 'Standard_NC8as_T4_v3', region: 'eastus', provider: 'azure' },
+      baseline
+    );
+    assert.equal(rec, null, 'Recommendations require a confident baseline; GPU embodied-carbon gap should suppress them');
+  });
+});
+
 describe('calculateBaseline: managed AI services (SageMaker)', () => {
   it('calculates real Scope 2 carbon for a CPU SageMaker endpoint, using a SageMaker-specific price premium over raw EC2', () => {
     const sagemaker = calculateBaseline({

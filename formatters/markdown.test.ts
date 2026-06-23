@@ -301,6 +301,28 @@ describe('formatMarkdown', () => {
     assert.ok(md.includes('AI Infrastructure Carbon Impact'), 'Vertex AI Workbench resources should also surface in the dedicated section');
   });
 
+  it('shows an Azure NC GPU resource in the dedicated AI Infrastructure Carbon Impact section', () => {
+    const result = makeMockResult({
+      resources: [{
+        input: { resourceId: 'azurerm_linux_virtual_machine.gpu_worker', instanceType: 'Standard_NC8as_T4_v3', region: 'eastus', provider: 'azure' as const },
+        baseline: makeMockBaseline({
+          confidence: 'LOW_ASSUMED_DEFAULT' as const,
+          totalCo2eGramsPerMonth: 400,
+          embodiedCo2eGramsPerMonth: 0,
+          totalCostUsdPerMonth: 548.96,
+          unsupportedReason: 'Embodied (Scope 3) carbon for "Standard_NC8as_T4_v3" is not yet modeled — GPU manufacturing footprint differs substantially from the CCF Dell R740 CPU-server baseline used elsewhere in this ledger, and no equivalent public GPU baseline exists yet.',
+        }),
+        recommendation: null,
+      }],
+      totals: makeMockTotals({ currentCo2eGramsPerMonth: 400, currentCostUsdPerMonth: 548.96 }),
+    });
+    const md = formatMarkdown(result);
+    assert.ok(!md.includes('Skipped Resource'), 'Azure GPU resource with real Scope 2 data should NOT be in skipped section');
+    assert.ok(md.includes('AI Infrastructure Carbon Impact'), 'Azure GPU resources should surface in the dedicated section');
+    assert.ok(md.includes('GPU: `Standard_NC8as_T4_v3`'), 'Should label it as a GPU resource type, same as AWS GPU instances');
+    assert.ok(md.includes('Embodied carbon gap'), 'Should flag the embodied-carbon gap honestly');
+  });
+
   it('omits the AI Infrastructure Carbon Impact section entirely when no AI/GPU resources are present', () => {
     const result = makeMockResult({
       resources: [{

@@ -11,7 +11,10 @@ function formatWater(litres: number): string {
   return `${litres.toFixed(1)}L`;
 }
 
-const RAW_GPU_INSTANCE_TYPES = new Set(['g5.xlarge', 'p4d.24xlarge', 'p5.48xlarge']);
+const RAW_GPU_INSTANCE_TYPES = new Set([
+  'g5.xlarge', 'p4d.24xlarge', 'p5.48xlarge',
+  'Standard_NC4as_T4_v3', 'Standard_NC8as_T4_v3', 'Standard_NC16as_T4_v3',
+]);
 
 /**
  * A resource is AI/GPU infrastructure if it's a raw GPU instance, a managed

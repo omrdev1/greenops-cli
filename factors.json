@@ -1476,6 +1476,39 @@
           "max": 48.0
         },
         "embodied_co2e_grams_per_month": 2083.3
+      },
+      "Standard_NC4as_T4_v3": {
+        "architecture": "x86_64",
+        "vcpus": 4,
+        "memory_gb": 28,
+        "power_watts": {
+          "idle": 8.4,
+          "max": 70.0
+        },
+        "embodied_co2e_grams_per_month": 0,
+        "embodied_unmodeled": true
+      },
+      "Standard_NC8as_T4_v3": {
+        "architecture": "x86_64",
+        "vcpus": 8,
+        "memory_gb": 56,
+        "power_watts": {
+          "idle": 8.4,
+          "max": 70.0
+        },
+        "embodied_co2e_grams_per_month": 0,
+        "embodied_unmodeled": true
+      },
+      "Standard_NC16as_T4_v3": {
+        "architecture": "x86_64",
+        "vcpus": 16,
+        "memory_gb": 110,
+        "power_watts": {
+          "idle": 8.4,
+          "max": 70.0
+        },
+        "embodied_co2e_grams_per_month": 0,
+        "embodied_unmodeled": true
       }
     },
     "pricing_usd_per_hour": {
@@ -1486,6 +1519,9 @@
         "Standard_D2s_v3": 0.096,
         "Standard_D4s_v3": 0.192,
         "Standard_D8s_v3": 0.384,
+        "Standard_NC4as_T4_v3": 0.526,
+        "Standard_NC8as_T4_v3": 0.752,
+        "Standard_NC16as_T4_v3": 1.204,
         "Standard_D2s_v4": 0.091,
         "Standard_D4s_v4": 0.182,
         "Standard_D2ps_v5": 0.077,

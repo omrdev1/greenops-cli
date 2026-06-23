@@ -199,7 +199,7 @@ ARM upgrade and region shift recommendations apply across the whole node group. 
 
 GPU instances and managed AI services are detected through the same extraction patterns as everything else — no special config needed — but are deliberately scoped to **Scope 2 (operational) carbon only**.
 
-**GPU instances** (`g5.xlarge`, `p4d.24xlarge`, `p5.48xlarge`, AWS `us-east-1` only): power draw is calculated from real NVIDIA TDP specs (A10G 300W, A100 400W, H100 700W per GPU), not estimated.
+**GPU instances** (AWS `g5.xlarge`/`p4d.24xlarge`/`p5.48xlarge`, AWS `us-east-1` only; Azure `Standard_NC4as_T4_v3`/`Standard_NC8as_T4_v3`/`Standard_NC16as_T4_v3`, Azure `eastus` only): power draw is calculated from real NVIDIA TDP specs (A10G 300W, A100 400W, H100 700W, T4 70W per GPU), not estimated.
 
 **SageMaker** (`aws_sagemaker_endpoint_configuration`): reuses the underlying EC2 instance's hardware specs (`ml.g5.xlarge` and `g5.xlarge` are the same hardware) but tracks SageMaker's real, separately-published pricing premium — never derived from raw EC2 pricing. Assumes the endpoint runs continuously, since a Terraform plan can't see actual invocation volume.
 
@@ -209,7 +209,7 @@ GPU instances and managed AI services are detected through the same extraction p
 
 **PR comments surface AI/GPU resources in a dedicated "🤖 AI Infrastructure Carbon Impact" section**, separate from the general resource table — combined Scope 2 carbon and cost across every AI/GPU resource in the plan, a per-resource embodied-carbon gap flag, and the managed-AI continuous-runtime assumption, all in one place. This is the part of the strategy that actually puts the AI infrastructure carbon/cost tradeoff in front of the engineer reviewing the PR, before it's provisioned — not just data sitting quietly in the general table.
 
-Not yet supported: Azure GPU instances (NC/ND-series), Azure ML, GCP Vertex AI prediction endpoints (the model-serving compute itself, as opposed to Workbench notebooks).
+Not yet supported: `Standard_NC64as_T4_v3` (4x T4, different power/pricing math than the single-GPU NC4/8/16as sizes above), Azure ND-series (A100/H100), Azure ML, GCP Vertex AI prediction endpoints (the model-serving compute itself, as opposed to Workbench notebooks).
 
 ---
 
@@ -218,7 +218,7 @@ Not yet supported: Azure GPU instances (NC/ND-series), Azure ML, GCP Vertex AI p
 - `aws_ecs_service`, `aws_launch_template`, `aws_autoscaling_group` (flagged as unsupported in output)
 - `azurerm_virtual_machine_scale_set` (flagged)
 - `google_compute_instance_template`, `google_container_cluster` (flagged; use `google_container_node_pool` for GKE workloads, which is supported)
-- Azure GPU instances, Azure ML, and GCP Vertex AI prediction endpoints — see [AI & GPU Workloads](#-ai--gpu-workloads) above for what IS covered
+- Azure ND-series GPUs, `Standard_NC64as_T4_v3`, Azure ML, and GCP Vertex AI prediction endpoints — see [AI & GPU Workloads](#-ai--gpu-workloads) above for what IS covered
 - Embodied (Scope 3) carbon for any GPU — explicit gap, not a measured zero, see above
 - Real-time marginal grid intensity (annual averages used)
 - Multi-aliased Terraform provider configs may skip with `known_after_apply`
