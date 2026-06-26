@@ -323,6 +323,28 @@ describe('formatMarkdown', () => {
     assert.ok(md.includes('Embodied carbon gap'), 'Should flag the embodied-carbon gap honestly');
   });
 
+  it('shows the Standard_NC64as_T4_v3 (4x T4 GPU) Azure size in the dedicated AI Infrastructure Carbon Impact section', () => {
+    const result = makeMockResult({
+      resources: [{
+        input: { resourceId: 'azurerm_linux_virtual_machine.gpu_worker', instanceType: 'Standard_NC64as_T4_v3', region: 'eastus', provider: 'azure' as const },
+        baseline: makeMockBaseline({
+          confidence: 'LOW_ASSUMED_DEFAULT' as const,
+          totalCo2eGramsPerMonth: 1600,
+          embodiedCo2eGramsPerMonth: 0,
+          totalCostUsdPerMonth: 3177.0,
+          unsupportedReason: 'Embodied (Scope 3) carbon for "Standard_NC64as_T4_v3" is not yet modeled — GPU manufacturing footprint differs substantially from the CCF Dell R740 CPU-server baseline used elsewhere in this ledger, and no equivalent public GPU baseline exists yet.',
+        }),
+        recommendation: null,
+      }],
+      totals: makeMockTotals({ currentCo2eGramsPerMonth: 1600, currentCostUsdPerMonth: 3177.0 }),
+    });
+    const md = formatMarkdown(result);
+    assert.ok(!md.includes('Skipped Resource'), 'Azure 4-GPU resource with real Scope 2 data should NOT be in skipped section');
+    assert.ok(md.includes('AI Infrastructure Carbon Impact'), 'Azure 4-GPU resources should surface in the dedicated section');
+    assert.ok(md.includes('GPU: `Standard_NC64as_T4_v3`'), 'Should label it as a GPU resource type, same as the single-GPU NC sizes');
+    assert.ok(md.includes('Embodied carbon gap'), 'Should flag the embodied-carbon gap honestly');
+  });
+
   it('omits the AI Infrastructure Carbon Impact section entirely when no AI/GPU resources are present', () => {
     const result = makeMockResult({
       resources: [{

@@ -550,6 +550,16 @@ describe('calculateBaseline: Azure GPU instances (NCasT4_v3 series)', () => {
     );
     assert.equal(rec, null, 'Recommendations require a confident baseline; GPU embodied-carbon gap should suppress them');
   });
+
+  it('calculates real Scope 2 carbon for Standard_NC64as_T4_v3 (4x T4 GPU), scaling power draw 4x over the single-GPU sizes', () => {
+    const nc16 = calculateBaseline({ resourceId: 'x', instanceType: 'Standard_NC16as_T4_v3', region: 'eastus', provider: 'azure' });
+    const nc64 = calculateBaseline({ resourceId: 'x', instanceType: 'Standard_NC64as_T4_v3', region: 'eastus', provider: 'azure' });
+    assert.ok(nc64.totalCo2eGramsPerMonth > nc16.totalCo2eGramsPerMonth,
+      'NC64as (4 GPUs) should draw more Scope 2 carbon than NC16as (1 GPU)');
+    assert.equal(nc64.embodiedCo2eGramsPerMonth, 0, 'Embodied carbon not yet modeled for GPU hardware');
+    assert.equal(nc64.confidence, 'LOW_ASSUMED_DEFAULT', 'Unmodeled embodied carbon must downgrade confidence');
+    assert.ok(nc64.totalCostUsdPerMonth > 0, 'Real pricing should still be applied');
+  });
 });
 
 describe('calculateBaseline: managed AI services (SageMaker)', () => {

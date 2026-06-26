@@ -1516,6 +1516,17 @@ var factors_default = {
         },
         embodied_co2e_grams_per_month: 0,
         embodied_unmodeled: true
+      },
+      Standard_NC64as_T4_v3: {
+        architecture: "x86_64",
+        vcpus: 64,
+        memory_gb: 440,
+        power_watts: {
+          idle: 33.6,
+          max: 280
+        },
+        embodied_co2e_grams_per_month: 0,
+        embodied_unmodeled: true
       }
     },
     pricing_usd_per_hour: {
@@ -1529,6 +1540,7 @@ var factors_default = {
         Standard_NC4as_T4_v3: 0.526,
         Standard_NC8as_T4_v3: 0.752,
         Standard_NC16as_T4_v3: 1.204,
+        Standard_NC64as_T4_v3: 4.352,
         Standard_D2s_v4: 0.091,
         Standard_D4s_v4: 0.182,
         Standard_D2ps_v5: 0.077,
@@ -3705,7 +3717,8 @@ var RAW_GPU_INSTANCE_TYPES = /* @__PURE__ */ new Set([
   "p5.48xlarge",
   "Standard_NC4as_T4_v3",
   "Standard_NC8as_T4_v3",
-  "Standard_NC16as_T4_v3"
+  "Standard_NC16as_T4_v3",
+  "Standard_NC64as_T4_v3"
 ]);
 function isAiResource(instanceType) {
   return RAW_GPU_INSTANCE_TYPES.has(instanceType) || instanceType.startsWith("managed_ai:") || instanceType.startsWith("gpu_attached:");
