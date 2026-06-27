@@ -1527,6 +1527,28 @@ var factors_default = {
         },
         embodied_co2e_grams_per_month: 0,
         embodied_unmodeled: true
+      },
+      Standard_ND96amsr_A100_v4: {
+        architecture: "x86_64",
+        vcpus: 96,
+        memory_gb: 1900,
+        power_watts: {
+          idle: 384,
+          max: 3200
+        },
+        embodied_co2e_grams_per_month: 0,
+        embodied_unmodeled: true
+      },
+      Standard_ND96isr_H100_v5: {
+        architecture: "x86_64",
+        vcpus: 96,
+        memory_gb: 1900,
+        power_watts: {
+          idle: 672,
+          max: 5600
+        },
+        embodied_co2e_grams_per_month: 0,
+        embodied_unmodeled: true
       }
     },
     pricing_usd_per_hour: {
@@ -1541,6 +1563,8 @@ var factors_default = {
         Standard_NC8as_T4_v3: 0.752,
         Standard_NC16as_T4_v3: 1.204,
         Standard_NC64as_T4_v3: 4.352,
+        Standard_ND96amsr_A100_v4: 32.77,
+        Standard_ND96isr_H100_v5: 98.32,
         Standard_D2s_v4: 0.091,
         Standard_D4s_v4: 0.182,
         Standard_D2ps_v5: 0.077,
@@ -2227,7 +2251,7 @@ var factors_default = {
 // package.json
 var package_default = {
   name: "greenops-cli",
-  version: "0.13.2",
+  version: "0.13.3",
   description: "Carbon footprint linting for Terraform plans: AWS, Azure, and GCP. Analyses infrastructure changes including Kubernetes node groups for Scope 2, Scope 3, and water impact. Posts recommendations directly on GitHub PRs.",
   main: "dist/index.cjs",
   bin: {
@@ -3718,7 +3742,9 @@ var RAW_GPU_INSTANCE_TYPES = /* @__PURE__ */ new Set([
   "Standard_NC4as_T4_v3",
   "Standard_NC8as_T4_v3",
   "Standard_NC16as_T4_v3",
-  "Standard_NC64as_T4_v3"
+  "Standard_NC64as_T4_v3",
+  "Standard_ND96amsr_A100_v4",
+  "Standard_ND96isr_H100_v5"
 ]);
 function isAiResource(instanceType) {
   return RAW_GPU_INSTANCE_TYPES.has(instanceType) || instanceType.startsWith("managed_ai:") || instanceType.startsWith("gpu_attached:");

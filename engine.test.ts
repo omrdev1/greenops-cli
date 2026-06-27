@@ -560,6 +560,24 @@ describe('calculateBaseline: Azure GPU instances (NCasT4_v3 series)', () => {
     assert.equal(nc64.confidence, 'LOW_ASSUMED_DEFAULT', 'Unmodeled embodied carbon must downgrade confidence');
     assert.ok(nc64.totalCostUsdPerMonth > 0, 'Real pricing should still be applied');
   });
+
+  it('calculates real Scope 2 carbon for Standard_ND96amsr_A100_v4 (8x A100 80GB GPU), using real NVIDIA TDP', () => {
+    const a100 = calculateBaseline({ resourceId: 'x', instanceType: 'Standard_ND96amsr_A100_v4', region: 'eastus', provider: 'azure' });
+    assert.ok(a100.totalCo2eGramsPerMonth > 0, 'Scope 2 should be calculated from real GPU TDP');
+    assert.equal(a100.embodiedCo2eGramsPerMonth, 0, 'Embodied carbon not yet modeled for GPU hardware');
+    assert.equal(a100.confidence, 'LOW_ASSUMED_DEFAULT', 'Unmodeled embodied carbon must downgrade confidence');
+    assert.ok(a100.totalCostUsdPerMonth > 0, 'Real pricing should still be applied');
+  });
+
+  it('calculates real Scope 2 carbon for Standard_ND96isr_H100_v5 (8x H100 80GB GPU), drawing more than the A100 ND size', () => {
+    const a100 = calculateBaseline({ resourceId: 'x', instanceType: 'Standard_ND96amsr_A100_v4', region: 'eastus', provider: 'azure' });
+    const h100 = calculateBaseline({ resourceId: 'x', instanceType: 'Standard_ND96isr_H100_v5', region: 'eastus', provider: 'azure' });
+    assert.ok(h100.totalCo2eGramsPerMonth > a100.totalCo2eGramsPerMonth,
+      'H100 (700W/GPU) should draw more Scope 2 carbon than A100 (400W/GPU) at the same 8-GPU count');
+    assert.equal(h100.embodiedCo2eGramsPerMonth, 0, 'Embodied carbon not yet modeled for GPU hardware');
+    assert.equal(h100.confidence, 'LOW_ASSUMED_DEFAULT', 'Unmodeled embodied carbon must downgrade confidence');
+    assert.ok(h100.totalCostUsdPerMonth > 0, 'Real pricing should still be applied');
+  });
 });
 
 describe('calculateBaseline: managed AI services (SageMaker)', () => {

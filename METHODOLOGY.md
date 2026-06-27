@@ -11,7 +11,7 @@ All maths in GreenOps is open, auditable, and reproducible from `factors.json`. 
 | Provider | Regions | Instances | Status |
 |---|---|---|---|
 | AWS | 14 | 50 | Full coverage for listed instance and node group types. 3 GPU instances (`g5.xlarge`, `p4d.24xlarge`, `p5.48xlarge`) Scope 2-only, `us-east-1` only — see [GPU Instances](#gpu-instances-scope-2-only). SageMaker endpoint configs (Scope 2-only, `us-east-1` only) — see [Managed AI Services](#managed-ai-services) |
-| Azure | 17 | 20 | Full coverage for listed instance and node group types. 4 GPU instances (`Standard_NC4as_T4_v3`, `Standard_NC8as_T4_v3`, `Standard_NC16as_T4_v3`, `Standard_NC64as_T4_v3`) Scope 2-only, `eastus` only — see [GPU Instances](#gpu-instances-scope-2-only) |
+| Azure | 17 | 22 | Full coverage for listed instance and node group types. 6 GPU instances (`Standard_NC4as_T4_v3`, `Standard_NC8as_T4_v3`, `Standard_NC16as_T4_v3`, `Standard_NC64as_T4_v3`, `Standard_ND96amsr_A100_v4`, `Standard_ND96isr_H100_v5`) Scope 2-only, `eastus` only — see [GPU Instances](#gpu-instances-scope-2-only) |
 | GCP | 15 | 15 | Full coverage for listed instance and node group types. Vertex AI Workbench (Scope 2-only, T4 GPU only) — see [Managed AI Services](#managed-ai-services) |
 
 Run `greenops-cli --coverage` to see the full instance and region list per provider.
@@ -156,6 +156,8 @@ Scope 2 (operational) carbon, using the GPU's published TDP as the power ceiling
 | `Standard_NC8as_T4_v3` | Azure | 1× NVIDIA T4 | 70W | 70W | NVIDIA T4 datasheet, Microsoft Learn (NCasT4_v3 series) |
 | `Standard_NC16as_T4_v3` | Azure | 1× NVIDIA T4 | 70W | 70W | NVIDIA T4 datasheet, Microsoft Learn (NCasT4_v3 series) |
 | `Standard_NC64as_T4_v3` | Azure | 4× NVIDIA T4 | 70W | 280W | NVIDIA T4 datasheet, Microsoft Learn (NCasT4_v3 series) |
+| `Standard_ND96amsr_A100_v4` | Azure | 8× NVIDIA A100 80GB | 400W | 3,200W | NVIDIA A100 datasheet, Microsoft Learn (NDm_A100_v4 series) |
+| `Standard_ND96isr_H100_v5` | Azure | 8× NVIDIA H100 80GB | 700W | 5,600W | NVIDIA H100 datasheet, Microsoft Learn (ND-H100-v5 series) |
 
 Idle power is modelled at ~12% of TDP, sourced from published idle-draw figures for H100/A100 (NVIDIA forum and vendor reporting indicate idle draw under 100W on a 700W-TDP H100). This is a GPU-specific ratio, deliberately not reused from the ~30% idle/max ratio applied to CPU instances elsewhere in this ledger — GPUs idle proportionally lower than CPUs as a hardware characteristic, and forcing the CPU convention onto GPU entries would overstate idle draw. The same ratio is applied to the Azure T4 entries for consistency, since no Azure-specific idle-draw figure exists separately from the GPU itself (the underlying silicon is identical to GCP Workbench's T4 attachment, already in this ledger).
 
@@ -165,7 +167,7 @@ Idle power is modelled at ~12% of TDP, sourced from published idle-draw figures 
 
 **Pricing and instance coverage is currently scoped to one region per provider: AWS `us-east-1`, Azure `eastus`.** GPU instance availability and pricing vary meaningfully by region and were not uniformly verifiable across all regions already covered for CPU instances; rather than publish a guessed regional spread, only the region with the clearest, most consistently-cited public pricing was added per provider. Other regions will report `unsupported_region` for these instance types until verified and added.
 
-**Azure ND-series (A100/H100-class) and GCP A2/A3/G2 GPU families are not yet in the ledger.** This is a scoping limit, not a technical one — the same `aws_instance`-style extraction-by-resource-type pattern applies equally to `azurerm_linux_virtual_machine` and `google_compute_instance`; closing this gap is a `factors.json` data addition, not new extraction logic.
+**GCP A2/A3/G2 GPU families are not yet in the ledger.** This is a scoping limit, not a technical one — the same `aws_instance`-style extraction-by-resource-type pattern applies equally to `google_compute_instance`; closing this gap is a `factors.json` data addition, not new extraction logic.
 
 ---
 
@@ -330,7 +332,7 @@ These are the maximum-utilisation values. Actual emissions at typical utilisatio
 | Azure | 20 (16 general-purpose + 4 GPU) | Standard_M series, Standard_L series, Standard_ND (A100/H100), Azure ML compute |
 | GCP | 15 + Vertex AI Workbench (T4 only) | n1 series (legacy), m2/m3 memory-optimised, A2/A3 GPU families, Vertex AI prediction endpoints |
 
-GPU instances (AWS `g5.xlarge`/`p4d.24xlarge`/`p5.48xlarge`, Azure `Standard_NC4as_T4_v3`/`Standard_NC8as_T4_v3`/`Standard_NC16as_T4_v3`/`Standard_NC64as_T4_v3`) and managed AI services (AWS SageMaker, GCP Vertex AI Workbench) are in the ledger as of v0.10.0/v0.11.0/v0.13.0, Scope 2 only — see [GPU Instances](#gpu-instances-scope-2-only) and [Managed AI Services](#managed-ai-services) above. Azure ML and GCP Vertex AI prediction endpoints remain unsupported. Kubernetes node groups (EKS, AKS, GKE) resolve to the standard instance entries above; node count multiplies the output, see Kubernetes Node Groups above.
+GPU instances (AWS `g5.xlarge`/`p4d.24xlarge`/`p5.48xlarge`, Azure `Standard_NC4as_T4_v3`/`Standard_NC8as_T4_v3`/`Standard_NC16as_T4_v3`/`Standard_NC64as_T4_v3`/`Standard_ND96amsr_A100_v4`/`Standard_ND96isr_H100_v5`) and managed AI services (AWS SageMaker, GCP Vertex AI Workbench) are in the ledger as of v0.10.0 through v0.13.3, Scope 2 only — see [GPU Instances](#gpu-instances-scope-2-only) and [Managed AI Services](#managed-ai-services) above. Azure ML and GCP Vertex AI prediction endpoints remain unsupported. Kubernetes node groups (EKS, AKS, GKE) resolve to the standard instance entries above; node count multiplies the output, see Kubernetes Node Groups above.
 
 All gaps are tracked as open issues. Coverage PRs are the fastest to merge.
 
@@ -338,7 +340,7 @@ All gaps are tracked as open issues. Coverage PRs are the fastest to merge.
 
 ## Known Limitations
 
-- **Partial GPU and managed AI/ML compute model.** AWS GPU instances (`g5.xlarge`, `p4d.24xlarge`, `p5.48xlarge`), Azure GPU instances (`Standard_NC4as_T4_v3`, `Standard_NC8as_T4_v3`, `Standard_NC16as_T4_v3`, `Standard_NC64as_T4_v3`), AWS SageMaker endpoint configs, and GCP Vertex AI Workbench (NVIDIA T4 only) are modeled, Scope 2 only — see [GPU Instances](#gpu-instances-scope-2-only) and [Managed AI Services](#managed-ai-services) above. Azure ND-series (A100/H100), Azure ML, GCP Vertex AI prediction endpoints (the model-serving compute itself), and GPU embodied (Scope 3) carbon anywhere in the stack remain unmodeled. This is the largest open gap as of this writing.
+- **Partial GPU and managed AI/ML compute model.** AWS GPU instances (`g5.xlarge`, `p4d.24xlarge`, `p5.48xlarge`), Azure GPU instances (`Standard_NC4as_T4_v3`, `Standard_NC8as_T4_v3`, `Standard_NC16as_T4_v3`, `Standard_NC64as_T4_v3`, `Standard_ND96amsr_A100_v4`, `Standard_ND96isr_H100_v5`), AWS SageMaker endpoint configs, and GCP Vertex AI Workbench (NVIDIA T4 only) are modeled, Scope 2 only — see [GPU Instances](#gpu-instances-scope-2-only) and [Managed AI Services](#managed-ai-services) above. Azure ML, GCP Vertex AI prediction endpoints (the model-serving compute itself), and GPU embodied (Scope 3) carbon anywhere in the stack remain unmodeled. This is the largest open gap as of this writing.
 - **Scope 2 only for region recommendations.** Embodied carbon does not change when shifting regions, so it is correctly excluded from the region-shift scoring.
 - **Annual average grid intensity.** Real-time marginal emissions are not used. Annual averages are more stable and reproducible, consistent with CCF methodology.
 - **WUE at data centre level.** Water figures cover direct data centre cooling withdrawal only.

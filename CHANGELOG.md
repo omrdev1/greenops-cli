@@ -2,6 +2,11 @@
 
 All notable changes to this project are documented here. Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [0.13.3] - 2026-06-27
+
+### Added
+- Azure ND-series GPU coverage: `Standard_ND96amsr_A100_v4` (8x NVIDIA A100 80GB) and `Standard_ND96isr_H100_v5` (8x NVIDIA H100 80GB), `eastus` only, Scope 2 only. Closes the Azure ND-series gap noted in earlier releases.
+
 ## [0.13.2] - 2026-06-27
 
 ### Fixed

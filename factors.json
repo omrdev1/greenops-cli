@@ -1520,6 +1520,28 @@
         },
         "embodied_co2e_grams_per_month": 0,
         "embodied_unmodeled": true
+      },
+      "Standard_ND96amsr_A100_v4": {
+        "architecture": "x86_64",
+        "vcpus": 96,
+        "memory_gb": 1900,
+        "power_watts": {
+          "idle": 384.0,
+          "max": 3200.0
+        },
+        "embodied_co2e_grams_per_month": 0,
+        "embodied_unmodeled": true
+      },
+      "Standard_ND96isr_H100_v5": {
+        "architecture": "x86_64",
+        "vcpus": 96,
+        "memory_gb": 1900,
+        "power_watts": {
+          "idle": 672.0,
+          "max": 5600.0
+        },
+        "embodied_co2e_grams_per_month": 0,
+        "embodied_unmodeled": true
       }
     },
     "pricing_usd_per_hour": {
@@ -1534,6 +1556,8 @@
         "Standard_NC8as_T4_v3": 0.752,
         "Standard_NC16as_T4_v3": 1.204,
         "Standard_NC64as_T4_v3": 4.352,
+        "Standard_ND96amsr_A100_v4": 32.77,
+        "Standard_ND96isr_H100_v5": 98.32,
         "Standard_D2s_v4": 0.091,
         "Standard_D4s_v4": 0.182,
         "Standard_D2ps_v5": 0.077,

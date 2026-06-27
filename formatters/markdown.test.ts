@@ -345,6 +345,28 @@ describe('formatMarkdown', () => {
     assert.ok(md.includes('Embodied carbon gap'), 'Should flag the embodied-carbon gap honestly');
   });
 
+  it('shows the Standard_ND96isr_H100_v5 (8x H100 GPU) Azure ND-series size in the dedicated AI Infrastructure Carbon Impact section', () => {
+    const result = makeMockResult({
+      resources: [{
+        input: { resourceId: 'azurerm_linux_virtual_machine.hpc_worker', instanceType: 'Standard_ND96isr_H100_v5', region: 'eastus', provider: 'azure' as const },
+        baseline: makeMockBaseline({
+          confidence: 'LOW_ASSUMED_DEFAULT' as const,
+          totalCo2eGramsPerMonth: 19649,
+          embodiedCo2eGramsPerMonth: 0,
+          totalCostUsdPerMonth: 71773.6,
+          unsupportedReason: 'Embodied (Scope 3) carbon for "Standard_ND96isr_H100_v5" is not yet modeled — GPU manufacturing footprint differs substantially from the CCF Dell R740 CPU-server baseline used elsewhere in this ledger, and no equivalent public GPU baseline exists yet.',
+        }),
+        recommendation: null,
+      }],
+      totals: makeMockTotals({ currentCo2eGramsPerMonth: 19649, currentCostUsdPerMonth: 71773.6 }),
+    });
+    const md = formatMarkdown(result);
+    assert.ok(!md.includes('Skipped Resource'), 'Azure ND-series 8-GPU resource with real Scope 2 data should NOT be in skipped section');
+    assert.ok(md.includes('AI Infrastructure Carbon Impact'), 'Azure ND-series resources should surface in the dedicated section');
+    assert.ok(md.includes('GPU: `Standard_ND96isr_H100_v5`'), 'Should label it as a GPU resource type, same as the NC sizes');
+    assert.ok(md.includes('Embodied carbon gap'), 'Should flag the embodied-carbon gap honestly');
+  });
+
   it('omits the AI Infrastructure Carbon Impact section entirely when no AI/GPU resources are present', () => {
     const result = makeMockResult({
       resources: [{

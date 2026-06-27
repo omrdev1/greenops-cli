@@ -14,6 +14,7 @@ function formatWater(litres: number): string {
 const RAW_GPU_INSTANCE_TYPES = new Set([
   'g5.xlarge', 'p4d.24xlarge', 'p5.48xlarge',
   'Standard_NC4as_T4_v3', 'Standard_NC8as_T4_v3', 'Standard_NC16as_T4_v3', 'Standard_NC64as_T4_v3',
+  'Standard_ND96amsr_A100_v4', 'Standard_ND96isr_H100_v5',
 ]);
 
 /**
