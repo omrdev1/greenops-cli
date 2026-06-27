@@ -146,7 +146,7 @@ export function formatMarkdown(result: PlanAnalysisResult, options: FormatterOpt
       out += `> Managed AI service estimates (e.g. SageMaker) assume the endpoint runs continuously at the ledger's default utilization — real invocation/runtime patterns aren't visible in a Terraform plan. Pricing reflects the managed-service rate, not the underlying instance's raw compute price.\n\n`;
     }
 
-    out += `> Putting this in front of you here, before these resources are provisioned, is the point: no other carbon-tooling vendor surfaces AI infrastructure cost at PR time. See the [Methodology](${METHODOLOGY_URL}) for full coverage and limitations.\n\n`;
+    out += `> Putting this in front of you here, before these resources are provisioned, is the point: AI/GPU infrastructure carbon is rarely surfaced this early in the workflow. See the [Methodology](${METHODOLOGY_URL}) for full coverage and limitations.\n\n`;
   }
 
   const totalSkipped = result.skipped.length + unsupportedResources.length;

@@ -2,6 +2,11 @@
 
 All notable changes to this project are documented here. Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [0.13.2] - 2026-06-27
+
+### Fixed
+- Removed an inaccurate competitive claim from the AI Infrastructure Carbon Impact PR-comment section ("no other carbon-tooling vendor surfaces AI infrastructure cost at PR time"). Other tools in this space have since shipped comparable PR-level carbon visibility; the comment now describes the feature without an exclusivity claim.
+
 ## [0.13.1] - 2026-06-26
 
 ### Added

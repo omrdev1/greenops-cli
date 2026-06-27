@@ -2227,7 +2227,7 @@ var factors_default = {
 // package.json
 var package_default = {
   name: "greenops-cli",
-  version: "0.13.1",
+  version: "0.13.2",
   description: "Carbon footprint linting for Terraform plans: AWS, Azure, and GCP. Analyses infrastructure changes including Kubernetes node groups for Scope 2, Scope 3, and water impact. Posts recommendations directly on GitHub PRs.",
   main: "dist/index.cjs",
   bin: {
@@ -3842,7 +3842,7 @@ function formatMarkdown(result2, options = {}) {
 
 `;
     }
-    out += `> Putting this in front of you here, before these resources are provisioned, is the point: no other carbon-tooling vendor surfaces AI infrastructure cost at PR time. See the [Methodology](${METHODOLOGY_URL}) for full coverage and limitations.
+    out += `> Putting this in front of you here, before these resources are provisioned, is the point: AI/GPU infrastructure carbon is rarely surfaced this early in the workflow. See the [Methodology](${METHODOLOGY_URL}) for full coverage and limitations.
 
 `;
   }
