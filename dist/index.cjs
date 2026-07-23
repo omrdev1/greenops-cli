@@ -2345,66 +2345,87 @@ var COMPUTE_RELEVANT_TYPES = [
   "google_container_cluster"
 ];
 function detectProvider(resourceType) {
-  if (resourceType.startsWith("aws_")) return "aws";
-  if (resourceType.startsWith("azurerm_")) return "azure";
-  if (resourceType.startsWith("google_")) return "gcp";
+  if (resourceType.startsWith("aws_"))
+    return "aws";
+  if (resourceType.startsWith("azurerm_"))
+    return "azure";
+  if (resourceType.startsWith("google_"))
+    return "gcp";
   return null;
 }
 function extractProviderRegions(plan) {
   const result2 = { aws: null, azure: null, gcp: null };
   const providerConfig = plan.configuration?.provider_config;
-  if (!providerConfig) return result2;
+  if (!providerConfig)
+    return result2;
   for (const [key, provider] of Object.entries(providerConfig)) {
     if (key === "aws" || key.startsWith("aws.")) {
       const alias = provider.expressions?.alias?.constant_value;
-      if (alias && key !== "aws") continue;
+      if (alias && key !== "aws")
+        continue;
       const region = provider.expressions?.region?.constant_value;
-      if (region && !result2.aws) result2.aws = region;
+      if (region && !result2.aws)
+        result2.aws = region;
     }
     if (key === "azurerm" || key.startsWith("azurerm.")) {
       const location = provider.expressions?.location?.constant_value;
-      if (location && !result2.azure) result2.azure = location;
+      if (location && !result2.azure)
+        result2.azure = location;
     }
     if (key === "google" || key.startsWith("google.")) {
       const region = provider.expressions?.region?.constant_value;
-      if (region && !result2.gcp) result2.gcp = region;
+      if (region && !result2.gcp)
+        result2.gcp = region;
     }
   }
   return result2;
 }
 function isKnownAfterApply(change, fieldPath) {
-  if (!change) return true;
-  if (change.after_unknown?.[fieldPath] === true) return true;
-  if (change.after?.[fieldPath] === null || change.after?.[fieldPath] === void 0) return true;
+  if (!change)
+    return true;
+  if (change.after_unknown?.[fieldPath] === true)
+    return true;
+  if (change.after?.[fieldPath] === null || change.after?.[fieldPath] === void 0)
+    return true;
   return false;
 }
 function resolveAwsRegion(change, providerRegion) {
   if (change?.after?.arn && typeof change.after.arn === "string") {
     const parts = change.after.arn.split(":");
-    if (parts.length >= 4 && parts[3]) return parts[3];
+    if (parts.length >= 4 && parts[3])
+      return parts[3];
   }
   if (change?.after?.availability_zone && typeof change.after.availability_zone === "string") {
     const azMatch = change.after.availability_zone.match(/^([a-z]{2}-[a-z]+-\d+)/);
-    if (azMatch) return azMatch[1];
+    if (azMatch)
+      return azMatch[1];
   }
-  if (change?.after?.region && typeof change.after.region === "string") return change.after.region;
-  if (change?.before?.region && typeof change.before.region === "string") return change.before.region;
-  if (providerRegion) return providerRegion;
+  if (change?.after?.region && typeof change.after.region === "string")
+    return change.after.region;
+  if (change?.before?.region && typeof change.before.region === "string")
+    return change.before.region;
+  if (providerRegion)
+    return providerRegion;
   return null;
 }
 function resolveAzureRegion(change, providerRegion) {
   const raw = change?.after?.location ?? change?.before?.location ?? providerRegion;
-  if (!raw || typeof raw !== "string") return null;
+  if (!raw || typeof raw !== "string")
+    return null;
   return raw.toLowerCase().replace(/\s+/g, "");
 }
 function resolveGcpRegion(change, providerRegion) {
-  if (change?.after?.region && typeof change.after.region === "string") return change.after.region;
+  if (change?.after?.region && typeof change.after.region === "string")
+    return change.after.region;
   if (change?.after?.zone && typeof change.after.zone === "string") {
     const zoneMatch = change.after.zone.match(/^([a-z]+-[a-z]+\d+)/);
-    if (zoneMatch) return zoneMatch[1];
+    if (zoneMatch)
+      return zoneMatch[1];
   }
-  if (change?.before?.region && typeof change.before.region === "string") return change.before.region;
-  if (providerRegion) return providerRegion;
+  if (change?.before?.region && typeof change.before.region === "string")
+    return change.before.region;
+  if (providerRegion)
+    return providerRegion;
   return null;
 }
 function extractAwsInstanceType(res, plannedValuesMap) {
@@ -2412,26 +2433,32 @@ function extractAwsInstanceType(res, plannedValuesMap) {
   const typeField = isDb ? "instance_class" : "instance_type";
   if (isKnownAfterApply(res.change, typeField)) {
     const plannedType = plannedValuesMap.get(res.address)?.[typeField];
-    if (typeof plannedType !== "string") return { instanceType: null, skipReason: "known_after_apply" };
-    if (!res.change.after) res.change.after = {};
+    if (typeof plannedType !== "string")
+      return { instanceType: null, skipReason: "known_after_apply" };
+    if (!res.change.after)
+      res.change.after = {};
     res.change.after[typeField] = plannedType;
   }
   let instanceType = res.change?.after?.[typeField];
-  if (typeof instanceType !== "string") return { instanceType: null, skipReason: "known_after_apply" };
+  if (typeof instanceType !== "string")
+    return { instanceType: null, skipReason: "known_after_apply" };
   if (isDb && instanceType.startsWith("db.")) {
     instanceType = instanceType.replace(/^db\./, "");
-    if (!instanceType.includes(".")) return { instanceType: null, skipReason: "unsupported_instance" };
+    if (!instanceType.includes("."))
+      return { instanceType: null, skipReason: "unsupported_instance" };
   }
   return { instanceType };
 }
 function extractAzureInstanceType(res) {
   const size = res.change?.after?.size ?? res.change?.before?.size;
-  if (!size || typeof size !== "string") return { instanceType: null, skipReason: "known_after_apply" };
+  if (!size || typeof size !== "string")
+    return { instanceType: null, skipReason: "known_after_apply" };
   return { instanceType: size };
 }
 function extractGcpInstanceType(res) {
   const machineType = res.change?.after?.machine_type ?? res.change?.before?.machine_type;
-  if (!machineType || typeof machineType !== "string") return { instanceType: null, skipReason: "known_after_apply" };
+  if (!machineType || typeof machineType !== "string")
+    return { instanceType: null, skipReason: "known_after_apply" };
   return { instanceType: machineType };
 }
 function extractNodeGroupInput(res, provider) {
@@ -2445,7 +2472,8 @@ function extractNodeGroupInput(res, provider) {
     const desiredSize = scaling?.desired_size;
     const minSize = scaling?.min_size;
     const nodeCount2 = typeof minSize === "number" ? minSize : typeof desiredSize === "number" ? desiredSize : 1;
-    if (!instanceType2) return { instanceType: null, nodeCount: nodeCount2, skipReason: "known_after_apply" };
+    if (!instanceType2)
+      return { instanceType: null, nodeCount: nodeCount2, skipReason: "known_after_apply" };
     return { instanceType: instanceType2, nodeCount: nodeCount2 };
   }
   if (provider === "azure") {
@@ -2456,7 +2484,8 @@ function extractNodeGroupInput(res, provider) {
     const nodeCountField = pool?.node_count ?? after.node_count ?? before.node_count;
     const minCountField = pool?.min_count ?? after.min_count ?? before.min_count;
     const nodeCount2 = typeof minCountField === "number" ? minCountField : typeof nodeCountField === "number" ? nodeCountField : 1;
-    if (!instanceType2) return { instanceType: null, nodeCount: nodeCount2, skipReason: "known_after_apply" };
+    if (!instanceType2)
+      return { instanceType: null, nodeCount: nodeCount2, skipReason: "known_after_apply" };
     return { instanceType: instanceType2, nodeCount: nodeCount2 };
   }
   const nodeConfig = after.node_config ?? before.node_config;
@@ -2468,7 +2497,8 @@ function extractNodeGroupInput(res, provider) {
   const autoscalingConfig = Array.isArray(autoscaling) ? autoscaling[0] : void 0;
   const minNodeCount = autoscalingConfig?.min_node_count;
   const nodeCount = typeof minNodeCount === "number" ? minNodeCount : typeof initialNodeCount === "number" ? initialNodeCount : 1;
-  if (!instanceType) return { instanceType: null, nodeCount, skipReason: "known_after_apply" };
+  if (!instanceType)
+    return { instanceType: null, nodeCount, skipReason: "known_after_apply" };
   return { instanceType, nodeCount };
 }
 function stripSageMakerPrefix(mlInstanceType) {
@@ -2481,13 +2511,15 @@ function extractManagedAiInput(res, provider) {
     const variants = after.production_variants ?? before.production_variants;
     const variant = Array.isArray(variants) ? variants[0] : void 0;
     const rawType = variant?.instance_type;
-    if (typeof rawType !== "string") return { instanceType: null, skipReason: "known_after_apply" };
+    if (typeof rawType !== "string")
+      return { instanceType: null, skipReason: "known_after_apply" };
     return { instanceType: `managed_ai:sagemaker:${stripSageMakerPrefix(rawType)}` };
   }
   const gceSetup = after.gce_setup ?? before.gce_setup;
   const setup = Array.isArray(gceSetup) ? gceSetup[0] : void 0;
   const machineType = setup?.machine_type;
-  if (typeof machineType !== "string") return { instanceType: null, skipReason: "known_after_apply" };
+  if (typeof machineType !== "string")
+    return { instanceType: null, skipReason: "known_after_apply" };
   const accelerators = setup?.accelerator_configs;
   const accelerator = Array.isArray(accelerators) ? accelerators[0] : void 0;
   const acceleratorType = accelerator?.type;
@@ -2510,7 +2542,8 @@ function extractServerlessInput(res, provider, providerRegions, plannedValuesMap
   let region = null;
   if (provider === "aws") {
     const raw = after.memory_size ?? plannedValues.memory_size;
-    if (typeof raw === "number") memoryMb = raw;
+    if (typeof raw === "number")
+      memoryMb = raw;
     region = resolveAwsRegion(res.change, providerRegions.aws);
   } else if (provider === "azure") {
     memoryMb = 256;
@@ -2531,7 +2564,8 @@ function extractServerlessInput(res, provider, providerRegions, plannedValuesMap
     }
     region = resolveGcpRegion(res.change, providerRegions.gcp);
   }
-  if (!region) return { resourceInput: null, skipReason: "known_after_apply" };
+  if (!region)
+    return { resourceInput: null, skipReason: "known_after_apply" };
   const instanceType = `serverless:${memoryMb}mb:${invocationsPerMonth}inv:${avgDurationMs}ms`;
   return {
     resourceInput: {
@@ -2567,7 +2601,8 @@ function extractResourceInputs(planFilePath) {
   const providerRegions = extractProviderRegions(typedPlan);
   const plannedValuesMap = /* @__PURE__ */ new Map();
   for (const r of typedPlan.planned_values?.root_module?.resources ?? []) {
-    if (r.address && r.values) plannedValuesMap.set(r.address, r.values);
+    if (r.address && r.values)
+      plannedValuesMap.set(r.address, r.values);
   }
   const allSupportedTypes = Object.values(SUPPORTED_TYPES).flat();
   const allServerlessTypes = Object.values(SUPPORTED_SERVERLESS_TYPES).flat();
@@ -2581,7 +2616,8 @@ function extractResourceInputs(planFilePath) {
     }
     const provider = detectProvider(res.type);
     if (allServerlessTypes.includes(res.type)) {
-      if (!provider) continue;
+      if (!provider)
+        continue;
       const { resourceInput, skipReason: skipReason2 } = extractServerlessInput(
         res,
         provider,
@@ -2596,7 +2632,8 @@ function extractResourceInputs(planFilePath) {
       continue;
     }
     if (allNodeGroupTypes.includes(res.type)) {
-      if (!provider) continue;
+      if (!provider)
+        continue;
       const { instanceType: instanceType2, nodeCount, skipReason: skipReason2 } = extractNodeGroupInput(res, provider);
       if (!instanceType2) {
         result2.skipped.push({ resourceId: res.address, reason: skipReason2 ?? "known_after_apply" });
@@ -2611,7 +2648,8 @@ function extractResourceInputs(planFilePath) {
       continue;
     }
     if (allManagedAiTypes.includes(res.type)) {
-      if (!provider) continue;
+      if (!provider)
+        continue;
       const { instanceType: instanceType2, skipReason: skipReason2 } = extractManagedAiInput(res, provider);
       if (!instanceType2) {
         result2.skipped.push({ resourceId: res.address, reason: skipReason2 ?? "known_after_apply" });
@@ -2631,7 +2669,8 @@ function extractResourceInputs(planFilePath) {
       }
       continue;
     }
-    if (!provider) continue;
+    if (!provider)
+      continue;
     let instanceType = null;
     let skipReason;
     let region = null;
@@ -2639,17 +2678,20 @@ function extractResourceInputs(planFilePath) {
       const extracted2 = extractAwsInstanceType(res, plannedValuesMap);
       instanceType = extracted2.instanceType;
       skipReason = extracted2.skipReason;
-      if (instanceType) region = resolveAwsRegion(res.change, providerRegions.aws);
+      if (instanceType)
+        region = resolveAwsRegion(res.change, providerRegions.aws);
     } else if (provider === "azure") {
       const extracted2 = extractAzureInstanceType(res);
       instanceType = extracted2.instanceType;
       skipReason = extracted2.skipReason;
-      if (instanceType) region = resolveAzureRegion(res.change, providerRegions.azure);
+      if (instanceType)
+        region = resolveAzureRegion(res.change, providerRegions.azure);
     } else if (provider === "gcp") {
       const extracted2 = extractGcpInstanceType(res);
       instanceType = extracted2.instanceType;
       skipReason = extracted2.skipReason;
-      if (instanceType) region = resolveGcpRegion(res.change, providerRegions.gcp);
+      if (instanceType)
+        region = resolveGcpRegion(res.change, providerRegions.gcp);
     }
     if (!instanceType || skipReason) {
       result2.skipped.push({ resourceId: res.address, reason: skipReason ?? "known_after_apply" });
@@ -2720,28 +2762,35 @@ function getArmAlternative(instanceType, provider, ledger) {
     return candidate2 && providerLedger.instances[candidate2] ? candidate2 : null;
   }
   const [family, size] = instanceType.split(".");
-  if (!family || !size) return null;
+  if (!family || !size)
+    return null;
   const armFamily = map[family];
-  if (!armFamily) return null;
+  if (!armFamily)
+    return null;
   const candidate = `${armFamily}.${size}`;
   return providerLedger.instances[candidate] ? candidate : null;
 }
 function getCleanerRegion(currentRegion, instanceType, provider, ledger) {
   const providerLedger = ledger[provider];
   const regions = Object.entries(providerLedger.regions).filter(([regionId]) => {
-    if (regionId === currentRegion) return false;
+    if (regionId === currentRegion)
+      return false;
     return !!providerLedger.pricing_usd_per_hour[regionId]?.[instanceType];
   }).sort(([, a], [, b]) => a.grid_intensity_gco2e_per_kwh - b.grid_intensity_gco2e_per_kwh);
-  if (regions.length === 0) return null;
+  if (regions.length === 0)
+    return null;
   const [cleanestRegionId, cleanestRegion] = regions[0];
   const currentIntensity = providerLedger.regions[currentRegion]?.grid_intensity_gco2e_per_kwh ?? Infinity;
-  if (cleanestRegion.grid_intensity_gco2e_per_kwh >= currentIntensity * 0.9) return null;
+  if (cleanestRegion.grid_intensity_gco2e_per_kwh >= currentIntensity * 0.9)
+    return null;
   return cleanestRegionId;
 }
 function parseServerlessInstanceType(instanceType) {
-  if (!instanceType.startsWith("serverless:")) return null;
+  if (!instanceType.startsWith("serverless:"))
+    return null;
   const match = instanceType.match(/^serverless:(\d+)mb:(\d+)inv:(\d+)ms$/);
-  if (!match) return null;
+  if (!match)
+    return null;
   return {
     memoryMb: parseInt(match[1], 10),
     invocationsPerMonth: parseInt(match[2], 10),
@@ -2786,9 +2835,11 @@ function calculateServerlessBaseline(input, params, regionData) {
   };
 }
 function parseManagedAiInstanceType(instanceType) {
-  if (!instanceType.startsWith("managed_ai:")) return null;
+  if (!instanceType.startsWith("managed_ai:"))
+    return null;
   const match = instanceType.match(/^managed_ai:([a-z_]+):(.+)$/);
-  if (!match) return null;
+  if (!match)
+    return null;
   return { service: match[1], baseInstanceType: match[2] };
 }
 function calculateManagedAiBaseline(input, params, providerLedger, regionData, utilization, hours, provider, ledgerVersion) {
@@ -2878,9 +2929,11 @@ function calculateManagedAiBaseline(input, params, providerLedger, regionData, u
   };
 }
 function parseGpuAttachedInstanceType(instanceType) {
-  if (!instanceType.startsWith("gpu_attached:")) return null;
+  if (!instanceType.startsWith("gpu_attached:"))
+    return null;
   const match = instanceType.match(/^gpu_attached:(.+):(\d+(?:\.\d+)?):(\d+)$/);
-  if (!match) return null;
+  if (!match)
+    return null;
   return {
     baseMachineType: match[1],
     acceleratorWatts: parseFloat(match[2]),
@@ -3061,7 +3114,8 @@ function calculateBaseline(input, ledger = factors_default) {
   };
 }
 function generateRecommendation(input, baseline, ledger = factors_default) {
-  if (baseline.confidence === "LOW_ASSUMED_DEFAULT") return null;
+  if (baseline.confidence === "LOW_ASSUMED_DEFAULT")
+    return null;
   const provider = input.provider ?? "aws";
   const providerLedger = ledger[provider];
   const candidates = [];
@@ -3104,7 +3158,8 @@ function generateRecommendation(input, baseline, ledger = factors_default) {
       }
     }
   }
-  if (candidates.length === 0) return null;
+  if (candidates.length === 0)
+    return null;
   const scored = candidates.map((rec) => {
     const co2Pct = baseline.totalCo2eGramsPerMonth > 0 ? Math.abs(rec.co2eDeltaGramsPerMonth) / baseline.totalCo2eGramsPerMonth : 0;
     const costPct = baseline.totalCostUsdPerMonth > 0 ? Math.abs(rec.costDeltaUsdPerMonth) / baseline.totalCostUsdPerMonth : 0;
@@ -3165,7 +3220,8 @@ function parseMinimalYaml(content) {
   let currentObj = {};
   for (const rawLine of lines) {
     const line = rawLine.replace(/#.*$/, "").trimEnd();
-    if (!line.trim()) continue;
+    if (!line.trim())
+      continue;
     const indent = line.match(/^(\s*)/)?.[1]?.length ?? 0;
     const trimmed = line.trim();
     if (indent === 0) {
@@ -3173,7 +3229,8 @@ function parseMinimalYaml(content) {
         result2[currentSection] = { ...currentObj };
       }
       const colonIdx = trimmed.indexOf(":");
-      if (colonIdx === -1) continue;
+      if (colonIdx === -1)
+        continue;
       const key = trimmed.slice(0, colonIdx).trim();
       const val = trimmed.slice(colonIdx + 1).trim();
       if (val === "" || val === null) {
@@ -3184,9 +3241,11 @@ function parseMinimalYaml(content) {
         result2[key] = parseScalar(val);
       }
     } else {
-      if (!currentSection) continue;
+      if (!currentSection)
+        continue;
       const colonIdx = trimmed.indexOf(":");
-      if (colonIdx === -1) continue;
+      if (colonIdx === -1)
+        continue;
       const key = trimmed.slice(0, colonIdx).trim();
       const val = trimmed.slice(colonIdx + 1).trim();
       if (val !== "") {
@@ -3200,11 +3259,15 @@ function parseMinimalYaml(content) {
   return result2;
 }
 function parseScalar(val) {
-  if (val === "true") return true;
-  if (val === "false") return false;
-  if (val === "null" || val === "~") return null;
+  if (val === "true")
+    return true;
+  if (val === "false")
+    return false;
+  if (val === "null" || val === "~")
+    return null;
   const num = Number(val);
-  if (!isNaN(num) && val !== "") return num;
+  if (!isNaN(num) && val !== "")
+    return num;
   if (val.startsWith('"') && val.endsWith('"') || val.startsWith("'") && val.endsWith("'")) {
     return val.slice(1, -1);
   }
@@ -3212,7 +3275,8 @@ function parseScalar(val) {
 }
 function loadPolicy(repoRoot = process.cwd()) {
   const policyPath = (0, import_node_path2.resolve)(repoRoot, ".greenops.yml");
-  if (!(0, import_node_fs2.existsSync)(policyPath)) return null;
+  if (!(0, import_node_fs2.existsSync)(policyPath))
+    return null;
   let raw;
   try {
     raw = (0, import_node_fs2.readFileSync)(policyPath, "utf8");
@@ -3341,7 +3405,8 @@ async function githubRequest(method, path, token, body) {
     }
     throw new Error(`GitHub API ${method} ${path} \u2192 ${response.status}: ${text.slice(0, 200)}`);
   }
-  if (response.status === 204) return {};
+  if (response.status === 204)
+    return {};
   return response.json();
 }
 async function getPRFiles(token, repoFullName, pullNumber) {
@@ -3382,7 +3447,8 @@ function buildLineMap(patch) {
       lineNum = parseInt(hunkMatch[1], 10) - 1;
       continue;
     }
-    if (line.startsWith("-")) continue;
+    if (line.startsWith("-"))
+      continue;
     lineNum++;
     const content = line.startsWith("+") ? line.slice(1) : line;
     map.set(content.trim(), lineNum);
@@ -3398,7 +3464,8 @@ function buildAddressFileMap(planFilePath) {
     const raw = readFileSync3(resolvedPath, "utf8");
     const plan = JSON.parse(raw);
     const rootModule = plan?.configuration?.root_module;
-    if (!rootModule) return map;
+    if (!rootModule)
+      return map;
     extractAddressFileEntries(rootModule?.resources ?? [], map);
     for (const [, mod] of Object.entries(rootModule?.module_calls ?? {})) {
       extractModuleResources(mod?.module ?? {}, map, "");
@@ -3412,7 +3479,8 @@ function extractAddressFileEntries(resources, map) {
     const r = res;
     if (r.address && r.pos) {
       const filename = r.pos.filename;
-      if (filename) map.set(r.address, filename);
+      if (filename)
+        map.set(r.address, filename);
     }
   }
 }
@@ -3422,7 +3490,8 @@ function extractModuleResources(mod, map, prefix) {
     if (r.address && r.pos) {
       const filename = r.pos.filename;
       const fullAddress = prefix ? `${prefix}.${r.address}` : r.address;
-      if (filename) map.set(fullAddress, filename);
+      if (filename)
+        map.set(fullAddress, filename);
     }
   }
   for (const [, child] of Object.entries(mod.module_calls ?? {})) {
@@ -3482,14 +3551,17 @@ async function getExistingSuggestionComments(token, repoFullName, pullNumber) {
   return allComments.filter((c) => c.body.includes(GREENOPS_MARKER));
 }
 function resolveAttributeKey(provider, isDb) {
-  if (provider === "azure") return "size";
-  if (provider === "gcp") return "machine_type";
+  if (provider === "azure")
+    return "size";
+  if (provider === "gcp")
+    return "machine_type";
   return isDb ? "instance_class" : "instance_type";
 }
 async function postSuggestions(result2, ctx) {
   const output = { posted: 0, updated: 0, skipped: 0, warnings: [] };
   const resourcesWithRecs = result2.resources.filter((r) => r.recommendation !== null);
-  if (resourcesWithRecs.length === 0) return output;
+  if (resourcesWithRecs.length === 0)
+    return output;
   const addressFileMap = buildAddressFileMap(ctx.planFilePath);
   let prFiles;
   let existingComments;
@@ -3505,7 +3577,8 @@ async function postSuggestions(result2, ctx) {
   const tfFiles = prFiles.filter((f) => f.filename.endsWith(".tf") && f.patch);
   const tfFileMap = new Map(tfFiles.map((f) => [f.filename, f]));
   for (const { input, recommendation } of resourcesWithRecs) {
-    if (!recommendation) continue;
+    if (!recommendation)
+      continue;
     const provider = input.provider;
     const isDb = provider === "aws" && (input.resourceId.includes("aws_db_instance") || input.instanceType.startsWith("db."));
     const attributeKey = resolveAttributeKey(provider, isDb);
@@ -3523,7 +3596,8 @@ async function postSuggestions(result2, ctx) {
     const filesToSearch = knownFile && tfFileMap.has(knownFile) ? [tfFileMap.get(knownFile), ...tfFiles.filter((f) => f.filename !== knownFile)] : tfFiles;
     let matched = false;
     for (const file of filesToSearch) {
-      if (!file.patch) continue;
+      if (!file.patch)
+        continue;
       const lineMap = buildLineMap(file.patch);
       const resourceType = input.resourceId.split(".")[0] ?? "";
       const resourceName = input.resourceId.split(".").slice(1).join(".") ?? "";
@@ -3537,7 +3611,8 @@ async function postSuggestions(result2, ctx) {
         searchPattern,
         lineMap
       );
-      if (!lineNumber) continue;
+      if (!lineNumber)
+        continue;
       const originalLine = `  ${attributeKey} = "${currentValue}"`;
       const body = buildSuggestionBody(
         input.resourceId,
@@ -3604,7 +3679,8 @@ function findAttributeLineAfterHeader(patch, resourceHeaderPattern, attributePat
       lineNum = parseInt(hunkMatch[1], 10) - 1;
       continue;
     }
-    if (!line.startsWith("-")) lineNum++;
+    if (!line.startsWith("-"))
+      lineNum++;
     const content = (line.startsWith("+") ? line.slice(1) : line).trim();
     if (!inTargetBlock) {
       if (content.includes(resourceHeaderPattern)) {
@@ -3641,7 +3717,8 @@ function formatGrams(grams) {
   return `${(grams / 1e3).toFixed(2)}kg`;
 }
 function formatInstanceTypeLabel(instanceType) {
-  if (instanceType.startsWith("serverless:")) return "serverless";
+  if (instanceType.startsWith("serverless:"))
+    return "serverless";
   const managedAiMatch = instanceType.match(/^managed_ai:([a-z_]+):(.+)$/);
   if (managedAiMatch) {
     const [, service, baseType] = managedAiMatch;
@@ -3659,7 +3736,8 @@ function formatInstanceTypeLabel(instanceType) {
 
 // formatters/markdown.ts
 function formatWater(litres) {
-  if (litres >= 1e3) return `${(litres / 1e3).toFixed(2)}m\xB3`;
+  if (litres >= 1e3)
+    return `${(litres / 1e3).toFixed(2)}m\xB3`;
   return `${litres.toFixed(1)}L`;
 }
 var RAW_GPU_INSTANCE_TYPES = /* @__PURE__ */ new Set([
@@ -3677,8 +3755,10 @@ function isAiResource(instanceType) {
   return RAW_GPU_INSTANCE_TYPES.has(instanceType) || instanceType.startsWith("managed_ai:") || instanceType.startsWith("gpu_attached:");
 }
 function aiResourceKind(instanceType) {
-  if (instanceType.startsWith("managed_ai:")) return "SageMaker";
-  if (instanceType.startsWith("gpu_attached:")) return "Vertex AI Workbench";
+  if (instanceType.startsWith("managed_ai:"))
+    return "SageMaker";
+  if (instanceType.startsWith("gpu_attached:"))
+    return "Vertex AI Workbench";
   return "GPU";
 }
 function formatMarkdown(result2, options = {}) {
@@ -3870,11 +3950,13 @@ function formatMarkdown(result2, options = {}) {
 // formatters/table.ts
 function truncate(str, len) {
   const visible = str.replace(/\x1b\[[0-9;]*m/g, "");
-  if (visible.length > len) return visible.substring(0, len - 3) + "...";
+  if (visible.length > len)
+    return visible.substring(0, len - 3) + "...";
   return visible + " ".repeat(len - visible.length);
 }
 function formatWater2(litres) {
-  if (litres >= 1e3) return `${(litres / 1e3).toFixed(1)}m\xB3`;
+  if (litres >= 1e3)
+    return `${(litres / 1e3).toFixed(1)}m\xB3`;
   return `${litres.toFixed(1)}L`;
 }
 function formatTable(result2) {
