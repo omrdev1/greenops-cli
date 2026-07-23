@@ -9,7 +9,7 @@
       "pricing_azure": "azure-public-pricing-api-2026-q1",
       "pricing_gcp": "gcp-public-pricing-api-2026-q1",
       "embodied": "cloud-carbon-footprint-v3-dell-r740-baseline",
-      "water": "aws-sustainability-report-2023-wue",
+      "water": "aws-sustainability-2023-report-fleet-wide-wue-0.18-l-per-kwh",
       "gpu_tdp": "nvidia-aws-public-datasheets-2026-q2",
       "gpu_pricing_aws": "aws-public-pricing-2026-q2",
       "managed_ai_pricing_aws": "aws-sagemaker-public-pricing-2026-q2"
@@ -20,6 +20,11 @@
         "citation": "Cloud Carbon Footprint (CCF) standard assumed average utilization for general-purpose compute where no telemetry is available.",
         "url": "https://www.cloudcarbonfootprint.org/docs/methodology/#utilization"
       }
+    },
+    "pending_verification": {
+      "grid": "No logged query date or exact zone mapping for the ElectricityMaps 2024 average. Re-investigated for issue #24: us-east-1's 384.5 figure is suspiciously close to Ember's 2024 US NATIONAL average (384 gCO2e/kWh), not a PJM-specific figure, which is a plausible root cause (PJM is coal/gas-heavier than the US average, so a real PJM figure should read higher, consistent with both the issue reporter's cited 403 and EPA eGRID2023's ~535 for the PJM/RFC region). Not corrected in this ledger yet because no single figure could be independently verified to high confidence from a live source (ElectricityMaps' real dataset is gated, PJM's own reporting site was unreachable during investigation, and eGRID2023 is a year off from the ledger's stated 2024 basis). Same likely national-vs-regional substitution suspected but not yet confirmed for other regions. Real fix requires a verified ElectricityMaps export or EPA eGRID API pull, not another web-search pass. See issue #24.",
+      "water": "AWS RESOLVED for issue #24 \u2014 the previous per-region AWS table was sourced only generically to the AWS 2023 Sustainability Report, which in fact publishes just one fleet-wide figure (0.18 L/kWh). AWS regions now all use that real, verified figure uniformly; regional granularity was never real for AWS and has been removed rather than implied. Azure and GCP water_intensity_litres_per_kwh values are UNCHANGED and still carry the same unverified-source problem \u2014 not yet re-investigated.",
+      "url": "https://github.com/omrdev1/greenops-cli/issues/24"
     }
   },
   "aws": {
@@ -28,19 +33,19 @@
         "location": "US East (N. Virginia)",
         "grid_intensity_gco2e_per_kwh": 384.5,
         "pue": 1.13,
-        "water_intensity_litres_per_kwh": 0.46
+        "water_intensity_litres_per_kwh": 0.18
       },
       "us-east-2": {
         "location": "US East (Ohio)",
         "grid_intensity_gco2e_per_kwh": 410.0,
         "pue": 1.13,
-        "water_intensity_litres_per_kwh": 0.52
+        "water_intensity_litres_per_kwh": 0.18
       },
       "us-west-1": {
         "location": "US West (N. California)",
         "grid_intensity_gco2e_per_kwh": 220.0,
         "pue": 1.13,
-        "water_intensity_litres_per_kwh": 0.38
+        "water_intensity_litres_per_kwh": 0.18
       },
       "us-west-2": {
         "location": "US West (Oregon)",
@@ -52,61 +57,61 @@
         "location": "Europe (Ireland)",
         "grid_intensity_gco2e_per_kwh": 334.0,
         "pue": 1.13,
-        "water_intensity_litres_per_kwh": 0.22
+        "water_intensity_litres_per_kwh": 0.18
       },
       "eu-west-2": {
         "location": "Europe (London)",
         "grid_intensity_gco2e_per_kwh": 268.0,
         "pue": 1.13,
-        "water_intensity_litres_per_kwh": 0.25
+        "water_intensity_litres_per_kwh": 0.18
       },
       "eu-central-1": {
         "location": "Europe (Frankfurt)",
         "grid_intensity_gco2e_per_kwh": 420.5,
         "pue": 1.13,
-        "water_intensity_litres_per_kwh": 0.28
+        "water_intensity_litres_per_kwh": 0.18
       },
       "eu-north-1": {
         "location": "Europe (Stockholm)",
         "grid_intensity_gco2e_per_kwh": 8.8,
         "pue": 1.13,
-        "water_intensity_litres_per_kwh": 0.1
+        "water_intensity_litres_per_kwh": 0.18
       },
       "ap-southeast-1": {
         "location": "Asia Pacific (Singapore)",
         "grid_intensity_gco2e_per_kwh": 408.0,
         "pue": 1.13,
-        "water_intensity_litres_per_kwh": 0.58
+        "water_intensity_litres_per_kwh": 0.18
       },
       "ap-southeast-2": {
         "location": "Asia Pacific (Sydney)",
         "grid_intensity_gco2e_per_kwh": 650.0,
         "pue": 1.13,
-        "water_intensity_litres_per_kwh": 0.45
+        "water_intensity_litres_per_kwh": 0.18
       },
       "ap-northeast-1": {
         "location": "Asia Pacific (Tokyo)",
         "grid_intensity_gco2e_per_kwh": 506.0,
         "pue": 1.13,
-        "water_intensity_litres_per_kwh": 0.5
+        "water_intensity_litres_per_kwh": 0.18
       },
       "ap-south-1": {
         "location": "Asia Pacific (Mumbai)",
         "grid_intensity_gco2e_per_kwh": 723.0,
         "pue": 1.13,
-        "water_intensity_litres_per_kwh": 0.72
+        "water_intensity_litres_per_kwh": 0.18
       },
       "ca-central-1": {
         "location": "Canada (Central)",
         "grid_intensity_gco2e_per_kwh": 130.0,
         "pue": 1.13,
-        "water_intensity_litres_per_kwh": 0.2
+        "water_intensity_litres_per_kwh": 0.18
       },
       "sa-east-1": {
         "location": "South America (S\u00e3o Paulo)",
         "grid_intensity_gco2e_per_kwh": 74.0,
         "pue": 1.13,
-        "water_intensity_litres_per_kwh": 0.35
+        "water_intensity_litres_per_kwh": 0.18
       }
     },
     "instances": {

@@ -204,47 +204,20 @@ water_litres   = energy_kwh_IT × WUE_litres_per_kwh
 
 WUE is applied to IT load (before PUE multiplication), matching the AWS/Azure/Google definition.
 
-### Regional WUE Values
+> [!note] Corrected ([#24](https://github.com/omrdev1/greenops-cli/issues/24)) — collapsed to a single verified figure, per-region breakdown removed
+> Earlier versions of this ledger listed a distinct WUE per region, cited generically to each provider's sustainability report. A reader correctly pointed out that AWS's own 2023 Sustainability Report publishes exactly one number: a fleet-wide global average, not a per-region breakdown — the earlier per-region table had no traceable source. Rather than keep implying regional granularity that was never real, WUE is now applied as a single uniform figure across all regions for a given provider.
+>
+> **AWS: 0.18 L/kWh** (2023 fleet-wide average, a 5% YoY improvement from 2022's ~0.19 and a 28% improvement from 2021). Source: [AWS Water Stewardship](https://sustainability.aboutamazon.com/natural-resources/water).
+>
+> Azure and GCP regional figures below have the same unresolved-sourcing problem and have not yet been re-verified against a real single fleet-wide figure for those providers — treat them as carried over from the prior table, not yet corrected.
 
-#### AWS regions
+### WUE Values
 
-| Region | Location | WUE (L/kWh) |
+| Provider | WUE (L/kWh) | Basis |
 |---|---|---|
-| us-east-1 | N. Virginia | 0.46 |
-| us-east-2 | Ohio | 0.52 |
-| us-west-1 | N. California | 0.38 |
-| us-west-2 | Oregon | 0.18 |
-| eu-west-1 | Ireland | 0.22 |
-| eu-west-2 | London | 0.25 |
-| eu-central-1 | Frankfurt | 0.28 |
-| eu-north-1 | Stockholm | **0.10** |
-| ap-southeast-1 | Singapore | 0.58 |
-| ap-southeast-2 | Sydney | 0.45 |
-| ap-northeast-1 | Tokyo | 0.50 |
-| ap-south-1 | Mumbai | 0.72 |
-| ca-central-1 | Canada | 0.20 |
-| sa-east-1 | São Paulo | 0.35 |
-
-#### Azure regions
-
-| Region | Location | WUE (L/kWh) |
-|---|---|---|
-| swedencentral | Sweden Central | **0.10** |
-| westus2 | West US 2 | 0.18 |
-| northeurope | Ireland | 0.22 |
-| canadacentral | Canada Central | 0.20 |
-| westeurope | Netherlands | 0.20 |
-| uksouth | London | 0.25 |
-
-#### GCP regions
-
-| Region | Location | WUE (L/kWh) |
-|---|---|---|
-| europe-north1 | Finland | **0.12** |
-| northamerica-northeast1 | Montreal | 0.20 |
-| us-west1 | Oregon | 0.18 |
-
-Source: AWS 2023 Sustainability Report, Microsoft 2023 Environmental Sustainability Report, Google 2023 Environmental Report.
+| AWS | 0.18 | Verified: single fleet-wide 2023 figure, applied uniformly to all regions |
+| Azure | *carried over, unverified* | Not yet re-sourced — see note above |
+| GCP | *carried over, unverified* | Not yet re-sourced — see note above |
 
 ---
 
@@ -342,8 +315,8 @@ All gaps are tracked as open issues. Coverage PRs are the fastest to merge.
 
 - **Partial GPU and managed AI/ML compute model.** AWS GPU instances (`g5.xlarge`, `p4d.24xlarge`, `p5.48xlarge`), Azure GPU instances (`Standard_NC4as_T4_v3`, `Standard_NC8as_T4_v3`, `Standard_NC16as_T4_v3`, `Standard_NC64as_T4_v3`, `Standard_ND96amsr_A100_v4`, `Standard_ND96isr_H100_v5`), AWS SageMaker endpoint configs, and GCP Vertex AI Workbench (NVIDIA T4 only) are modeled, Scope 2 only — see [GPU Instances](#gpu-instances-scope-2-only) and [Managed AI Services](#managed-ai-services) above. Azure ML, GCP Vertex AI prediction endpoints (the model-serving compute itself), and GPU embodied (Scope 3) carbon anywhere in the stack remain unmodeled. This is the largest open gap as of this writing.
 - **Scope 2 only for region recommendations.** Embodied carbon does not change when shifting regions, so it is correctly excluded from the region-shift scoring.
-- **Annual average grid intensity.** Real-time marginal emissions are not used. Annual averages are more stable and reproducible, consistent with CCF methodology.
-- **WUE at data centre level.** Water figures cover direct data centre cooling withdrawal only.
+- **Annual average grid intensity.** Real-time marginal emissions are not used. Annual averages are more stable and reproducible, consistent with CCF methodology. **Source under active re-verification** ([#24](https://github.com/omrdev1/greenops-cli/issues/24)): `factors.json` records the source as "electricity-maps-2024-avg" with no logged query date or exact zone mapping. A real discrepancy was confirmed for `us-east-1`: the ledger's 384.5 figure is suspiciously close to the 2024 US *national* average (384, per Ember), not a PJM-specific figure — the likely root cause is a national-average value being substituted for a regional grid-zone value somewhere upstream. Not yet corrected in the ledger, since no single PJM figure could be verified to high confidence from a reachable, current-year source (candidates ranged from 403 to ~535 depending on source and year). Treat all current grid intensity values as indicative, not audited, until re-derived from a live ElectricityMaps export or EPA eGRID pull.
+- **WUE at data centre level.** Water figures cover direct data centre cooling withdrawal only. **AWS figure corrected and verified** ([#24](https://github.com/omrdev1/greenops-cli/issues/24)): AWS's per-region WUE table had no traceable source (the cited AWS 2023 Sustainability Report publishes only one fleet-wide figure) and has been replaced with that real figure (0.18 L/kWh), applied uniformly — see the Water Consumption section above. **Azure and GCP WUE values are still the original, unverified per-region figures** and have not yet been re-sourced.
 - **Azure and GCP coverage is smaller than AWS.** AWS has 50 instance types (47 general-purpose + 3 GPU); Azure has 19 (16 general-purpose + 3 GPU); GCP has 15 plus Vertex AI Workbench. Enterprise-scale instance families (M-series, X-series, A2 High Memory) are not yet in the ledger.
 - **Provider alias regions.** Multi-aliased provider configs may not resolve correctly. Standard single-provider configs are fully supported.
 - **Node group autoscaling is reported at minimum size.** EKS, AKS, and GKE node groups with autoscaling enabled report the minimum configured node count, not the desired or current count. Actual emissions at any given time may be higher if the autoscaler has scaled up.
