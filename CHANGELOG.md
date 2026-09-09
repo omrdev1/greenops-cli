@@ -2,6 +2,16 @@
 
 All notable changes to this project are documented here. Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [0.14.0] - 2026-09-09
+
+### Fixed
+- Re-derived AWS/Azure/GCP CPU `power_watts` (idle/max) for 37 x86/AMD instances from Cloud Carbon Footprint's current, actively-maintained coefficient data (`ccf-coefficients`), paired with each instance family's real, documented CPU chip per each provider's own instance-type docs. Resolves [#25](https://github.com/omrdev1/greenops-cli/issues/25): the original ledger values did not match either CCF's archived or current data, and Azure/GCP power figures were found to be silently reused from AWS by matching vCPU/RAM shape rather than independently sourced, despite a "CCF Azure/GCP coefficients" citation that didn't actually exist in that form.
+- `METHODOLOGY.md` rewritten with the full per-family chip mapping, corrected coverage counts, and recomputed worked examples.
+
+### Removed (breaking)
+- **All ARM instance types removed**: AWS Graviton (every generation: `t4g.*`, `m6g.*`, `m7g.*`, `c6g.*`, `c7g.*`, `r6g.*`), Azure Ampere `Standard_D*ps_v5`, and GCP T2A (`t2a-standard-*`) — 28 instance types total. No real, independently-sourced power data exists for any ARM cloud chip in CCF's coefficient data, archived or current: CCF's own current source code substitutes AMD EPYC 2nd Gen wattage for every Graviton generation and carries no entry at all for Ampere Altra. Shipping numbers with no real source would violate this project's refusal-to-guess principle. If a real, citable ARM power source becomes available, coverage can be restored.
+- **ARM-upgrade recommendation strategy removed** (`ARM_UPGRADE_MAP`, `getArmAlternative`) — dead code once no ARM instance has a ledger entry. Region-shift recommendations are unaffected.
+
 ## [0.13.3] - 2026-06-27
 
 ### Added
