@@ -38,7 +38,7 @@
             "credit_specification": [],
             "get_password_data": false,
             "hibernation": null,
-            "instance_type": "m6g.large",
+            "instance_type": "r5.large",
             "launch_template": [],
             "source_dest_check": true,
             "tags": { "Name": "greenops-e2e-worker" },
@@ -100,7 +100,7 @@
           "credit_specification": [],
           "get_password_data": false,
           "hibernation": null,
-          "instance_type": "m6g.large",
+          "instance_type": "r5.large",
           "launch_template": [],
           "source_dest_check": true,
           "tags": { "Name": "greenops-e2e-worker" },
@@ -151,7 +151,7 @@
           "provider_config_key": "aws",
           "expressions": {
             "ami": { "constant_value": "ami-0c02fb55956c7d316" },
-            "instance_type": { "constant_value": "m6g.large" },
+            "instance_type": { "constant_value": "r5.large" },
             "tags": { "constant_value": { "Name": "greenops-e2e-worker" } }
           },
           "schema_version": 1

@@ -7,8 +7,8 @@ var import_node_util = require("node:util");
 // factors.json
 var factors_default = {
   metadata: {
-    ledger_version: "2.0.0",
-    updated_at: "2026-03-28T00:00:00Z",
+    ledger_version: "2.1.0",
+    updated_at: "2026-09-09T23:00:00Z",
     sources: {
       grid: "electricity-maps-2024-avg",
       hardware: "cloud-carbon-footprint-v3",
@@ -127,8 +127,8 @@ var factors_default = {
         vcpus: 1,
         memory_gb: 1,
         power_watts: {
-          idle: 1,
-          max: 4.5
+          idle: 1.86,
+          max: 5.59
         },
         embodied_co2e_grams_per_month: 1041.7
       },
@@ -137,8 +137,8 @@ var factors_default = {
         vcpus: 1,
         memory_gb: 2,
         power_watts: {
-          idle: 1.5,
-          max: 6.5
+          idle: 1.86,
+          max: 5.59
         },
         embodied_co2e_grams_per_month: 1041.7
       },
@@ -147,8 +147,8 @@ var factors_default = {
         vcpus: 2,
         memory_gb: 4,
         power_watts: {
-          idle: 3,
-          max: 9.5
+          idle: 3.71,
+          max: 11.19
         },
         embodied_co2e_grams_per_month: 1041.7
       },
@@ -157,8 +157,8 @@ var factors_default = {
         vcpus: 2,
         memory_gb: 8,
         power_watts: {
-          idle: 6,
-          max: 19
+          idle: 3.71,
+          max: 11.19
         },
         embodied_co2e_grams_per_month: 1041.7
       },
@@ -167,8 +167,8 @@ var factors_default = {
         vcpus: 2,
         memory_gb: 1,
         power_watts: {
-          idle: 1.4,
-          max: 5
+          idle: 1.29,
+          max: 8.39
         },
         embodied_co2e_grams_per_month: 1041.7
       },
@@ -177,8 +177,8 @@ var factors_default = {
         vcpus: 2,
         memory_gb: 2,
         power_watts: {
-          idle: 2,
-          max: 7
+          idle: 1.29,
+          max: 8.39
         },
         embodied_co2e_grams_per_month: 1041.7
       },
@@ -187,8 +187,8 @@ var factors_default = {
         vcpus: 2,
         memory_gb: 4,
         power_watts: {
-          idle: 3.4,
-          max: 10.2
+          idle: 1.29,
+          max: 8.39
         },
         embodied_co2e_grams_per_month: 1041.7
       },
@@ -197,8 +197,8 @@ var factors_default = {
         vcpus: 2,
         memory_gb: 8,
         power_watts: {
-          idle: 6.8,
-          max: 20.4
+          idle: 1.29,
+          max: 8.39
         },
         embodied_co2e_grams_per_month: 1041.7
       },
@@ -207,8 +207,8 @@ var factors_default = {
         vcpus: 4,
         memory_gb: 16,
         power_watts: {
-          idle: 13.6,
-          max: 40.8
+          idle: 2.58,
+          max: 16.77
         },
         embodied_co2e_grams_per_month: 2083.3
       },
@@ -217,8 +217,8 @@ var factors_default = {
         vcpus: 2,
         memory_gb: 4,
         power_watts: {
-          idle: 3.2,
-          max: 9.8
+          idle: 1.65,
+          max: 5.11
         },
         embodied_co2e_grams_per_month: 1041.7
       },
@@ -227,8 +227,8 @@ var factors_default = {
         vcpus: 2,
         memory_gb: 8,
         power_watts: {
-          idle: 6.4,
-          max: 19.6
+          idle: 1.65,
+          max: 5.11
         },
         embodied_co2e_grams_per_month: 1041.7
       },
@@ -237,8 +237,8 @@ var factors_default = {
         vcpus: 2,
         memory_gb: 8,
         power_watts: {
-          idle: 6.8,
-          max: 20.4
+          idle: 1.29,
+          max: 8.39
         },
         embodied_co2e_grams_per_month: 1041.7
       },
@@ -247,8 +247,8 @@ var factors_default = {
         vcpus: 4,
         memory_gb: 16,
         power_watts: {
-          idle: 13.6,
-          max: 40.8
+          idle: 2.58,
+          max: 16.77
         },
         embodied_co2e_grams_per_month: 2083.3
       },
@@ -257,8 +257,8 @@ var factors_default = {
         vcpus: 8,
         memory_gb: 32,
         power_watts: {
-          idle: 27.2,
-          max: 81.6
+          idle: 5.16,
+          max: 33.55
         },
         embodied_co2e_grams_per_month: 4166.7
       },
@@ -267,8 +267,8 @@ var factors_default = {
         vcpus: 2,
         memory_gb: 8,
         power_watts: {
-          idle: 6.5,
-          max: 19.5
+          idle: 1.65,
+          max: 5.11
         },
         embodied_co2e_grams_per_month: 1041.7
       },
@@ -277,8 +277,8 @@ var factors_default = {
         vcpus: 4,
         memory_gb: 16,
         power_watts: {
-          idle: 13,
-          max: 39
+          idle: 3.29,
+          max: 10.21
         },
         embodied_co2e_grams_per_month: 2083.3
       },
@@ -287,8 +287,8 @@ var factors_default = {
         vcpus: 2,
         memory_gb: 4,
         power_watts: {
-          idle: 6.5,
-          max: 22
+          idle: 1.29,
+          max: 8.39
         },
         embodied_co2e_grams_per_month: 1041.7
       },
@@ -297,8 +297,8 @@ var factors_default = {
         vcpus: 4,
         memory_gb: 8,
         power_watts: {
-          idle: 13,
-          max: 44
+          idle: 2.58,
+          max: 16.77
         },
         embodied_co2e_grams_per_month: 2083.3
       },
@@ -307,8 +307,8 @@ var factors_default = {
         vcpus: 8,
         memory_gb: 16,
         power_watts: {
-          idle: 26,
-          max: 88
+          idle: 5.16,
+          max: 33.55
         },
         embodied_co2e_grams_per_month: 4166.7
       },
@@ -317,8 +317,8 @@ var factors_default = {
         vcpus: 16,
         memory_gb: 32,
         power_watts: {
-          idle: 52,
-          max: 176
+          idle: 10.31,
+          max: 67.09
         },
         embodied_co2e_grams_per_month: 8333.3
       },
@@ -327,8 +327,8 @@ var factors_default = {
         vcpus: 2,
         memory_gb: 4,
         power_watts: {
-          idle: 6.2,
-          max: 21
+          idle: 0.95,
+          max: 3.39
         },
         embodied_co2e_grams_per_month: 1041.7
       },
@@ -337,8 +337,8 @@ var factors_default = {
         vcpus: 4,
         memory_gb: 8,
         power_watts: {
-          idle: 12.4,
-          max: 42
+          idle: 1.9,
+          max: 6.77
         },
         embodied_co2e_grams_per_month: 2083.3
       },
@@ -347,8 +347,8 @@ var factors_default = {
         vcpus: 2,
         memory_gb: 16,
         power_watts: {
-          idle: 8,
-          max: 24
+          idle: 1.29,
+          max: 8.39
         },
         embodied_co2e_grams_per_month: 1041.7
       },
@@ -357,8 +357,8 @@ var factors_default = {
         vcpus: 4,
         memory_gb: 32,
         power_watts: {
-          idle: 16,
-          max: 48
+          idle: 2.58,
+          max: 16.77
         },
         embodied_co2e_grams_per_month: 2083.3
       },
@@ -367,8 +367,8 @@ var factors_default = {
         vcpus: 8,
         memory_gb: 64,
         power_watts: {
-          idle: 32,
-          max: 96
+          idle: 5.16,
+          max: 33.55
         },
         embodied_co2e_grams_per_month: 4166.7
       },
@@ -377,220 +377,10 @@ var factors_default = {
         vcpus: 16,
         memory_gb: 128,
         power_watts: {
-          idle: 64,
-          max: 192
+          idle: 10.31,
+          max: 67.09
         },
         embodied_co2e_grams_per_month: 8333.3
-      },
-      "t4g.micro": {
-        architecture: "arm64",
-        vcpus: 2,
-        memory_gb: 1,
-        power_watts: {
-          idle: 0.9,
-          max: 3.2
-        },
-        embodied_co2e_grams_per_month: 833.3
-      },
-      "t4g.small": {
-        architecture: "arm64",
-        vcpus: 2,
-        memory_gb: 2,
-        power_watts: {
-          idle: 1.4,
-          max: 4.5
-        },
-        embodied_co2e_grams_per_month: 833.3
-      },
-      "t4g.medium": {
-        architecture: "arm64",
-        vcpus: 2,
-        memory_gb: 4,
-        power_watts: {
-          idle: 2.2,
-          max: 6.8
-        },
-        embodied_co2e_grams_per_month: 833.3
-      },
-      "t4g.large": {
-        architecture: "arm64",
-        vcpus: 2,
-        memory_gb: 8,
-        power_watts: {
-          idle: 4.4,
-          max: 13.6
-        },
-        embodied_co2e_grams_per_month: 833.3
-      },
-      "t4g.xlarge": {
-        architecture: "arm64",
-        vcpus: 4,
-        memory_gb: 16,
-        power_watts: {
-          idle: 8.8,
-          max: 27.2
-        },
-        embodied_co2e_grams_per_month: 1666.7
-      },
-      "m6g.medium": {
-        architecture: "arm64",
-        vcpus: 1,
-        memory_gb: 4,
-        power_watts: {
-          idle: 2.1,
-          max: 6.6
-        },
-        embodied_co2e_grams_per_month: 416.7
-      },
-      "m6g.large": {
-        architecture: "arm64",
-        vcpus: 2,
-        memory_gb: 8,
-        power_watts: {
-          idle: 4.1,
-          max: 13.2
-        },
-        embodied_co2e_grams_per_month: 833.3
-      },
-      "m6g.xlarge": {
-        architecture: "arm64",
-        vcpus: 4,
-        memory_gb: 16,
-        power_watts: {
-          idle: 8.2,
-          max: 26.4
-        },
-        embodied_co2e_grams_per_month: 1666.7
-      },
-      "m6g.2xlarge": {
-        architecture: "arm64",
-        vcpus: 8,
-        memory_gb: 32,
-        power_watts: {
-          idle: 16.4,
-          max: 52.8
-        },
-        embodied_co2e_grams_per_month: 3333.3
-      },
-      "m7g.medium": {
-        architecture: "arm64",
-        vcpus: 1,
-        memory_gb: 4,
-        power_watts: {
-          idle: 1.8,
-          max: 5.8
-        },
-        embodied_co2e_grams_per_month: 416.7
-      },
-      "m7g.large": {
-        architecture: "arm64",
-        vcpus: 2,
-        memory_gb: 8,
-        power_watts: {
-          idle: 3.6,
-          max: 11.6
-        },
-        embodied_co2e_grams_per_month: 833.3
-      },
-      "m7g.xlarge": {
-        architecture: "arm64",
-        vcpus: 4,
-        memory_gb: 16,
-        power_watts: {
-          idle: 7.2,
-          max: 23.2
-        },
-        embodied_co2e_grams_per_month: 1666.7
-      },
-      "m7g.2xlarge": {
-        architecture: "arm64",
-        vcpus: 8,
-        memory_gb: 32,
-        power_watts: {
-          idle: 14.4,
-          max: 46.4
-        },
-        embodied_co2e_grams_per_month: 3333.3
-      },
-      "c6g.medium": {
-        architecture: "arm64",
-        vcpus: 1,
-        memory_gb: 2,
-        power_watts: {
-          idle: 2,
-          max: 7.3
-        },
-        embodied_co2e_grams_per_month: 416.7
-      },
-      "c6g.large": {
-        architecture: "arm64",
-        vcpus: 2,
-        memory_gb: 4,
-        power_watts: {
-          idle: 3.9,
-          max: 14.5
-        },
-        embodied_co2e_grams_per_month: 833.3
-      },
-      "c6g.xlarge": {
-        architecture: "arm64",
-        vcpus: 4,
-        memory_gb: 8,
-        power_watts: {
-          idle: 7.8,
-          max: 29
-        },
-        embodied_co2e_grams_per_month: 1666.7
-      },
-      "c6g.2xlarge": {
-        architecture: "arm64",
-        vcpus: 8,
-        memory_gb: 16,
-        power_watts: {
-          idle: 15.6,
-          max: 58
-        },
-        embodied_co2e_grams_per_month: 3333.3
-      },
-      "c7g.large": {
-        architecture: "arm64",
-        vcpus: 2,
-        memory_gb: 4,
-        power_watts: {
-          idle: 3.5,
-          max: 13
-        },
-        embodied_co2e_grams_per_month: 833.3
-      },
-      "c7g.xlarge": {
-        architecture: "arm64",
-        vcpus: 4,
-        memory_gb: 8,
-        power_watts: {
-          idle: 7,
-          max: 26
-        },
-        embodied_co2e_grams_per_month: 1666.7
-      },
-      "r6g.large": {
-        architecture: "arm64",
-        vcpus: 2,
-        memory_gb: 16,
-        power_watts: {
-          idle: 4.8,
-          max: 15
-        },
-        embodied_co2e_grams_per_month: 833.3
-      },
-      "r6g.xlarge": {
-        architecture: "arm64",
-        vcpus: 4,
-        memory_gb: 32,
-        power_watts: {
-          idle: 9.6,
-          max: 30
-        },
-        embodied_co2e_grams_per_month: 1666.7
       },
       "g5.xlarge": {
         architecture: "x86_64",
@@ -654,27 +444,6 @@ var factors_default = {
         "r5.xlarge": 0.252,
         "r5.2xlarge": 0.504,
         "r5.4xlarge": 1.008,
-        "t4g.micro": 84e-4,
-        "t4g.small": 0.0168,
-        "t4g.medium": 0.0336,
-        "t4g.large": 0.0672,
-        "t4g.xlarge": 0.1344,
-        "m6g.medium": 0.0385,
-        "m6g.large": 0.077,
-        "m6g.xlarge": 0.154,
-        "m6g.2xlarge": 0.308,
-        "m7g.medium": 0.0408,
-        "m7g.large": 0.0816,
-        "m7g.xlarge": 0.1632,
-        "m7g.2xlarge": 0.3264,
-        "c6g.medium": 0.034,
-        "c6g.large": 0.068,
-        "c6g.xlarge": 0.136,
-        "c6g.2xlarge": 0.272,
-        "c7g.large": 0.0725,
-        "c7g.xlarge": 0.145,
-        "r6g.large": 0.1008,
-        "r6g.xlarge": 0.2016,
         "g5.xlarge": 1.006,
         "p4d.24xlarge": 21.9576,
         "p5.48xlarge": 55.04
@@ -705,28 +474,7 @@ var factors_default = {
         "r5.large": 0.126,
         "r5.xlarge": 0.252,
         "r5.2xlarge": 0.504,
-        "r5.4xlarge": 1.008,
-        "t4g.micro": 84e-4,
-        "t4g.small": 0.0168,
-        "t4g.medium": 0.0336,
-        "t4g.large": 0.0672,
-        "t4g.xlarge": 0.1344,
-        "m6g.medium": 0.0385,
-        "m6g.large": 0.077,
-        "m6g.xlarge": 0.154,
-        "m6g.2xlarge": 0.308,
-        "m7g.medium": 0.0408,
-        "m7g.large": 0.0816,
-        "m7g.xlarge": 0.1632,
-        "m7g.2xlarge": 0.3264,
-        "c6g.medium": 0.034,
-        "c6g.large": 0.068,
-        "c6g.xlarge": 0.136,
-        "c6g.2xlarge": 0.272,
-        "c7g.large": 0.0725,
-        "c7g.xlarge": 0.145,
-        "r6g.large": 0.1008,
-        "r6g.xlarge": 0.2016
+        "r5.4xlarge": 1.008
       },
       "us-west-1": {
         "t2.micro": 0.0138,
@@ -744,19 +492,7 @@ var factors_default = {
         "c5.large": 0.096,
         "c5.xlarge": 0.192,
         "c5.2xlarge": 0.384,
-        "c5.4xlarge": 0.768,
-        "t4g.medium": 0.0376,
-        "t4g.large": 0.0752,
-        "t4g.xlarge": 0.1504,
-        "m6g.large": 0.086,
-        "m6g.xlarge": 0.172,
-        "m6g.2xlarge": 0.344,
-        "m7g.large": 0.0912,
-        "m7g.xlarge": 0.1824,
-        "c6g.large": 0.076,
-        "c6g.xlarge": 0.152,
-        "r6g.large": 0.1127,
-        "r6g.xlarge": 0.2254
+        "c5.4xlarge": 0.768
       },
       "us-west-2": {
         "t2.micro": 0.0116,
@@ -784,28 +520,7 @@ var factors_default = {
         "r5.large": 0.126,
         "r5.xlarge": 0.252,
         "r5.2xlarge": 0.504,
-        "r5.4xlarge": 1.008,
-        "t4g.micro": 84e-4,
-        "t4g.small": 0.0168,
-        "t4g.medium": 0.0336,
-        "t4g.large": 0.0672,
-        "t4g.xlarge": 0.1344,
-        "m6g.medium": 0.0385,
-        "m6g.large": 0.077,
-        "m6g.xlarge": 0.154,
-        "m6g.2xlarge": 0.308,
-        "m7g.medium": 0.0408,
-        "m7g.large": 0.0816,
-        "m7g.xlarge": 0.1632,
-        "m7g.2xlarge": 0.3264,
-        "c6g.medium": 0.034,
-        "c6g.large": 0.068,
-        "c6g.xlarge": 0.136,
-        "c6g.2xlarge": 0.272,
-        "c7g.large": 0.0725,
-        "c7g.xlarge": 0.145,
-        "r6g.large": 0.1008,
-        "r6g.xlarge": 0.2016
+        "r5.4xlarge": 1.008
       },
       "eu-west-1": {
         "t2.micro": 0.0126,
@@ -833,28 +548,7 @@ var factors_default = {
         "r5.large": 0.141,
         "r5.xlarge": 0.282,
         "r5.2xlarge": 0.564,
-        "r5.4xlarge": 1.128,
-        "t4g.micro": 94e-4,
-        "t4g.small": 0.0188,
-        "t4g.medium": 0.0376,
-        "t4g.large": 0.0752,
-        "t4g.xlarge": 0.1504,
-        "m6g.medium": 0.043,
-        "m6g.large": 0.086,
-        "m6g.xlarge": 0.172,
-        "m6g.2xlarge": 0.344,
-        "m7g.medium": 0.0456,
-        "m7g.large": 0.0912,
-        "m7g.xlarge": 0.1824,
-        "m7g.2xlarge": 0.3648,
-        "c6g.medium": 0.038,
-        "c6g.large": 0.076,
-        "c6g.xlarge": 0.152,
-        "c6g.2xlarge": 0.304,
-        "c7g.large": 0.0812,
-        "c7g.xlarge": 0.1624,
-        "r6g.large": 0.1127,
-        "r6g.xlarge": 0.2254
+        "r5.4xlarge": 1.128
       },
       "eu-west-2": {
         "t2.micro": 0.0142,
@@ -872,19 +566,7 @@ var factors_default = {
         "c5.large": 0.1054,
         "c5.xlarge": 0.2108,
         "c5.2xlarge": 0.4216,
-        "c5.4xlarge": 0.8432,
-        "t4g.medium": 0.0414,
-        "t4g.large": 0.0828,
-        "t4g.xlarge": 0.1656,
-        "m6g.large": 0.0945,
-        "m6g.xlarge": 0.189,
-        "m6g.2xlarge": 0.378,
-        "m7g.large": 0.1001,
-        "m7g.xlarge": 0.2002,
-        "c6g.large": 0.0836,
-        "c6g.xlarge": 0.1672,
-        "r6g.large": 0.124,
-        "r6g.xlarge": 0.248
+        "c5.4xlarge": 0.8432
       },
       "eu-central-1": {
         "t2.micro": 0.0134,
@@ -910,28 +592,7 @@ var factors_default = {
         "r5.large": 0.151,
         "r5.xlarge": 0.302,
         "r5.2xlarge": 0.604,
-        "r5.4xlarge": 1.208,
-        "t4g.micro": 0.01,
-        "t4g.small": 0.02,
-        "t4g.medium": 0.0416,
-        "t4g.large": 0.0832,
-        "t4g.xlarge": 0.1664,
-        "m6g.medium": 0.046,
-        "m6g.large": 0.092,
-        "m6g.xlarge": 0.184,
-        "m6g.2xlarge": 0.368,
-        "m7g.medium": 0.0488,
-        "m7g.large": 0.0976,
-        "m7g.xlarge": 0.1952,
-        "m7g.2xlarge": 0.3904,
-        "c6g.medium": 0.041,
-        "c6g.large": 0.082,
-        "c6g.xlarge": 0.164,
-        "c6g.2xlarge": 0.328,
-        "c7g.large": 0.0875,
-        "c7g.xlarge": 0.175,
-        "r6g.large": 0.121,
-        "r6g.xlarge": 0.242
+        "r5.4xlarge": 1.208
       },
       "eu-north-1": {
         "t2.micro": 0.0116,
@@ -953,19 +614,7 @@ var factors_default = {
         "r5.large": 0.131,
         "r5.xlarge": 0.262,
         "r5.2xlarge": 0.524,
-        "r5.4xlarge": 1.048,
-        "t4g.medium": 0.0362,
-        "t4g.large": 0.0724,
-        "t4g.xlarge": 0.1448,
-        "m6g.large": 0.08,
-        "m6g.xlarge": 0.16,
-        "m6g.2xlarge": 0.32,
-        "m7g.large": 0.0848,
-        "m7g.xlarge": 0.1696,
-        "c6g.large": 0.0712,
-        "c6g.xlarge": 0.1424,
-        "r6g.large": 0.1054,
-        "r6g.xlarge": 0.2108
+        "r5.4xlarge": 1.048
       },
       "ap-southeast-1": {
         "t2.micro": 0.0146,
@@ -983,19 +632,7 @@ var factors_default = {
         "c5.large": 0.107,
         "c5.xlarge": 0.214,
         "c5.2xlarge": 0.428,
-        "c5.4xlarge": 0.856,
-        "t4g.medium": 0.0438,
-        "t4g.large": 0.0876,
-        "t4g.xlarge": 0.1752,
-        "m6g.large": 0.0992,
-        "m6g.xlarge": 0.1984,
-        "m6g.2xlarge": 0.3968,
-        "m7g.large": 0.1051,
-        "m7g.xlarge": 0.2102,
-        "c6g.large": 0.086,
-        "c6g.xlarge": 0.172,
-        "r6g.large": 0.1307,
-        "r6g.xlarge": 0.2614
+        "c5.4xlarge": 0.856
       },
       "ap-southeast-2": {
         "t2.micro": 0.0152,
@@ -1021,28 +658,7 @@ var factors_default = {
         "r5.large": 0.176,
         "r5.xlarge": 0.352,
         "r5.2xlarge": 0.704,
-        "r5.4xlarge": 1.408,
-        "t4g.micro": 0.0113,
-        "t4g.small": 0.0226,
-        "t4g.medium": 0.0452,
-        "t4g.large": 0.0904,
-        "t4g.xlarge": 0.1808,
-        "m6g.medium": 0.0535,
-        "m6g.large": 0.107,
-        "m6g.xlarge": 0.214,
-        "m6g.2xlarge": 0.428,
-        "m7g.medium": 0.0567,
-        "m7g.large": 0.1134,
-        "m7g.xlarge": 0.2268,
-        "m7g.2xlarge": 0.4536,
-        "c6g.medium": 0.047,
-        "c6g.large": 0.094,
-        "c6g.xlarge": 0.188,
-        "c6g.2xlarge": 0.376,
-        "c7g.large": 0.1002,
-        "c7g.xlarge": 0.2004,
-        "r6g.large": 0.1411,
-        "r6g.xlarge": 0.2822
+        "r5.4xlarge": 1.408
       },
       "ap-northeast-1": {
         "t2.micro": 0.0152,
@@ -1068,28 +684,7 @@ var factors_default = {
         "r5.large": 0.169,
         "r5.xlarge": 0.338,
         "r5.2xlarge": 0.676,
-        "r5.4xlarge": 1.352,
-        "t4g.micro": 0.0116,
-        "t4g.small": 0.0232,
-        "t4g.medium": 0.0464,
-        "t4g.large": 0.0928,
-        "t4g.xlarge": 0.1856,
-        "m6g.medium": 0.0549,
-        "m6g.large": 0.1098,
-        "m6g.xlarge": 0.2196,
-        "m6g.2xlarge": 0.4392,
-        "m7g.medium": 0.0582,
-        "m7g.large": 0.1164,
-        "m7g.xlarge": 0.2328,
-        "m7g.2xlarge": 0.4656,
-        "c6g.medium": 0.0482,
-        "c6g.large": 0.0964,
-        "c6g.xlarge": 0.1928,
-        "c6g.2xlarge": 0.3856,
-        "c7g.large": 0.1028,
-        "c7g.xlarge": 0.2056,
-        "r6g.large": 0.1448,
-        "r6g.xlarge": 0.2896
+        "r5.4xlarge": 1.352
       },
       "ap-south-1": {
         "t2.micro": 0.0128,
@@ -1113,26 +708,7 @@ var factors_default = {
         "r5.large": 0.1396,
         "r5.xlarge": 0.2792,
         "r5.2xlarge": 0.5584,
-        "r5.4xlarge": 1.1168,
-        "t4g.micro": 95e-4,
-        "t4g.small": 0.019,
-        "t4g.medium": 0.038,
-        "t4g.large": 0.076,
-        "t4g.xlarge": 0.152,
-        "m6g.medium": 0.0454,
-        "m6g.large": 0.0908,
-        "m6g.xlarge": 0.1816,
-        "m6g.2xlarge": 0.3632,
-        "m7g.medium": 0.0481,
-        "m7g.large": 0.0962,
-        "m7g.xlarge": 0.1924,
-        "m7g.2xlarge": 0.3848,
-        "c6g.medium": 0.0399,
-        "c6g.large": 0.0798,
-        "c6g.xlarge": 0.1596,
-        "c6g.2xlarge": 0.3192,
-        "r6g.large": 0.1197,
-        "r6g.xlarge": 0.2394
+        "r5.4xlarge": 1.1168
       },
       "ca-central-1": {
         "t2.micro": 0.013,
@@ -1158,28 +734,7 @@ var factors_default = {
         "r5.large": 0.141,
         "r5.xlarge": 0.282,
         "r5.2xlarge": 0.564,
-        "r5.4xlarge": 1.128,
-        "t4g.micro": 96e-4,
-        "t4g.small": 0.0192,
-        "t4g.medium": 0.0386,
-        "t4g.large": 0.0772,
-        "t4g.xlarge": 0.1544,
-        "m6g.medium": 0.0462,
-        "m6g.large": 0.0924,
-        "m6g.xlarge": 0.1848,
-        "m6g.2xlarge": 0.3696,
-        "m7g.medium": 0.049,
-        "m7g.large": 0.098,
-        "m7g.xlarge": 0.196,
-        "m7g.2xlarge": 0.392,
-        "c6g.medium": 0.0408,
-        "c6g.large": 0.0816,
-        "c6g.xlarge": 0.1632,
-        "c6g.2xlarge": 0.3264,
-        "c7g.large": 0.087,
-        "c7g.xlarge": 0.174,
-        "r6g.large": 0.1218,
-        "r6g.xlarge": 0.2436
+        "r5.4xlarge": 1.128
       },
       "sa-east-1": {
         "t2.micro": 0.0188,
@@ -1197,19 +752,7 @@ var factors_default = {
         "c5.large": 0.144,
         "c5.xlarge": 0.288,
         "c5.2xlarge": 0.576,
-        "c5.4xlarge": 1.152,
-        "t4g.medium": 0.056,
-        "t4g.large": 0.112,
-        "t4g.xlarge": 0.224,
-        "m6g.large": 0.1296,
-        "m6g.xlarge": 0.2592,
-        "m6g.2xlarge": 0.5184,
-        "m7g.large": 0.1374,
-        "m7g.xlarge": 0.2748,
-        "c6g.large": 0.1152,
-        "c6g.xlarge": 0.2304,
-        "r6g.large": 0.1706,
-        "r6g.xlarge": 0.3412
+        "c5.4xlarge": 1.152
       }
     },
     managed_ai_pricing_usd_per_hour: {
@@ -1334,8 +877,8 @@ var factors_default = {
         vcpus: 2,
         memory_gb: 4,
         power_watts: {
-          idle: 1.5,
-          max: 5.5
+          idle: 3.71,
+          max: 11.19
         },
         embodied_co2e_grams_per_month: 1041.7
       },
@@ -1344,8 +887,8 @@ var factors_default = {
         vcpus: 2,
         memory_gb: 8,
         power_watts: {
-          idle: 3,
-          max: 11
+          idle: 3.71,
+          max: 11.19
         },
         embodied_co2e_grams_per_month: 1041.7
       },
@@ -1354,8 +897,8 @@ var factors_default = {
         vcpus: 4,
         memory_gb: 16,
         power_watts: {
-          idle: 6,
-          max: 22
+          idle: 7.43,
+          max: 22.38
         },
         embodied_co2e_grams_per_month: 2083.3
       },
@@ -1364,8 +907,8 @@ var factors_default = {
         vcpus: 2,
         memory_gb: 8,
         power_watts: {
-          idle: 6.8,
-          max: 20.4
+          idle: 3.71,
+          max: 11.19
         },
         embodied_co2e_grams_per_month: 1041.7
       },
@@ -1374,8 +917,8 @@ var factors_default = {
         vcpus: 4,
         memory_gb: 16,
         power_watts: {
-          idle: 13.6,
-          max: 40.8
+          idle: 7.43,
+          max: 22.38
         },
         embodied_co2e_grams_per_month: 2083.3
       },
@@ -1384,8 +927,8 @@ var factors_default = {
         vcpus: 8,
         memory_gb: 32,
         power_watts: {
-          idle: 27.2,
-          max: 81.6
+          idle: 14.86,
+          max: 44.76
         },
         embodied_co2e_grams_per_month: 4166.6
       },
@@ -1394,8 +937,8 @@ var factors_default = {
         vcpus: 2,
         memory_gb: 8,
         power_watts: {
-          idle: 6.5,
-          max: 19.5
+          idle: 1.63,
+          max: 8.76
         },
         embodied_co2e_grams_per_month: 1041.7
       },
@@ -1404,48 +947,18 @@ var factors_default = {
         vcpus: 4,
         memory_gb: 16,
         power_watts: {
-          idle: 13,
-          max: 39
+          idle: 3.26,
+          max: 17.53
         },
         embodied_co2e_grams_per_month: 2083.3
-      },
-      Standard_D2ps_v5: {
-        architecture: "arm64",
-        vcpus: 2,
-        memory_gb: 8,
-        power_watts: {
-          idle: 4.1,
-          max: 13.2
-        },
-        embodied_co2e_grams_per_month: 833.3
-      },
-      Standard_D4ps_v5: {
-        architecture: "arm64",
-        vcpus: 4,
-        memory_gb: 16,
-        power_watts: {
-          idle: 8.2,
-          max: 26.4
-        },
-        embodied_co2e_grams_per_month: 1666.7
-      },
-      Standard_D8ps_v5: {
-        architecture: "arm64",
-        vcpus: 8,
-        memory_gb: 32,
-        power_watts: {
-          idle: 16.4,
-          max: 52.8
-        },
-        embodied_co2e_grams_per_month: 3333.3
       },
       Standard_F2s_v2: {
         architecture: "x86_64",
         vcpus: 2,
         memory_gb: 4,
         power_watts: {
-          idle: 6.5,
-          max: 22
+          idle: 1.63,
+          max: 8.76
         },
         embodied_co2e_grams_per_month: 1041.7
       },
@@ -1454,8 +967,8 @@ var factors_default = {
         vcpus: 4,
         memory_gb: 8,
         power_watts: {
-          idle: 13,
-          max: 44
+          idle: 3.26,
+          max: 17.53
         },
         embodied_co2e_grams_per_month: 2083.3
       },
@@ -1464,8 +977,8 @@ var factors_default = {
         vcpus: 8,
         memory_gb: 16,
         power_watts: {
-          idle: 26,
-          max: 88
+          idle: 6.51,
+          max: 35.05
         },
         embodied_co2e_grams_per_month: 4166.6
       },
@@ -1474,8 +987,8 @@ var factors_default = {
         vcpus: 2,
         memory_gb: 16,
         power_watts: {
-          idle: 8,
-          max: 24
+          idle: 1.29,
+          max: 8.39
         },
         embodied_co2e_grams_per_month: 1041.7
       },
@@ -1484,8 +997,8 @@ var factors_default = {
         vcpus: 4,
         memory_gb: 32,
         power_watts: {
-          idle: 16,
-          max: 48
+          idle: 2.58,
+          max: 16.77
         },
         embodied_co2e_grams_per_month: 2083.3
       },
@@ -1572,9 +1085,6 @@ var factors_default = {
         Standard_ND96isr_H100_v5: 98.32,
         Standard_D2s_v4: 0.091,
         Standard_D4s_v4: 0.182,
-        Standard_D2ps_v5: 0.077,
-        Standard_D4ps_v5: 0.154,
-        Standard_D8ps_v5: 0.308,
         Standard_F2s_v2: 0.085,
         Standard_F4s_v2: 0.17,
         Standard_F8s_v2: 0.34,
@@ -1590,9 +1100,6 @@ var factors_default = {
         Standard_D8s_v3: 0.384,
         Standard_D2s_v4: 0.091,
         Standard_D4s_v4: 0.182,
-        Standard_D2ps_v5: 0.077,
-        Standard_D4ps_v5: 0.154,
-        Standard_D8ps_v5: 0.308,
         Standard_F2s_v2: 0.085,
         Standard_F4s_v2: 0.17,
         Standard_F8s_v2: 0.34,
@@ -1608,9 +1115,6 @@ var factors_default = {
         Standard_D8s_v3: 0.384,
         Standard_D2s_v4: 0.091,
         Standard_D4s_v4: 0.182,
-        Standard_D2ps_v5: 0.077,
-        Standard_D4ps_v5: 0.154,
-        Standard_D8ps_v5: 0.308,
         Standard_F2s_v2: 0.085,
         Standard_F4s_v2: 0.17,
         Standard_F8s_v2: 0.34,
@@ -1626,9 +1130,6 @@ var factors_default = {
         Standard_D8s_v3: 0.416,
         Standard_D2s_v4: 0.098,
         Standard_D4s_v4: 0.196,
-        Standard_D2ps_v5: 0.083,
-        Standard_D4ps_v5: 0.166,
-        Standard_D8ps_v5: 0.332,
         Standard_F2s_v2: 0.091,
         Standard_F4s_v2: 0.183,
         Standard_F8s_v2: 0.366,
@@ -1644,9 +1145,6 @@ var factors_default = {
         Standard_D8s_v3: 0.416,
         Standard_D2s_v4: 0.098,
         Standard_D4s_v4: 0.196,
-        Standard_D2ps_v5: 0.083,
-        Standard_D4ps_v5: 0.166,
-        Standard_D8ps_v5: 0.332,
         Standard_F2s_v2: 0.091,
         Standard_F4s_v2: 0.183,
         Standard_F8s_v2: 0.366,
@@ -1662,9 +1160,6 @@ var factors_default = {
         Standard_D8s_v3: 0.436,
         Standard_D2s_v4: 0.103,
         Standard_D4s_v4: 0.206,
-        Standard_D2ps_v5: 0.087,
-        Standard_D4ps_v5: 0.174,
-        Standard_D8ps_v5: 0.348,
         Standard_F2s_v2: 0.095,
         Standard_F4s_v2: 0.191,
         Standard_F8s_v2: 0.382,
@@ -1680,9 +1175,6 @@ var factors_default = {
         Standard_D8s_v3: 0.397,
         Standard_D2s_v4: 0.094,
         Standard_D4s_v4: 0.187,
-        Standard_D2ps_v5: 0.079,
-        Standard_D4ps_v5: 0.159,
-        Standard_D8ps_v5: 0.317,
         Standard_F2s_v2: 0.087,
         Standard_F4s_v2: 0.174,
         Standard_F8s_v2: 0.348,
@@ -1698,9 +1190,6 @@ var factors_default = {
         Standard_D8s_v3: 0.458,
         Standard_D2s_v4: 0.108,
         Standard_D4s_v4: 0.217,
-        Standard_D2ps_v5: 0.092,
-        Standard_D4ps_v5: 0.184,
-        Standard_D8ps_v5: 0.368,
         Standard_F2s_v2: 0.1,
         Standard_F4s_v2: 0.2,
         Standard_F8s_v2: 0.4,
@@ -1716,9 +1205,6 @@ var factors_default = {
         Standard_D8s_v3: 0.496,
         Standard_D2s_v4: 0.117,
         Standard_D4s_v4: 0.234,
-        Standard_D2ps_v5: 0.099,
-        Standard_D4ps_v5: 0.199,
-        Standard_D8ps_v5: 0.397,
         Standard_F2s_v2: 0.108,
         Standard_F4s_v2: 0.217,
         Standard_F8s_v2: 0.433,
@@ -1734,9 +1220,6 @@ var factors_default = {
         Standard_D8s_v3: 0.484,
         Standard_D2s_v4: 0.115,
         Standard_D4s_v4: 0.229,
-        Standard_D2ps_v5: 0.097,
-        Standard_D4ps_v5: 0.194,
-        Standard_D8ps_v5: 0.388,
         Standard_F2s_v2: 0.105,
         Standard_F4s_v2: 0.211,
         Standard_F8s_v2: 0.422,
@@ -1752,9 +1235,6 @@ var factors_default = {
         Standard_D8s_v3: 0.406,
         Standard_D2s_v4: 0.096,
         Standard_D4s_v4: 0.192,
-        Standard_D2ps_v5: 0.081,
-        Standard_D4ps_v5: 0.162,
-        Standard_D8ps_v5: 0.325,
         Standard_F2s_v2: 0.089,
         Standard_F4s_v2: 0.178,
         Standard_F8s_v2: 0.356,
@@ -1770,9 +1250,6 @@ var factors_default = {
         Standard_D8s_v3: 0.404,
         Standard_D2s_v4: 0.096,
         Standard_D4s_v4: 0.191,
-        Standard_D2ps_v5: 0.081,
-        Standard_D4ps_v5: 0.162,
-        Standard_D8ps_v5: 0.323,
         Standard_F2s_v2: 0.088,
         Standard_F4s_v2: 0.177,
         Standard_F8s_v2: 0.354,
@@ -1788,9 +1265,6 @@ var factors_default = {
         Standard_D8s_v3: 0.562,
         Standard_D2s_v4: 0.133,
         Standard_D4s_v4: 0.266,
-        Standard_D2ps_v5: 0.113,
-        Standard_D4ps_v5: 0.225,
-        Standard_D8ps_v5: 0.45,
         Standard_F2s_v2: 0.123,
         Standard_F4s_v2: 0.246,
         Standard_F8s_v2: 0.492,
@@ -1898,8 +1372,8 @@ var factors_default = {
         vcpus: 2,
         memory_gb: 8,
         power_watts: {
-          idle: 6.8,
-          max: 20.4
+          idle: 1.38,
+          max: 8.13
         },
         embodied_co2e_grams_per_month: 1041.7
       },
@@ -1908,8 +1382,8 @@ var factors_default = {
         vcpus: 4,
         memory_gb: 16,
         power_watts: {
-          idle: 13.6,
-          max: 40.8
+          idle: 2.76,
+          max: 16.25
         },
         embodied_co2e_grams_per_month: 2083.3
       },
@@ -1918,8 +1392,8 @@ var factors_default = {
         vcpus: 8,
         memory_gb: 32,
         power_watts: {
-          idle: 27.2,
-          max: 81.6
+          idle: 5.52,
+          max: 32.5
         },
         embodied_co2e_grams_per_month: 4166.7
       },
@@ -1928,8 +1402,8 @@ var factors_default = {
         vcpus: 2,
         memory_gb: 8,
         power_watts: {
-          idle: 6.5,
-          max: 19.5
+          idle: 0.91,
+          max: 3.91
         },
         embodied_co2e_grams_per_month: 1041.7
       },
@@ -1938,58 +1412,18 @@ var factors_default = {
         vcpus: 4,
         memory_gb: 16,
         power_watts: {
-          idle: 13,
-          max: 39
+          idle: 1.82,
+          max: 7.83
         },
         embodied_co2e_grams_per_month: 2083.3
-      },
-      "t2a-standard-1": {
-        architecture: "arm64",
-        vcpus: 1,
-        memory_gb: 4,
-        power_watts: {
-          idle: 2.1,
-          max: 6.6
-        },
-        embodied_co2e_grams_per_month: 416.7
-      },
-      "t2a-standard-2": {
-        architecture: "arm64",
-        vcpus: 2,
-        memory_gb: 8,
-        power_watts: {
-          idle: 4.1,
-          max: 13.2
-        },
-        embodied_co2e_grams_per_month: 833.3
-      },
-      "t2a-standard-4": {
-        architecture: "arm64",
-        vcpus: 4,
-        memory_gb: 16,
-        power_watts: {
-          idle: 8.2,
-          max: 26.4
-        },
-        embodied_co2e_grams_per_month: 1666.7
-      },
-      "t2a-standard-8": {
-        architecture: "arm64",
-        vcpus: 8,
-        memory_gb: 32,
-        power_watts: {
-          idle: 16.4,
-          max: 52.8
-        },
-        embodied_co2e_grams_per_month: 3333.3
       },
       "c2-standard-4": {
         architecture: "x86_64",
         vcpus: 4,
         memory_gb: 16,
         power_watts: {
-          idle: 13,
-          max: 44
+          idle: 2.76,
+          max: 16.25
         },
         embodied_co2e_grams_per_month: 2083.3
       },
@@ -1998,8 +1432,8 @@ var factors_default = {
         vcpus: 8,
         memory_gb: 32,
         power_watts: {
-          idle: 26,
-          max: 88
+          idle: 5.52,
+          max: 32.5
         },
         embodied_co2e_grams_per_month: 4166.7
       },
@@ -2008,8 +1442,8 @@ var factors_default = {
         vcpus: 2,
         memory_gb: 8,
         power_watts: {
-          idle: 3.4,
-          max: 10.2
+          idle: 1.29,
+          max: 8.39
         },
         embodied_co2e_grams_per_month: 1041.7
       },
@@ -2018,8 +1452,8 @@ var factors_default = {
         vcpus: 4,
         memory_gb: 16,
         power_watts: {
-          idle: 6.8,
-          max: 20.4
+          idle: 2.58,
+          max: 16.77
         },
         embodied_co2e_grams_per_month: 2083.3
       },
@@ -2028,8 +1462,8 @@ var factors_default = {
         vcpus: 1,
         memory_gb: 4,
         power_watts: {
-          idle: 1.7,
-          max: 5.1
+          idle: 0.46,
+          max: 1.96
         },
         embodied_co2e_grams_per_month: 520.8
       },
@@ -2038,8 +1472,8 @@ var factors_default = {
         vcpus: 2,
         memory_gb: 8,
         power_watts: {
-          idle: 3.4,
-          max: 10.2
+          idle: 0.91,
+          max: 3.91
         },
         embodied_co2e_grams_per_month: 1041.7
       }
@@ -2051,10 +1485,6 @@ var factors_default = {
         "n2-standard-8": 0.388,
         "n2d-standard-2": 0.086,
         "n2d-standard-4": 0.172,
-        "t2a-standard-1": 0.038,
-        "t2a-standard-2": 0.076,
-        "t2a-standard-4": 0.152,
-        "t2a-standard-8": 0.304,
         "c2-standard-4": 0.2,
         "c2-standard-8": 0.4,
         "e2-standard-2": 0.067,
@@ -2068,10 +1498,6 @@ var factors_default = {
         "n2-standard-8": 0.388,
         "n2d-standard-2": 0.086,
         "n2d-standard-4": 0.172,
-        "t2a-standard-1": 0.038,
-        "t2a-standard-2": 0.076,
-        "t2a-standard-4": 0.152,
-        "t2a-standard-8": 0.304,
         "c2-standard-4": 0.2,
         "c2-standard-8": 0.4,
         "e2-standard-2": 0.067,
@@ -2085,10 +1511,6 @@ var factors_default = {
         "n2-standard-8": 0.416,
         "n2d-standard-2": 0.092,
         "n2d-standard-4": 0.185,
-        "t2a-standard-1": 0.041,
-        "t2a-standard-2": 0.082,
-        "t2a-standard-4": 0.163,
-        "t2a-standard-8": 0.326,
         "c2-standard-4": 0.214,
         "c2-standard-8": 0.428,
         "e2-standard-2": 0.072,
@@ -2102,10 +1524,6 @@ var factors_default = {
         "n2-standard-8": 0.388,
         "n2d-standard-2": 0.086,
         "n2d-standard-4": 0.172,
-        "t2a-standard-1": 0.038,
-        "t2a-standard-2": 0.076,
-        "t2a-standard-4": 0.152,
-        "t2a-standard-8": 0.304,
         "c2-standard-4": 0.2,
         "c2-standard-8": 0.4,
         "e2-standard-2": 0.067,
@@ -2119,10 +1537,6 @@ var factors_default = {
         "n2-standard-8": 0.432,
         "n2d-standard-2": 0.096,
         "n2d-standard-4": 0.192,
-        "t2a-standard-1": 0.042,
-        "t2a-standard-2": 0.085,
-        "t2a-standard-4": 0.169,
-        "t2a-standard-8": 0.339,
         "c2-standard-4": 0.222,
         "c2-standard-8": 0.445,
         "e2-standard-2": 0.075,
@@ -2136,10 +1550,6 @@ var factors_default = {
         "n2-standard-8": 0.462,
         "n2d-standard-2": 0.103,
         "n2d-standard-4": 0.205,
-        "t2a-standard-1": 0.045,
-        "t2a-standard-2": 0.091,
-        "t2a-standard-4": 0.181,
-        "t2a-standard-8": 0.362,
         "c2-standard-4": 0.238,
         "c2-standard-8": 0.475,
         "e2-standard-2": 0.08,
@@ -2153,10 +1563,6 @@ var factors_default = {
         "n2-standard-8": 0.432,
         "n2d-standard-2": 0.096,
         "n2d-standard-4": 0.192,
-        "t2a-standard-1": 0.042,
-        "t2a-standard-2": 0.085,
-        "t2a-standard-4": 0.169,
-        "t2a-standard-8": 0.339,
         "c2-standard-4": 0.222,
         "c2-standard-8": 0.445,
         "e2-standard-2": 0.075,
@@ -2170,10 +1576,6 @@ var factors_default = {
         "n2-standard-8": 0.469,
         "n2d-standard-2": 0.104,
         "n2d-standard-4": 0.208,
-        "t2a-standard-1": 0.046,
-        "t2a-standard-2": 0.092,
-        "t2a-standard-4": 0.184,
-        "t2a-standard-8": 0.368,
         "c2-standard-4": 0.241,
         "c2-standard-8": 0.482,
         "e2-standard-2": 0.081,
@@ -2187,10 +1589,6 @@ var factors_default = {
         "n2-standard-8": 0.504,
         "n2d-standard-2": 0.112,
         "n2d-standard-4": 0.223,
-        "t2a-standard-1": 0.049,
-        "t2a-standard-2": 0.099,
-        "t2a-standard-4": 0.197,
-        "t2a-standard-8": 0.395,
         "c2-standard-4": 0.259,
         "c2-standard-8": 0.517,
         "e2-standard-2": 0.087,
@@ -2204,10 +1602,6 @@ var factors_default = {
         "n2-standard-8": 0.407,
         "n2d-standard-2": 0.091,
         "n2d-standard-4": 0.181,
-        "t2a-standard-1": 0.04,
-        "t2a-standard-2": 0.08,
-        "t2a-standard-4": 0.159,
-        "t2a-standard-8": 0.319,
         "c2-standard-4": 0.209,
         "c2-standard-8": 0.419,
         "e2-standard-2": 0.07,
@@ -2221,10 +1615,6 @@ var factors_default = {
         "n2-standard-8": 0.416,
         "n2d-standard-2": 0.092,
         "n2d-standard-4": 0.185,
-        "t2a-standard-1": 0.041,
-        "t2a-standard-2": 0.082,
-        "t2a-standard-4": 0.163,
-        "t2a-standard-8": 0.326,
         "c2-standard-4": 0.214,
         "c2-standard-8": 0.428,
         "e2-standard-2": 0.072,
@@ -2238,10 +1628,6 @@ var factors_default = {
         "n2-standard-8": 0.552,
         "n2d-standard-2": 0.123,
         "n2d-standard-4": 0.245,
-        "t2a-standard-1": 0.054,
-        "t2a-standard-2": 0.108,
-        "t2a-standard-4": 0.216,
-        "t2a-standard-8": 0.431,
         "c2-standard-4": 0.283,
         "c2-standard-8": 0.566,
         "e2-standard-2": 0.095,
@@ -2730,46 +2116,6 @@ function wattsToScope2Carbon(watts, hours, pue, gridIntensity) {
 function wattsToWater(watts, hours, wue) {
   return watts * hours / GRAMS_PER_KWH * wue;
 }
-var ARM_UPGRADE_MAP = {
-  aws: {
-    t3: "t4g",
-    t3a: "t4g",
-    m5: "m6g",
-    m5a: "m6g",
-    c5: "c6g",
-    c5a: "c6g",
-    r5: "r6g",
-    r5a: "r6g"
-  },
-  azure: {
-    "Standard_D2s_v3": "Standard_D2ps_v5",
-    "Standard_D4s_v3": "Standard_D4ps_v5",
-    "Standard_D8s_v3": "Standard_D8ps_v5",
-    "Standard_D2s_v4": "Standard_D2ps_v5",
-    "Standard_D4s_v4": "Standard_D4ps_v5"
-  },
-  gcp: {
-    n2: "t2a",
-    n2d: "t2a",
-    e2: "t2a"
-  }
-};
-function getArmAlternative(instanceType, provider, ledger) {
-  const providerLedger = ledger[provider];
-  const map = ARM_UPGRADE_MAP[provider];
-  if (provider === "azure") {
-    const candidate2 = map[instanceType];
-    return candidate2 && providerLedger.instances[candidate2] ? candidate2 : null;
-  }
-  const [family, size] = instanceType.split(".");
-  if (!family || !size)
-    return null;
-  const armFamily = map[family];
-  if (!armFamily)
-    return null;
-  const candidate = `${armFamily}.${size}`;
-  return providerLedger.instances[candidate] ? candidate : null;
-}
 function getCleanerRegion(currentRegion, instanceType, provider, ledger) {
   const providerLedger = ledger[provider];
   const regions = Object.entries(providerLedger.regions).filter(([regionId]) => {
@@ -3119,24 +2465,6 @@ function generateRecommendation(input, baseline, ledger = factors_default) {
   const provider = input.provider ?? "aws";
   const providerLedger = ledger[provider];
   const candidates = [];
-  const armAlternative = getArmAlternative(input.instanceType, provider, ledger);
-  if (armAlternative) {
-    const armEstimate = calculateBaseline({ ...input, instanceType: armAlternative }, ledger);
-    if (armEstimate.confidence !== "LOW_ASSUMED_DEFAULT") {
-      const co2Delta = armEstimate.totalCo2eGramsPerMonth - baseline.totalCo2eGramsPerMonth;
-      const costDelta = armEstimate.totalCostUsdPerMonth - baseline.totalCostUsdPerMonth;
-      const embodiedDelta = armEstimate.embodiedCo2eGramsPerMonth - baseline.embodiedCo2eGramsPerMonth;
-      if (co2Delta < 0 && costDelta < 0) {
-        const embodiedNote = embodiedDelta < 0 ? ` ARM also reduces embodied (Scope 3) carbon by ${Math.abs(Math.round(embodiedDelta))}g CO2e/month.` : "";
-        candidates.push({
-          suggestedInstanceType: armAlternative,
-          co2eDeltaGramsPerMonth: co2Delta,
-          costDeltaUsdPerMonth: costDelta,
-          rationale: `Switching from ${input.instanceType} to ${armAlternative} (ARM) provides identical vCPU and memory at lower power draw, saving ${Math.abs(Math.round(co2Delta))}g CO2e/month and $${Math.abs(costDelta).toFixed(2)}/month.${embodiedNote}`
-        });
-      }
-    }
-  }
   const cleanerRegion = getCleanerRegion(input.region, input.instanceType, provider, ledger);
   if (cleanerRegion) {
     const regionEstimate = calculateBaseline({ ...input, region: cleanerRegion }, ledger);

@@ -109,48 +109,6 @@ function wattsToWater(watts: number, hours: number, wue: number): number {
   return (watts * hours / GRAMS_PER_KWH) * wue;
 }
 
-// ---------------------------------------------------------------------------
-// ARM upgrade maps — per provider
-// ---------------------------------------------------------------------------
-
-const ARM_UPGRADE_MAP: Record<CloudProvider, Record<string, string>> = {
-  aws: {
-    t3: 't4g', t3a: 't4g',
-    m5: 'm6g', m5a: 'm6g',
-    c5: 'c6g', c5a: 'c6g',
-    r5: 'r6g', r5a: 'r6g',
-  },
-  azure: {
-    'Standard_D2s_v3': 'Standard_D2ps_v5',
-    'Standard_D4s_v3': 'Standard_D4ps_v5',
-    'Standard_D8s_v3': 'Standard_D8ps_v5',
-    'Standard_D2s_v4': 'Standard_D2ps_v5',
-    'Standard_D4s_v4': 'Standard_D4ps_v5',
-  },
-  gcp: {
-    n2: 't2a',
-    n2d: 't2a',
-    e2: 't2a',
-  },
-};
-
-function getArmAlternative(instanceType: string, provider: CloudProvider, ledger: Ledger): string | null {
-  const providerLedger = ledger[provider];
-  const map = ARM_UPGRADE_MAP[provider];
-
-  if (provider === 'azure') {
-    const candidate = map[instanceType];
-    return candidate && providerLedger.instances[candidate] ? candidate : null;
-  }
-
-  const [family, size] = instanceType.split('.');
-  if (!family || !size) return null;
-  const armFamily = map[family];
-  if (!armFamily) return null;
-  const candidate = `${armFamily}.${size}`;
-  return providerLedger.instances[candidate] ? candidate : null;
-}
-
 function getCleanerRegion(currentRegion: string, instanceType: string, provider: CloudProvider, ledger: Ledger): string | null {
   const providerLedger = ledger[provider];
   const regions = Object.entries(providerLedger.regions)
@@ -634,25 +592,14 @@ export function generateRecommendation(
   const providerLedger = ledger[provider];
   const candidates: UpgradeRecommendation[] = [];
 
-  const armAlternative = getArmAlternative(input.instanceType, provider, ledger);
-  if (armAlternative) {
-    const armEstimate = calculateBaseline({ ...input, instanceType: armAlternative }, ledger);
-    if (armEstimate.confidence !== 'LOW_ASSUMED_DEFAULT') {
-      const co2Delta = armEstimate.totalCo2eGramsPerMonth - baseline.totalCo2eGramsPerMonth;
-      const costDelta = armEstimate.totalCostUsdPerMonth - baseline.totalCostUsdPerMonth;
-      const embodiedDelta = armEstimate.embodiedCo2eGramsPerMonth - baseline.embodiedCo2eGramsPerMonth;
-      if (co2Delta < 0 && costDelta < 0) {
-        const embodiedNote = embodiedDelta < 0
-          ? ` ARM also reduces embodied (Scope 3) carbon by ${Math.abs(Math.round(embodiedDelta))}g CO2e/month.` : '';
-        candidates.push({
-          suggestedInstanceType: armAlternative,
-          co2eDeltaGramsPerMonth: co2Delta,
-          costDeltaUsdPerMonth: costDelta,
-          rationale: `Switching from ${input.instanceType} to ${armAlternative} (ARM) provides identical vCPU and memory at lower power draw, saving ${Math.abs(Math.round(co2Delta))}g CO2e/month and $${Math.abs(costDelta).toFixed(2)}/month.${embodiedNote}`,
-        });
-      }
-    }
-  }
+  // ARM upgrade recommendations removed: no AWS Graviton, Azure Ampere (Dpsv5),
+  // or GCP T2A instance in this ledger has a real, independently-sourced power
+  // figure. CCF's own current coefficient data substitutes AMD EPYC 2nd Gen
+  // wattage for all Graviton generations ("we don't know the values for the
+  // Graviton chips" — ccfcoef/aws/coefficients.py), and no ARM entry exists at
+  // all for GCP's T2A or Azure's Ampere Altra line. Recommending an ARM switch
+  // on that basis would mean estimating a saving this ledger cannot actually
+  // stand behind. See METHODOLOGY.md's "Known Limitations" for the full record.
 
   const cleanerRegion = getCleanerRegion(input.region, input.instanceType, provider, ledger);
   if (cleanerRegion) {

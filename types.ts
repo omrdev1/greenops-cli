@@ -45,8 +45,10 @@ export interface EmissionAndCostEstimate {
    * Calculated as: (server_total_embodied_gco2e / lifespan_hours / vcpus_per_server)
    *                × vcpus × 730h
    * Source: CCF DELL R740 baseline (1,200 kgCO2e/server, 4yr lifespan, 48 vCPUs).
-   * ARM (Graviton) instances apply a 20% discount reflecting smaller die size and
-   * lower TDP manufacturing footprint.
+   * ARM instances apply a 20% discount reflecting smaller die size and lower TDP
+   * manufacturing footprint — currently dormant: all ARM instance types were
+   * removed from the ledger in v2.1.0 (no real power source exists for any
+   * ARM cloud chip; see METHODOLOGY.md's Known Limitations).
    */
   embodiedCo2eGramsPerMonth: number;
 

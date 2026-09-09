@@ -9,29 +9,35 @@ Analyses Terraform plans for **Scope 2 operational**, **Scope 3 embodied**, and 
 
 > | Metric | Monthly Total |
 > |---|---|
-> | 🔋 Scope 2 (Operational CO2e) | **7.06kg** |
-> | 🏭 Scope 3 (Embodied CO2e) | **1.88kg** |
-> | 🌍 Total Lifecycle CO2e | **8.93kg** |
-> | 💧 Water Consumption | **7.5L** |
-> | 💰 Infrastructure Cost | **$126.29/month** |
+> | 🔋 Scope 2 (Operational CO2e) | **6.05kg** |
+> | 🏭 Scope 3 (Embodied CO2e) | **2.08kg** |
+> | 🌍 Total Lifecycle CO2e | **8.14kg** |
+> | 💧 Water Consumption | **2.5L** |
+> | 💰 Infrastructure Cost | **$162.06/month** |
 
-> **Potential Scope 2 Savings:** -6.90kg CO2e/month (97.7%) | -$5.11/month
+> **Potential Scope 2 Savings:** -5.92kg CO2e/month (97.7%) | -$6.57/month
 > 💡 Found **2** optimization recommendations.
 
 ### Resource Breakdown
 
 | Resource | Type | Region | Scope 2 CO2e | Scope 3 CO2e | Water | Cost/mo | Action |
 |---|---|---|---|---|---|---|---|
-| `aws_instance.web` | `m5.large` | `us-east-1` | 4.31kg | 1.04kg | 4.6L | $70.08 | 💡 View Recommendation |
-| `aws_instance.worker` | `m6g.large` | `us-east-1` | 2.74kg | 0.83kg | 2.9L | $56.21 | 💡 View Recommendation |
+| `aws_instance.web` | `m5.large` | `us-east-1` | 2.53kg | 1.04kg | 1.0L | $70.08 | 💡 View Recommendation |
+| `aws_instance.worker` | `r5.large` | `us-east-1` | 3.52kg | 1.04kg | 1.5L | $91.98 | 💡 View Recommendation |
 
 ### Recommendations
 
 #### `aws_instance.web`
 - **Current:** `m5.large` in `us-east-1`
 - **Suggested:** `m5.large` in `eu-north-1`
-- **Scope 2 Impact:** -4.21kg CO2e/month | +$2.92/month
-- **Rationale:** Moving m5.large from us-east-1 to Europe (Stockholm) (eu-north-1) reduces grid carbon intensity from 384.5g to 8.8g CO2e/kWh, saving 4215g CO2e/month. Water consumption also decreases by 16.5L/month.
+- **Scope 2 Impact:** -2.47kg CO2e/month | +$2.92/month
+- **Rationale:** Moving m5.large from us-east-1 to Europe (Stockholm) (eu-north-1) reduces grid carbon intensity from 384.5g to 8.8g CO2e/kWh, saving 2472g CO2e/month (note: cost increases by $2.92/month).
+
+#### `aws_instance.worker`
+- **Current:** `r5.large` in `us-east-1`
+- **Suggested:** `r5.large` in `eu-north-1`
+- **Scope 2 Impact:** -3.44kg CO2e/month | +$3.65/month
+- **Rationale:** Moving r5.large from us-east-1 to Europe (Stockholm) (eu-north-1) reduces grid carbon intensity from 384.5g to 8.8g CO2e/kWh, saving 3444g CO2e/month (note: cost increases by $3.65/month).
 
 ---
 
@@ -39,9 +45,12 @@ Analyses Terraform plans for **Scope 2 operational**, **Scope 3 embodied**, and 
 
 | Provider | Regions | Instances | Resource Types |
 |---|---|---|---|
-| **AWS** | 14 | 50 | `aws_instance`, `aws_db_instance`, `aws_eks_node_group`, `aws_lambda_function`, `aws_sagemaker_endpoint_configuration` |
-| **Azure** | 17 | 16 | `azurerm_linux_virtual_machine`, `azurerm_windows_virtual_machine`, `azurerm_virtual_machine`, `azurerm_kubernetes_cluster`, `azurerm_kubernetes_cluster_node_pool`, `azurerm_function_app`, `azurerm_linux_function_app`, `azurerm_windows_function_app` |
-| **GCP** | 15 | 15 | `google_compute_instance`, `google_container_node_pool`, `google_cloud_run_service`, `google_cloudfunctions_function`, `google_cloudfunctions2_function`, `google_workbench_instance` |
+| **AWS** | 14 | 29 | `aws_instance`, `aws_db_instance`, `aws_eks_node_group`, `aws_lambda_function`, `aws_sagemaker_endpoint_configuration` |
+| **Azure** | 17 | 19 | `azurerm_linux_virtual_machine`, `azurerm_windows_virtual_machine`, `azurerm_virtual_machine`, `azurerm_kubernetes_cluster`, `azurerm_kubernetes_cluster_node_pool`, `azurerm_function_app`, `azurerm_linux_function_app`, `azurerm_windows_function_app` |
+| **GCP** | 15 | 11 | `google_compute_instance`, `google_container_node_pool`, `google_cloud_run_service`, `google_cloudfunctions_function`, `google_cloudfunctions2_function`, `google_workbench_instance` |
+
+> [!note] ARM instance types removed in v2.1.0
+> AWS Graviton (all generations), Azure Ampere Dpsv5, and GCP T2A instances were removed from the ledger — no real, independently-sourced power data exists for any ARM cloud chip, from either CCF's archived or current coefficient data (see [METHODOLOGY.md](./METHODOLOGY.md#known-limitations)). The ARM-upgrade recommendation strategy was removed accordingly; region-shift recommendations are unaffected.
 
 Kubernetes node groups (EKS, AKS, GKE) resolve to the same instance ledger as standalone VMs. Node count scales the output, not the per-node calculation. See [Kubernetes Node Groups](#-kubernetes-node-groups) below.
 
@@ -166,7 +175,7 @@ co2e_grams = energy_kwh × grid_intensity_gco2e_per_kwh
 embodied_gco2e/month = (1,200,000g / 35,040h / 48 vCPUs) × vcpus × 730h
                        × 0.80  [ARM64 discount: Graviton, Ampere, T2A]
 ```
-_Note: these values are pre-computed per instance type and stored in the methodology ledger (`factors.json`). The formula above documents how ledger values are generated._
+_Note: these values are pre-computed per instance type and stored in the methodology ledger (`factors.json`). The formula above documents how ledger values are generated. The 0.80 ARM64 discount currently has no live instances to apply to — all AWS Graviton, Azure Ampere, and GCP T2A instance types were removed from the ledger in v2.1.0 (no real, independently-sourced power data exists for any ARM cloud chip — see [METHODOLOGY.md](./METHODOLOGY.md#known-limitations)). Retained here as documentation of the formula, restorable if a real ARM power source is found._
 
 **Water consumption (data centre cooling):**
 ```
@@ -191,7 +200,7 @@ aws_eks_node_group.workers
 
 **Autoscaling groups are reported at minimum configured size, never desired or maximum.** This is intentional, not a limitation: a tool that overstates emissions is as misleading as one that understates them, and an autoscaler's actual node count at any given moment is unknown at plan time. The PR comment notes this explicitly whenever a node group is detected, so the reported figure is read as a floor, not an estimate of typical usage.
 
-ARM upgrade and region shift recommendations apply across the whole node group. A recommendation on a 4-node group reports 4x the per-node saving, calculated from the same per-instance delta used for standalone resources.
+Region-shift recommendations apply across the whole node group. A recommendation on a 4-node group reports 4x the per-node saving, calculated from the same per-instance delta used for standalone resources. (ARM-upgrade recommendations were removed in v2.1.0 — see the Provider Coverage note above.)
 
 ---
 

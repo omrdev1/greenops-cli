@@ -28,7 +28,7 @@
           "schema_version": 6,
           "values": {
             "name": "greenops-e2e-worker",
-            "machine_type": "t2a-standard-2",
+            "machine_type": "e2-standard-2",
             "zone": "europe-north1-a",
             "tags": ["e2e"],
             "labels": { "environment": "e2e" }
@@ -70,7 +70,7 @@
         "before": null,
         "after": {
           "name": "greenops-e2e-worker",
-          "machine_type": "t2a-standard-2",
+          "machine_type": "e2-standard-2",
           "zone": "europe-north1-a",
           "tags": ["e2e"],
           "labels": { "environment": "e2e" }
@@ -116,7 +116,7 @@
           "provider_config_key": "google",
           "expressions": {
             "name": { "constant_value": "greenops-e2e-worker" },
-            "machine_type": { "constant_value": "t2a-standard-2" },
+            "machine_type": { "constant_value": "e2-standard-2" },
             "zone": { "constant_value": "europe-north1-a" }
           },
           "schema_version": 6

@@ -108,39 +108,47 @@ All compute factors live in [`factors.json`](./factors.json). Each provider has 
 
 **Step 1: Find power data**
 
-Source idle and max TDP from the [Cloud Carbon Footprint coefficients spreadsheet](https://www.cloudcarbonfootprint.org/docs/methodology). For ARM instances apply the 0.80 embodied multiplier.
+Source per-architecture idle/max watts-per-thread from [`ccf-coefficients`](https://github.com/cloud-carbon-footprint/ccf-coefficients)'s current output CSVs (`output/coefficients-aws-use.csv`, `-azure-use.csv`, `-gcp-use.csv`) — **not** the older `cloud-carbon-coefficients` repo, which CCF has archived. These files give watts per hardware thread per CPU architecture; multiply by the instance's vCPU count to get the instance's idle/max watts (see METHODOLOGY.md's Power Model section for the full worked derivation).
+
+You then need the instance family's real, documented CPU architecture from the provider's own instance-type docs (e.g. `aws.amazon.com/ec2/instance-types/<family>`) — don't assume from the instance name. If the provider documents more than one possible chip for a family (common — check the wording carefully, "either/or" language means non-deterministic), use the option with the higher max-watts figure and say so in the methodology doc, per the convention already documented in METHODOLOGY.md's Known Limitations.
+
+> [!warning] Do not add any ARM instance type (AWS Graviton, Azure Ampere/Dpsv5, GCP T2A) without a genuinely new, citable power source
+> All ARM instance types were removed from this ledger because CCF's own source code (both the archived and current repos) has no real Graviton/Ampere Altra wattage data — it silently substitutes AMD EPYC 2nd Gen figures. See METHODOLOGY.md's Known Limitations for the full record. Don't re-add an ARM instance using that substitution, or any other unverified estimate — only a real, independently-published source for that specific chip.
 
 **Step 2: Add to `factors.json`**
 
 ```json
-// AWS example, add under aws.instances
-"m7g.large": {
-  "architecture": "arm64",
-  "vcpus": 2,
-  "memory_gb": 8,
-  "power_watts": { "idle": 3.05, "max": 7.66 },
-  "embodied_co2e_grams_per_month": 14221
+// AWS example, add under aws.instances — r5.xlarge (16GB, memory-optimised),
+// mapped to Skylake per AWS's "Skylake-SP or Cascade Lake" family docs,
+// using the higher-max-watts convention (see Step 1)
+"r5.xlarge": {
+  "architecture": "x86_64",
+  "vcpus": 4,
+  "memory_gb": 32,
+  "power_watts": { "idle": 2.58, "max": 16.77 },
+  "embodied_co2e_grams_per_month": 2083.3
 }
 ```
 
 Embodied formula (documented in METHODOLOGY.md):
 ```
-embodied_g/month = (1,200,000g / 35,040h / 48 vCPUs) × vcpus × 730h × arm_discount
+embodied_g/month = (1,200,000g / 35,040h / 48 vCPUs) × vcpus × 730h × arch_factor
 ```
+`arch_factor` is 1.0 for x86_64. The 0.80 ARM64 discount documented in METHODOLOGY.md currently has no live instances to apply it to — see the warning above before reviving it.
 
 **Step 3: Add pricing** under `aws.pricing_usd_per_hour` for each region where the instance is available. Prices from the [AWS pricing page](https://aws.amazon.com/ec2/pricing/on-demand/).
 
 **Step 4: Add a test case** in `engine.test.ts` with a math trace comment:
 ```ts
-it('m7g.large in eu-west-1: ARM64 baseline', () => {
-  // idle=3.05W, max=7.66W, util=0.50, mem=8GB
-  // cpu_watts = 3.05 + (7.66-3.05)*0.50 = 5.355W
-  // mem_watts = 8 * 0.392 = 3.136W
-  // total_w   = 8.491W
-  // energy    = 8.491 * 1.13 * 730 / 1000 = 7.013 kWh
-  // co2e      = 7.013 * 233 = 1634g
-  const result = calculateBaseline({ resourceId: 'x', instanceType: 'm7g.large', region: 'eu-west-1', provider: 'aws' });
-  assert.ok(Math.abs(result.totalCo2eGramsPerMonth - 1634) < 50);
+it('r5.xlarge in eu-west-1: x86_64 baseline', () => {
+  // idle=2.58W, max=16.77W, util=0.50, mem=32GB
+  // cpu_watts = 2.58 + (16.77-2.58)*0.50 = 9.675W
+  // mem_watts = 32 * 0.392 = 12.544W
+  // total_w   = 22.219W
+  // energy    = 22.219 * 1.13 * 730 / 1000 = 18.331 kWh
+  // co2e      = 18.331 * 334.0 = 6122.6g
+  const result = calculateBaseline({ resourceId: 'x', instanceType: 'r5.xlarge', region: 'eu-west-1', provider: 'aws' });
+  assert.ok(Math.abs(result.totalCo2eGramsPerMonth - 6122.6) < 50);
 });
 ```
 

@@ -87,15 +87,20 @@ describe('formatMarkdown', () => {
   });
 
   it('shows recommendations section when recommendations exist', () => {
+    // v2.1.0: ARM-upgrade recommendations were removed (no real Graviton/Ampere
+    // Altra power data exists, see METHODOLOGY.md) — region shift is the only
+    // real recommendation the engine can now produce. This is a mocked fixture
+    // (formatMarkdown itself doesn't care which strategy produced the
+    // recommendation), so it's updated to reflect what the engine can actually emit.
     const result = makeMockResult({
       resources: [{
         input: { resourceId: 'aws_instance.web', instanceType: 'm5.large', region: 'us-east-1' },
         baseline: makeMockBaseline({ totalCo2eGramsPerMonth: 4313, totalCostUsdPerMonth: 70 }),
         recommendation: {
-          suggestedInstanceType: 'm6g.large',
+          suggestedRegion: 'eu-north-1',
           co2eDeltaGramsPerMonth: -1500,
           costDeltaUsdPerMonth: -13.87,
-          rationale: 'Switch to ARM64',
+          rationale: 'Shift to eu-north-1 for lower grid carbon intensity',
         },
       }],
       totals: makeMockTotals({ currentCo2eGramsPerMonth: 4313, currentCostUsdPerMonth: 70, potentialCo2eSavingGramsPerMonth: 1500, potentialCostSavingUsdPerMonth: 13.87 }),
@@ -103,7 +108,7 @@ describe('formatMarkdown', () => {
 
     const md = formatMarkdown(result);
     assert.ok(md.includes('### Recommendations'), 'Should include recommendations section');
-    assert.ok(md.includes('m6g.large'), 'Should include suggested instance type');
+    assert.ok(md.includes('eu-north-1'), 'Should include suggested region');
   });
 
   it('shows embodied carbon and water in resource breakdown', () => {
@@ -183,15 +188,18 @@ describe('formatMarkdown', () => {
   });
 
   it('shows node count multiplier and node group note for EKS/AKS/GKE resources', () => {
+    // v2.1.0: ARM-upgrade recommendations were removed (no real Graviton/Ampere
+    // Altra power data exists, see METHODOLOGY.md) — using a region-shift
+    // recommendation instead, which is what the engine can actually produce now.
     const result = makeMockResult({
       resources: [{
         input: { resourceId: 'aws_eks_node_group.workers', instanceType: 'm5.large', region: 'us-east-1', nodeCount: 3 },
         baseline: makeMockBaseline({ totalCo2eGramsPerMonth: 3000, totalCostUsdPerMonth: 150 }),
         recommendation: {
-          suggestedInstanceType: 'm6g.large',
+          suggestedRegion: 'eu-north-1',
           co2eDeltaGramsPerMonth: -900,
           costDeltaUsdPerMonth: -30,
-          rationale: 'Switch to ARM for lower power draw.',
+          rationale: 'Shift to eu-north-1 for lower grid carbon intensity.',
         },
       }],
     });

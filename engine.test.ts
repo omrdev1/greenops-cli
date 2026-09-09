@@ -4,21 +4,22 @@ import { calculateBaseline, generateRecommendation } from './engine';
 
 describe('calculateBaseline', () => {
   it('calculates the exact gCO2e value using the ledger default utilization (HIGH confidence)', () => {
-    // Audit Ledger Proof — v0.7.0 includes memory power draw (CCF standard: 0.392W/GB)
-    // Instance: m5.large (x86_64, 2 vCPU, 8GB RAM)
-    // Power: Idle=6.8W, Max=20.4W
+    // Audit Ledger Proof — v2.1.0 power_watts re-derived from ccf-coefficients (see METHODOLOGY.md)
+    // Instance: m5.large (x86_64, 2 vCPU, 8GB RAM) — mapped to Skylake (the
+    // higher-max-watts option of AWS's documented "Skylake-SP or Cascade Lake")
+    // Power: Idle=1.29W, Max=8.39W
     // Utilisation: 50% (0.5) [LEDGER DEFAULT]
     //
-    // CPU watts  = 6.8 + (20.4 - 6.8) × 0.50 = 13.6W
-    // Memory     = 8GB × 0.392W/GB            =  3.136W
-    // Total      = 13.6 + 3.136               = 16.736W
+    // CPU watts  = 1.29 + (8.39 - 1.29) × 0.50 = 4.84W
+    // Memory     = 8GB × 0.392W/GB              = 3.136W
+    // Total      = 4.84 + 3.136                 = 7.976W
     //
     // Region: us-east-1 | Grid: 384.5 gCO2e/kWh | PUE: 1.13
     //
-    // Energy = 16.736W × 1.13 × 730h / 1000  = 13.82 kWh/month
-    // CO2e   = 13.82 × 384.5                 = 5,308.22g CO2e/month
+    // Energy = 7.976W × 1.13 × 730h / 1000  = 6.579 kWh/month
+    // CO2e   = 6.579 × 384.5                = 2,529.76g CO2e/month
 
-    const expectedCo2e = 5308.2249;
+    const expectedCo2e = 2529.7802228;
 
     const result = calculateBaseline({
       resourceId: 'test',
@@ -178,12 +179,11 @@ describe('calculateBaseline', () => {
   // ---------------------------------------------------------------------------
 
   it('4A: memory power is included in Scope 2 calculation (CPU + memory watts)', () => {
-    // m5.large: CPU=13.6W at 50%, Memory=8GB×0.392=3.136W, Total=16.736W
-    // Without memory: 4313.57g (old). With memory: 5308.22g (new).
+    // m5.large: CPU=4.84W at 50% (v2.1.0 Skylake-mapped), Memory=8GB×0.392=3.136W, Total=7.976W
     const result = calculateBaseline({
       resourceId: 'test', region: 'us-east-1', instanceType: 'm5.large',
     });
-    const expectedCo2e = 5308.2249;
+    const expectedCo2e = 2529.7802228;
     const expectedMemW = 3.136;
 
     assert.ok(
@@ -244,15 +244,17 @@ describe('calculateBaseline', () => {
   // ---------------------------------------------------------------------------
 
   it('Azure: calculates correct Scope 2 CO2e for Standard_D2s_v3 in eastus', () => {
-    // Audit trace (v0.7.0 — includes memory power):
-    // Instance: Standard_D2s_v3 (x86_64, 2 vCPU, 8GB)
-    // CPU: idle=6.8W, max=20.4W → 13.6W at 50%
+    // Audit trace (v2.1.0 — power_watts re-derived from ccf-coefficients, see METHODOLOGY.md):
+    // Instance: Standard_D2s_v3 (x86_64, 2 vCPU, 8GB) — mapped to Haswell (the
+    // higher-max-watts option among the 6 chip generations Azure's own docs
+    // list as possible for this VM size)
+    // CPU: idle=3.71W, max=11.19W → 7.45W at 50%
     // Memory: 8GB × 0.392 = 3.136W
-    // Total: 16.736W
+    // Total: 10.586W
     // Region: eastus — grid=380.0 gCO2e/kWh, PUE=1.125, WUE=0.43 L/kWh
-    // Scope 2: 16.736 × 1.125 × 730 / 1000 × 380.0 = 5,222.89 gCO2e/month
+    // Scope 2: 10.586 × 1.125 × 730 / 1000 × 380.0 = 3,303.63 gCO2e/month
     // Scope 3: 1041.7 gCO2e/month (unchanged)
-    // Water:   16.736 × 730 / 1000 × 0.43 = 5.253 L/month
+    // Water:   10.586 × 730 / 1000 × 0.43 = 3.323 L/month
     // Cost:    $0.096 × 730 = $70.08/month (unchanged)
     const result = calculateBaseline({
       resourceId: 'azurerm_linux_virtual_machine.api',
@@ -263,26 +265,26 @@ describe('calculateBaseline', () => {
 
     assert.equal(result.confidence, 'HIGH');
     assert.equal(result.scope, 'SCOPE_2_AND_3');
-    assert.ok(Math.abs(result.totalCo2eGramsPerMonth - 5222.8872) < 0.01,
-      `Scope 2 expected ~5222.89, got ${result.totalCo2eGramsPerMonth}`);
+    assert.ok(Math.abs(result.totalCo2eGramsPerMonth - 3303.6259) < 0.01,
+      `Scope 2 expected ~3303.63, got ${result.totalCo2eGramsPerMonth}`);
     assert.ok(Math.abs(result.embodiedCo2eGramsPerMonth - 1041.7) < 0.01, 'Scope 3 unchanged');
-    assert.ok(Math.abs(result.waterLitresPerMonth - 5.25343) < 0.001,
-      `Water expected ~5.25L, got ${result.waterLitresPerMonth}`);
+    assert.ok(Math.abs(result.waterLitresPerMonth - 3.32295) < 0.001,
+      `Water expected ~3.32L, got ${result.waterLitresPerMonth}`);
     assert.ok(Math.abs(result.totalCostUsdPerMonth - 70.08) < 0.001, 'Cost unchanged');
   });
 
-  it('Azure: ARM upgrade recommendation (Standard_D2s_v3 → Standard_D2ps_v5) produces savings', () => {
-    const baseline = calculateBaseline({
-      resourceId: 'test', instanceType: 'Standard_D2s_v3', region: 'eastus', provider: 'azure',
-    });
-    const arm = calculateBaseline({
+  it('Azure: removed Ampere Altra instance (Standard_D2ps_v5) returns LOW_ASSUMED_DEFAULT', () => {
+    // v2.1.0: all Azure Dpsv5 (Ampere Altra ARM) instances were removed from the
+    // ledger — no real, independently-sourced power data exists for Ampere Altra
+    // anywhere in CCF's data. See METHODOLOGY.md's Known Limitations. The engine's
+    // existing missing-instance path should handle this the same as any other
+    // unsupported instance type — no special-casing needed.
+    const result = calculateBaseline({
       resourceId: 'test', instanceType: 'Standard_D2ps_v5', region: 'eastus', provider: 'azure',
     });
-
-    assert.ok(arm.totalCo2eGramsPerMonth < baseline.totalCo2eGramsPerMonth, 'ARM should have lower Scope 2');
-    assert.ok(arm.embodiedCo2eGramsPerMonth < baseline.embodiedCo2eGramsPerMonth, 'ARM lower embodied');
-    assert.ok(arm.totalCostUsdPerMonth < baseline.totalCostUsdPerMonth, 'ARM cheaper');
-    assert.ok(Math.abs(arm.embodiedCo2eGramsPerMonth - 833.3) < 0.01, 'ARM Scope 3 should be 833.3g');
+    assert.equal(result.confidence, 'LOW_ASSUMED_DEFAULT');
+    assert.equal(result.totalCo2eGramsPerMonth, 0);
+    assert.ok(result.unsupportedReason?.includes('Standard_D2ps_v5'));
   });
 
   it('Azure: returns LOW_ASSUMED_DEFAULT for unsupported instance', () => {
@@ -306,15 +308,17 @@ describe('calculateBaseline', () => {
   // ---------------------------------------------------------------------------
 
   it('GCP: calculates correct Scope 2 CO2e for n2-standard-2 in us-central1', () => {
-    // Audit trace (v0.7.0 — includes memory power):
-    // Instance: n2-standard-2 (x86_64, 2 vCPU, 8GB)
-    // CPU: idle=6.8W, max=20.4W → 13.6W at 50%
+    // Audit trace (v2.1.0 — power_watts re-derived from ccf-coefficients, see METHODOLOGY.md):
+    // Instance: n2-standard-2 (x86_64, 2 vCPU, 8GB) — mapped to Cascade Lake (the
+    // higher-max-watts option of GCP's documented "Cascade Lake or Ice Lake" for
+    // N2 instances under 96 vCPU)
+    // CPU: idle=1.38W, max=8.13W → 4.755W at 50%
     // Memory: 8GB × 0.392 = 3.136W
-    // Total: 16.736W
+    // Total: 7.891W
     // Region: us-central1 (Iowa) — grid=340.0 gCO2e/kWh, PUE=1.10, WUE=0.40 L/kWh
-    // Scope 2: 16.736 × 1.10 × 730 / 1000 × 340.0 = 4,569.26 gCO2e/month
+    // Scope 2: 7.891 × 1.10 × 730 / 1000 × 340.0 = 2,154.40 gCO2e/month
     // Scope 3: 1041.7 gCO2e/month (unchanged)
-    // Water:   16.736 × 730 / 1000 × 0.40 = 4.887 L/month
+    // Water:   7.891 × 730 / 1000 × 0.40 = 2.304 L/month
     // Cost:    $0.097 × 730 = $70.81/month (unchanged)
     const result = calculateBaseline({
       resourceId: 'google_compute_instance.web',
@@ -325,26 +329,24 @@ describe('calculateBaseline', () => {
 
     assert.equal(result.confidence, 'HIGH');
     assert.equal(result.scope, 'SCOPE_2_AND_3');
-    assert.ok(Math.abs(result.totalCo2eGramsPerMonth - 4569.26272) < 0.01,
-      `Scope 2 expected ~4569.26, got ${result.totalCo2eGramsPerMonth}`);
+    assert.ok(Math.abs(result.totalCo2eGramsPerMonth - 2154.40082) < 0.01,
+      `Scope 2 expected ~2154.40, got ${result.totalCo2eGramsPerMonth}`);
     assert.ok(Math.abs(result.embodiedCo2eGramsPerMonth - 1041.7) < 0.01, 'Scope 3 unchanged');
-    assert.ok(Math.abs(result.waterLitresPerMonth - 4.88691) < 0.001,
-      `Water expected ~4.89L, got ${result.waterLitresPerMonth}`);
+    assert.ok(Math.abs(result.waterLitresPerMonth - 2.30417) < 0.001,
+      `Water expected ~2.30L, got ${result.waterLitresPerMonth}`);
     assert.ok(Math.abs(result.totalCostUsdPerMonth - 70.81) < 0.001, 'Cost unchanged');
   });
 
-  it('GCP: ARM upgrade recommendation (n2-standard-2 → t2a-standard-2) produces savings', () => {
-    const baseline = calculateBaseline({
-      resourceId: 'test', instanceType: 'n2-standard-2', region: 'us-central1', provider: 'gcp',
-    });
-    const arm = calculateBaseline({
+  it('GCP: removed Ampere Altra instance (t2a-standard-2) returns LOW_ASSUMED_DEFAULT', () => {
+    // v2.1.0: all GCP T2A (Ampere Altra ARM) instances were removed from the
+    // ledger — no real, independently-sourced power data exists for Ampere Altra
+    // anywhere in CCF's data. See METHODOLOGY.md's Known Limitations.
+    const result = calculateBaseline({
       resourceId: 'test', instanceType: 't2a-standard-2', region: 'us-central1', provider: 'gcp',
     });
-
-    assert.ok(arm.totalCo2eGramsPerMonth < baseline.totalCo2eGramsPerMonth, 'ARM lower Scope 2');
-    assert.ok(arm.embodiedCo2eGramsPerMonth < baseline.embodiedCo2eGramsPerMonth, 'ARM lower embodied');
-    assert.ok(arm.totalCostUsdPerMonth < baseline.totalCostUsdPerMonth, 'ARM cheaper');
-    assert.ok(Math.abs(arm.embodiedCo2eGramsPerMonth - 833.3) < 0.01, 'ARM Scope 3 should be 833.3g');
+    assert.equal(result.confidence, 'LOW_ASSUMED_DEFAULT');
+    assert.equal(result.totalCo2eGramsPerMonth, 0);
+    assert.ok(result.unsupportedReason?.includes('t2a-standard-2'));
   });
 
   it('GCP: GCP region has lower PUE than AWS (1.10 vs 1.13) — produces lower carbon than equivalent AWS', () => {
@@ -388,7 +390,7 @@ describe('calculateBaseline', () => {
     assert.equal(result.assumptionsApplied.powerModelUsed, 'LINEAR_INTERPOLATION');
   });
 
-  it('t2.micro: emits less than t3.micro (lower power spec)', () => {
+  it('t2.micro: emits less than t3.micro (fewer vCPUs, despite higher per-vCPU wattage from its Haswell mapping)', () => {
     const t2 = calculateBaseline({ resourceId: 'x', instanceType: 't2.micro', region: 'us-east-1', provider: 'aws' });
     const t3 = calculateBaseline({ resourceId: 'x', instanceType: 't3.micro', region: 'us-east-1', provider: 'aws' });
     assert.ok(t2.totalCo2eGramsPerMonth < t3.totalCo2eGramsPerMonth, 't2.micro should emit less than t3.micro');

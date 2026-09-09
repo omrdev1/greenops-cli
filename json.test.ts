@@ -40,8 +40,10 @@ describe('JSON Formatter', () => {
   });
 
   it('individual resource baseline includes all three dimensions', () => {
+    // v2.1.0: was m6g.large — AWS Graviton removed from the ledger, no real
+    // ARM power data exists, see METHODOLOGY.md. Swapped for a real x86 instance.
     const result = analysePlan(
-      [{ resourceId: 'aws_instance.api', instanceType: 'm6g.large', region: 'eu-north-1' }],
+      [{ resourceId: 'aws_instance.api', instanceType: 'c5.large', region: 'eu-north-1' }],
       [],
       'plan.json'
     );

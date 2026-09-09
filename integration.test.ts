@@ -13,15 +13,16 @@ describe('End-to-End Integration', () => {
   test('Full pipeline extract -> analyse', () => {
     // Fixture covering all paths:
     // 1. aws_instance.web    — m5.large in us-east-1
-    //    With ledger v1.2.0 (14 regions), eu-north-1 (8.8 gCO2e/kWh) wins scoring:
-    //    region shift saves 4214.84g CO2e/month (+$2.92/month cost)
+    //    eu-north-1 (8.8 gCO2e/kWh) wins scoring: region shift saves ~2471.88g CO2e/month
     //
-    // 2. aws_instance.worker — m6g.large in us-west-2
-    //    Already ARM. us-west-2 (240.1g) → eu-north-1 (8.8g) is >15% better:
-    //    region shift saves 1650.41g CO2e/month ($0.00 cost delta)
+    // 2. aws_instance.worker — r5.large in us-west-2
+    //    (v2.1.0: was m6g.large — AWS Graviton removed from the ledger, no real
+    //    ARM power data exists, see METHODOLOGY.md. Swapped for a real x86
+    //    instance to keep this fixture's 3-resource, all-recommended shape.)
+    //    us-west-2 (240.1g) → eu-north-1 (8.8g): region shift saves ~2120.16g CO2e/month
     //
     // 3. aws_db_instance.db  — db.m5.xlarge in eu-west-1
-    //    Normalised to m5.xlarge. eu-north-1 wins: saves 7296.60g CO2e/month (-$10.22/month)
+    //    Normalised to m5.xlarge. eu-north-1 wins: saves ~4277.90g CO2e/month
     //
     // 4. aws_instance.unknown — known_after_apply (skip path)
     const fixture = {
@@ -34,7 +35,7 @@ describe('End-to-End Integration', () => {
         {
           address: 'aws_instance.worker',
           type: 'aws_instance',
-          change: { actions: ['create'], after: { instance_type: 'm6g.large', region: 'us-west-2' } }
+          change: { actions: ['create'], after: { instance_type: 'r5.large', region: 'us-west-2' } }
         },
         {
           address: 'aws_db_instance.db',
@@ -61,47 +62,42 @@ describe('End-to-End Integration', () => {
 
       const result = analysePlan(resources, skipped, tmpFile);
 
-      // --- Math traces from factors.json v1.2.0 — v0.7.0 includes memory power (0.392W/GB) ---
+      // --- Math traces from factors.json v2.1.0 (power_watts re-derived from ccf-coefficients) ---
       //
       // W_effective = W_cpu + W_memory
       // W_cpu    = W_idle + (W_max - W_idle) × 0.5
       // W_memory = memory_gb × 0.392W/GB
       //
-      // 1. aws_instance.web — m5.large us-east-1 (8GB)
-      //    W_cpu=13.6W, W_mem=3.136W, W_total=16.736W
-      //    energy = 16.736 × 1.13 × 730 / 1000 = 13.816 kWh
-      //    co2e   = 13.816 × 384.5 = 5308.22g
+      // 1. aws_instance.web — m5.large us-east-1 (8GB, Skylake-mapped)
+      //    W_cpu=4.84W, W_mem=3.136W, W_total=7.976W
+      //    energy = 7.976 × 1.13 × 730 / 1000 = 6.579 kWh
+      //    co2e   = 6.579 × 384.5 = 2529.78g
       //    cost   = $0.096 × 730 = $70.08
       //
-      // 2. aws_instance.worker — m6g.large us-west-2 (ARM, 8GB)
-      //    W_cpu=8.65W, W_mem=3.136W, W_total=11.786W
-      //    energy = 11.786 × 1.13 × 730 / 1000 = 9.722 kWh
-      //    co2e   = 9.722 × 240.1 = 2334.32g
-      //    cost   = $0.077 × 730 = $56.21
+      // 2. aws_instance.worker — r5.large us-west-2 (16GB, Skylake-mapped)
+      //    W_cpu=4.84W, W_mem=6.272W, W_total=11.112W
+      //    energy = 11.112 × 1.13 × 730 / 1000 = 9.167 kWh
+      //    co2e   = 9.167 × 240.1 = 2200.83g
+      //    cost   = $0.126 × 730 = $91.98
       //
-      // 3. aws_db_instance.db — m5.xlarge eu-west-1 (normalised from db.m5.xlarge, 16GB)
-      //    W_cpu=27.2W, W_mem=6.272W, W_total=33.472W
-      //    energy = 33.472 × 1.13 × 730 / 1000 = 27.622 kWh
-      //    co2e   = 27.622 × 334.0 = 9222.09g
+      // 3. aws_db_instance.db — m5.xlarge eu-west-1 (normalised from db.m5.xlarge, 16GB, Skylake-mapped)
+      //    W_cpu=9.675W, W_mem=6.272W, W_total=15.947W
+      //    energy = 15.947 × 1.13 × 730 / 1000 = 13.153 kWh
+      //    co2e   = 13.153 × 334.0 = 4393.66g
       //    cost   = $0.214 × 730 = $156.22
       //
-      // Total: 5308.22 + 2334.32 + 9222.09 = 16864.63g, $282.51
+      // Total: 2529.78 + 2200.83 + 4393.66 = 9124.27g, $318.28
       // Note: potentialCostSavingUsdPerMonth uses Math.abs() of each delta.
       // -----------------------------------------------
 
-      // v0.7.0: Memory power draw included (0.392W/GB)
-      // m5.large  us-east-1:  cpu=13.6W + mem=3.136W = 16.736W → 5308.22g CO2e
-      // m6g.large us-west-2:  ARM — cpu=8.65W + mem=3.136W = 11.786W → 2334.32g CO2e
-      // m5.xlarge eu-west-1:  cpu=27.2W + mem=6.272W = 33.472W → 9222.09g CO2e
-      const totalCo2e = 5308.2249 + 2334.31736 + 9222.09164;
-      const totalCost = 70.08 + 56.21 + 156.22;
+      const totalCo2e = 2529.7802228 + 2200.82594088 + 4393.6632202;
+      const totalCost = 70.08 + 91.98 + 156.22;
 
       assert.ok(Math.abs(result.totals.currentCo2eGramsPerMonth - totalCo2e) < 0.01);
       assert.ok(Math.abs(result.totals.currentCostUsdPerMonth - totalCost) < 0.001);
 
       // All three resources now have recommendations (eu-north-1 shift)
       // Verify savings are substantial — >85% of total baseline CO2e
-      // (memory power increases baseline, slightly reducing the savings percentage)
       const savingsPct = result.totals.potentialCo2eSavingGramsPerMonth / result.totals.currentCo2eGramsPerMonth;
       assert.ok(savingsPct > 0.85, `Expected >85% CO2e savings with 14-region ledger, got ${(savingsPct*100).toFixed(1)}%`);
 

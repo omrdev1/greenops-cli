@@ -22,7 +22,7 @@ body:
     id: instance
     attributes:
       label: Instance type (if applicable)
-      placeholder: "e.g., m7g.large, Standard_D2s_v5, n2-standard-2"
+      placeholder: "e.g., c5.9xlarge, Standard_D16s_v3, n2-standard-16"
 
   - type: input
     id: region
@@ -34,7 +34,16 @@ body:
     id: data
     attributes:
       label: Source data (TDP bounds / grid intensity)
-      description: Link to Cloud Carbon Footprint coefficients or Electricity Maps data if you have it.
+      description: >
+        Link to Cloud Carbon Footprint's CURRENT coefficient data
+        (github.com/cloud-carbon-footprint/ccf-coefficients — NOT the older,
+        archived cloud-carbon-coefficients repo) or Electricity Maps data if
+        you have it. Requesting AWS Graviton, Azure Ampere (Dpsv5), or GCP T2A
+        coverage? See METHODOLOGY.md's Known Limitations first — these were
+        deliberately removed because no real, independently-sourced power data
+        exists for any ARM cloud chip in CCF's data, old or new. A request for
+        one of these needs a genuinely new source, not a re-derivation from
+        the same CCF data already checked.
 
   - type: textarea
     id: context

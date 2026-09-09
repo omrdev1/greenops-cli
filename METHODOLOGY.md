@@ -1,11 +1,13 @@
-# GreenOps Methodology Ledger v2.0.0
+# GreenOps Methodology Ledger v2.1.0
 
 **Methodology transparency is the only defence against greenwashing.**
 
 All maths in GreenOps is open, auditable, and reproducible from `factors.json`. This document defines the exact formulas, assumptions, and data sources used in every calculation.
 
-> [!warning] AWS CPU power figures (`power_watts.idle`/`power_watts.max`) are under active re-verification against CCF's own source data — do not treat current values as audited ([#25](https://github.com/omrdev1/greenops-cli/issues/25))
-> A reader comparing `factors.json` directly against Cloud Carbon Footprint's own `aws-instances.csv` surfaced a discrepancy that, on full investigation, turned out to be ledger-wide rather than isolated to one instance. Checked against CCF's own per-instance "Instance @ Idle"/"Instance @ 100%" columns (the correct comparison point — not CCF's raw, unscaled `PkgWatt` columns, which report whole-physical-server CPU-chip power before RAM and before scaling to one instance's vCPU share), every one of the 43 general-purpose AWS instances checked deviates from CCF's real figures by more than 15% on idle, max, or both. Patterns found: ARM (Graviton 2/3) instances are overstated on idle by 300-440%; the c5/c6g families are overstated on both idle and max by 22-79%; the t2/t3/r5 families show inconsistent direction (some idle too low, some max too low, in the same family) rather than a single clean scaling error. Separately, and more seriously: **`m7g.*` and `c7g.*` (Graviton 4) instances have no traceable entry in CCF's dataset at all** — no source could be confirmed for these figures. Until this is re-derived per-instance, treat AWS CPU power figures as indicative, not audited, the same posture already applied to grid carbon intensity (see [Known Limitations](#known-limitations)). Azure and GCP instance power figures reuse the same per-vCPU pattern as several AWS families and have not yet been independently checked against their own respective CCF coefficient files — likely, not yet confirmed, to carry a related problem.
+> [!note] AWS/Azure/GCP CPU power figures re-derived against CCF's current source data, v2.1.0 ([#25](https://github.com/omrdev1/greenops-cli/issues/25))
+> A reader comparing `factors.json` against Cloud Carbon Footprint's `aws-instances.csv` surfaced a discrepancy that, on investigation, turned out to be ledger-wide. Further investigation found the comparison itself had been built against `cloud-carbon-coefficients`, a repo CCF has since **archived** in favour of the actively-maintained `ccf-coefficients`, which computes wattage at the CPU-architecture level (min/max watts per hardware thread) rather than per-instance-type. `power_watts.idle`/`power_watts.max` for every x86/AMD instance in this ledger have been re-derived directly from `ccf-coefficients`' current data, paired with each instance family's real, documented CPU architecture (sourced from AWS/Azure/GCP's own instance-type docs, not third-party summaries). For families where the provider itself doesn't guarantee a single chip (e.g. AWS t3/m5/c5/r5, several Azure D-series generations, GCP N2/E2), the documented option with the higher max-watts figure was used, disclosed per-family below rather than silently picked.
+>
+> **All ARM instance types (AWS Graviton, Azure Ampere Dpsv5, GCP T2A) have been removed from this ledger.** CCF's own current source code (`ccfcoef/aws/coefficients.py`) substitutes AMD EPYC 2nd Gen wattage for every Graviton generation, with the comment *"we don't know the values for the Graviton chips so assume they are the same spec as AMD EPYC Gen 2 but listed separately"* — meaning no real, independently-measured Graviton wattage exists in CCF's data, old or new. No Ampere Altra entry exists for Azure or GCP either. Shipping numbers with no real source behind them, even ones that happened to match another chip's figures, would violate this ledger's own refusal-to-guess principle. The ARM-upgrade recommendation strategy has been removed accordingly — see [Recommendation Engine](#recommendation-engine). Azure and GCP power figures, previously silently reused from AWS by matching vCPU/RAM shape (not independently sourced despite an inaccurate "CCF Azure/GCP coefficients" citation), are now genuinely provider-specific.
 
 ---
 
@@ -13,9 +15,9 @@ All maths in GreenOps is open, auditable, and reproducible from `factors.json`. 
 
 | Provider | Regions | Instances | Status |
 |---|---|---|---|
-| AWS | 14 | 50 | Full coverage for listed instance and node group types. 3 GPU instances (`g5.xlarge`, `p4d.24xlarge`, `p5.48xlarge`) Scope 2-only, `us-east-1` only — see [GPU Instances](#gpu-instances-scope-2-only). SageMaker endpoint configs (Scope 2-only, `us-east-1` only) — see [Managed AI Services](#managed-ai-services) |
-| Azure | 17 | 22 | Full coverage for listed instance and node group types. 6 GPU instances (`Standard_NC4as_T4_v3`, `Standard_NC8as_T4_v3`, `Standard_NC16as_T4_v3`, `Standard_NC64as_T4_v3`, `Standard_ND96amsr_A100_v4`, `Standard_ND96isr_H100_v5`) Scope 2-only, `eastus` only — see [GPU Instances](#gpu-instances-scope-2-only) |
-| GCP | 15 | 15 | Full coverage for listed instance and node group types. Vertex AI Workbench (Scope 2-only, T4 GPU only) — see [Managed AI Services](#managed-ai-services) |
+| AWS | 14 | 29 (26 general-purpose + 3 GPU) | Full coverage for listed instance and node group types. All AWS Graviton (ARM) instance types removed in v2.1.0 — see the note above and [Known Limitations](#known-limitations). 3 GPU instances (`g5.xlarge`, `p4d.24xlarge`, `p5.48xlarge`) Scope 2-only, `us-east-1` only — see [GPU Instances](#gpu-instances-scope-2-only). SageMaker endpoint configs (Scope 2-only, `us-east-1` only) — see [Managed AI Services](#managed-ai-services) |
+| Azure | 17 | 19 (13 general-purpose + 6 GPU) | Full coverage for listed instance and node group types. Ampere-based `Standard_D*ps_v5` instance types removed in v2.1.0 — see the note above. 6 GPU instances (`Standard_NC4as_T4_v3`, `Standard_NC8as_T4_v3`, `Standard_NC16as_T4_v3`, `Standard_NC64as_T4_v3`, `Standard_ND96amsr_A100_v4`, `Standard_ND96isr_H100_v5`) Scope 2-only, `eastus` only — see [GPU Instances](#gpu-instances-scope-2-only) |
+| GCP | 15 | 11 | Full coverage for listed instance and node group types. T2A (Ampere Altra) instance types removed in v2.1.0 — see the note above. Vertex AI Workbench (Scope 2-only, T4 GPU only) — see [Managed AI Services](#managed-ai-services) |
 
 Run `greenops-cli --coverage` to see the full instance and region list per provider.
 
@@ -54,8 +56,8 @@ Where:
 
 Memory power draw is **constant** regardless of CPU utilisation. This reflects that DRAM draws near-constant power whether or not it is actively being written to, consistent with CCF v3 methodology.
 
-> [!note] Both W_idle and W_max deviate from CCF's own per-instance figures, not just idle — see the ledger-wide warning at the top of this document
-> Initial investigation (prompted by a reader comparing `factors.json` against CCF's raw `aws-instances.csv`) suspected a single flat idle/max ratio (0.333 for most general-purpose families, 0.295/0.311/0.269/0.273 for others, 0.120 for GPU instances — see [GPU Instances](#gpu-instances-scope-2-only), which documents its own ratio explicitly) applied instead of a per-instance CCF idle lookup. A full pass against CCF's actual "Instance @ Idle"/"Instance @ 100%" columns across all 43 general-purpose AWS instances found the problem is broader: `W_max` also deviates meaningfully from CCF for several families (c5/c6g: 22-79% high), not just `W_idle`, and the direction/magnitude of drift is inconsistent across families rather than one clean derivation error. See the top-of-document warning and [Known Limitations](#known-limitations) for the full scope.
+> [!note] `W_idle`/`W_max` re-derived per-family from real CPU architecture data, v2.1.0
+> Values are now `ccf-coefficients`' per-architecture min/max-watts-per-thread multiplied by the instance's vCPU count, using the architecture that instance family's own provider documentation confirms (see the per-family table in [Known Limitations](#known-limitations)). Where a provider doesn't guarantee a single chip for a family, the documented option with the higher max-watts is used — see the top-of-document note.
 
 ### Carbon Calculation
 
@@ -76,27 +78,33 @@ GCP's 1.10 PUE is the best in class among the three major providers, producing ~
 
 ### Worked Example: AWS m5.large in us-east-1 at 50% utilisation
 
-1. **CPU power:** `W_cpu = 6.8 + (20.4 - 6.8) × 0.50 = 13.6W`
+m5.large is one of the "either/or" AWS families (Skylake-SP or Cascade Lake per AWS's own docs) — Skylake used per the higher-max-watts convention (see [Known Limitations](#known-limitations)).
+
+1. **CPU power:** `W_cpu = 1.29 + (8.39 - 1.29) × 0.50 = 4.84W`
 2. **Memory power:** `W_mem = 8GB × 0.392 = 3.136W`
-3. **Total:** `W = 13.6 + 3.136 = 16.736W`
-4. **Energy:** `16.736W × 1.13 PUE × 730h / 1000 = 13.816 kWh/month`
-5. **Carbon:** `13.816 × 384.5 = 5,308.2g CO2e/month`
+3. **Total:** `W = 4.84 + 3.136 = 7.976W`
+4. **Energy:** `7.976W × 1.13 PUE × 730h / 1000 = 6.579 kWh/month`
+5. **Carbon:** `6.579 × 384.5 = 2,529.8g CO2e/month`
 
 ### Worked Example: Azure Standard_D2s_v3 in eastus at 50% utilisation
 
-1. **CPU power:** `W_cpu = 6.8 + (20.4 - 6.8) × 0.50 = 13.6W`
+Standard_D2s_v3 can run on any of 6 documented chip generations depending on physical host placement — Haswell used per the higher-max-watts convention.
+
+1. **CPU power:** `W_cpu = 3.71 + (11.19 - 3.71) × 0.50 = 7.45W`
 2. **Memory power:** `W_mem = 8GB × 0.392 = 3.136W`
-3. **Total:** `W = 16.736W`
-4. **Energy:** `16.736W × 1.125 PUE × 730h / 1000 = 13.745 kWh/month`
-5. **Carbon:** `13.745 × 380.0 = 5,222.9g CO2e/month`
+3. **Total:** `W = 7.45 + 3.136 = 10.586W`
+4. **Energy:** `10.586W × 1.125 PUE × 730h / 1000 = 8.694 kWh/month`
+5. **Carbon:** `8.694 × 380.0 = 3,303.6g CO2e/month`
 
 ### Worked Example: GCP n2-standard-2 in us-central1 at 50% utilisation
 
-1. **CPU power:** `W_cpu = 6.8 + (20.4 - 6.8) × 0.50 = 13.6W`
+n2-standard-2 (<96 vCPU) can run on Cascade Lake or Ice Lake — Cascade Lake used per the higher-max-watts convention.
+
+1. **CPU power:** `W_cpu = 1.38 + (8.13 - 1.38) × 0.50 = 4.76W`
 2. **Memory power:** `W_mem = 8GB × 0.392 = 3.136W`
-3. **Total:** `W = 16.736W`
-4. **Energy:** `16.736W × 1.10 PUE × 730h / 1000 = 13.445 kWh/month`
-5. **Carbon:** `13.445 × 340.0 = 4,569.3g CO2e/month`
+3. **Total:** `W = 4.76 + 3.136 = 7.891W`
+4. **Energy:** `7.891W × 1.10 PUE × 730h / 1000 = 6.336 kWh/month`
+5. **Carbon:** `6.336 × 340.0 = 2,154.4g CO2e/month`
 
 ---
 
@@ -229,11 +237,9 @@ WUE is applied to IT load (before PUE multiplication), matching the AWS/Azure/Go
 
 ## Recommendation Engine
 
-GreenOps evaluates two strategies per resource and selects the highest-scoring option:
+GreenOps evaluates one strategy per resource:
 
-**Strategy 1 (ARM upgrade):** Switch x86_64 to ARM64 (same vCPU/RAM class). Only recommended if both CO2e and cost decrease. Supported across all three providers.
-
-**Strategy 2 (Region shift):** Move to the lowest grid-intensity region within the same provider that has pricing data for this instance. Only recommended if CO2e reduction exceeds 15% of baseline.
+**Region shift:** Move to the lowest grid-intensity region within the same provider that has pricing data for this instance. Only recommended if CO2e reduction exceeds 15% of baseline.
 
 **Scoring:**
 
@@ -244,14 +250,8 @@ score = (|co2e_delta| / baseline_co2e) × 0.60
 
 Carbon reduction is weighted at 60%, cost at 40%, both normalised to percentage-of-baseline.
 
-### ARM Upgrade Maps
-
-| AWS (x86 → ARM64) | Azure (x86 → ARM64) | GCP (x86 → ARM64) |
-|---|---|---|
-| t3/t3a → t4g | Standard_D2s_v3 → Standard_D2ps_v5 | n2 → t2a |
-| m5/m5a → m6g | Standard_D4s_v3 → Standard_D4ps_v5 | n2d → t2a |
-| c5/c5a → c6g | Standard_D8s_v3 → Standard_D8ps_v5 | e2 → t2a |
-| r5/r5a → r6g | Standard_D2s_v4 → Standard_D2ps_v5 | | |
+> [!warning] ARM upgrade recommendations removed ([#25](https://github.com/omrdev1/greenops-cli/issues/25))
+> Earlier versions of this engine recommended switching x86_64 instances to ARM64 equivalents (AWS Graviton, Azure Ampere Dpsv5, GCP T2A) as a carbon/cost-saving strategy. Removed because no AWS Graviton generation, Azure Ampere Altra instance, or GCP T2A instance has real, independently-sourced power data anywhere — not in the archived CCF repo, not in the current `ccf-coefficients` repo. CCF's own current source code substitutes AMD EPYC 2nd Gen wattage for every Graviton generation, with the comment *"we don't know the values for the Graviton chips so assume they are the same spec as AMD EPYC Gen 2"* (`ccfcoef/aws/coefficients.py`) — and no Ampere Altra entry exists in CCF's wattage data for Azure or GCP at all. Recommending an ARM switch on that basis would mean estimating a saving this ledger cannot actually stand behind. All ARM instance types have been removed from `factors.json` (see [AWS/Azure/GCP Instance Coverage](#cloud-provider-coverage)) rather than left in with unsupported numbers. If real Graviton/Ampere Altra power data becomes available from a citable source, both the ledger entries and this recommendation strategy can be restored.
 
 ---
 
@@ -259,9 +259,9 @@ Carbon reduction is weighted at 60%, cost at 40%, both normalised to percentage-
 
 | Data | Source | Version |
 |---|---|---|
-| AWS instance TDP | Cloud Carbon Footprint hardware coefficients | v3 |
-| Azure instance TDP | Cloud Carbon Footprint Azure coefficients | v3 |
-| GCP instance TDP | Cloud Carbon Footprint GCP coefficients | v3 |
+| AWS instance TDP | `ccf-coefficients` per-architecture wattage + AWS's own documented chip mapping per family | current (2026-09) |
+| Azure instance TDP | `ccf-coefficients` per-architecture wattage + Azure's own documented chip mapping per family | current (2026-09) |
+| GCP instance TDP | `ccf-coefficients` per-architecture wattage + GCP's own documented chip mapping per family | current (2026-09) |
 | Embodied carbon per server | CCF DELL R740 baseline | v3 |
 | AWS grid carbon intensity | Electricity Maps annual averages | 2024 |
 | Azure grid carbon intensity | Electricity Maps annual averages | 2024 |
@@ -307,9 +307,9 @@ These are the maximum-utilisation values. Actual emissions at typical utilisatio
 
 | Provider | Instance types | Notable gaps |
 |---|---|---|
-| AWS | 50 (47 general-purpose + 3 GPU) | r6i, c6i, m6i (Intel v3), Graviton 4 (m8g, c8g), GCP-equivalent GPU generations |
-| Azure | 20 (16 general-purpose + 4 GPU) | Standard_M series, Standard_L series, Standard_ND (A100/H100), Azure ML compute |
-| GCP | 15 + Vertex AI Workbench (T4 only) | n1 series (legacy), m2/m3 memory-optimised, A2/A3 GPU families, Vertex AI prediction endpoints |
+| AWS | 29 (26 general-purpose + 3 GPU) | r6i, c6i, m6i (Intel v3), all Graviton generations (removed v2.1.0, no real source — see [Known Limitations](#known-limitations)), GCP-equivalent GPU generations |
+| Azure | 19 (13 general-purpose + 6 GPU) | Standard_M series, Standard_L series, Azure ML compute, Ampere Altra Dpsv5 (removed v2.1.0, no real source) |
+| GCP | 11 + Vertex AI Workbench (T4 only) | n1 series (legacy), m2/m3 memory-optimised, A2/A3 GPU families, Vertex AI prediction endpoints, T2A/Ampere Altra (removed v2.1.0, no real source) |
 
 GPU instances (AWS `g5.xlarge`/`p4d.24xlarge`/`p5.48xlarge`, Azure `Standard_NC4as_T4_v3`/`Standard_NC8as_T4_v3`/`Standard_NC16as_T4_v3`/`Standard_NC64as_T4_v3`/`Standard_ND96amsr_A100_v4`/`Standard_ND96isr_H100_v5`) and managed AI services (AWS SageMaker, GCP Vertex AI Workbench) are in the ledger as of v0.10.0 through v0.13.3, Scope 2 only — see [GPU Instances](#gpu-instances-scope-2-only) and [Managed AI Services](#managed-ai-services) above. Azure ML and GCP Vertex AI prediction endpoints remain unsupported. Kubernetes node groups (EKS, AKS, GKE) resolve to the standard instance entries above; node count multiplies the output, see Kubernetes Node Groups above.
 
@@ -319,7 +319,23 @@ All gaps are tracked as open issues. Coverage PRs are the fastest to merge.
 
 ## Known Limitations
 
-- **AWS CPU power figures (`power_watts.idle`/`power_watts.max`) deviate from CCF's own per-instance data across the ledger, under active re-verification, not yet corrected.** Surfaced by a reader comparing `factors.json` against CCF's raw `aws-instances.csv`, then found on full investigation to be broader than one instance or one figure: all 43 general-purpose AWS instances checked against CCF's own "Instance @ Idle"/"Instance @ 100%" columns deviate by more than 15% on idle, max, or both. ARM (Graviton 2/3) instances are overstated on idle by 300-440%. The c5/c6g families are overstated on both idle and max by 22-79%. The t2/t3/r5 families show inconsistent direction within the same family (some idle too low, some max too low), not a single clean scaling error. `m7g.*` and `c7g.*` (Graviton 4) have **no traceable entry in CCF's dataset at all** — no source currently confirmed for these figures. Azure and GCP power figures reuse a related per-vCPU pattern and have not yet been independently checked against their own CCF coefficient files. See the warning at the top of this document and [#25](https://github.com/omrdev1/greenops-cli/issues/25) for the full table and tracking. The data-sources table below citing "Cloud Carbon Footprint hardware coefficients v3" for AWS instance TDP should currently be read as CCF-*informed*, not CCF-*audited*, until this is re-derived per-instance.
+- **AWS/Azure/GCP CPU power figures re-derived from `ccf-coefficients` (CCF's current, actively-maintained repo), v2.1.0 — resolves [#25](https://github.com/omrdev1/greenops-cli/issues/25).** The original comparison in #25 was built against `cloud-carbon-coefficients`, since confirmed archived by CCF themselves ("Archived — see ccf-coefficients"). The real, current CCF data computes wattage at the CPU-architecture level, not per-instance-type — every x86/AMD instance in this ledger has been re-mapped to its real documented chip architecture (per-family table below) and its power figures recomputed from that architecture's real min/max-watts-per-thread × vCPU count.
+  | Family | Documented chip(s) | Deterministic? | Architecture used |
+  |---|---|---|---|
+  | AWS t3a, m5a | AMD EPYC 7000 series | Yes | EPYC 1st Gen |
+  | AWS c5a | AMD EPYC 7002 series | Yes | EPYC 2nd Gen |
+  | AWS t3, m5, r5, c5 | Skylake-SP or Cascade Lake ("either/or" per AWS docs) | No | Skylake (higher max-watts) |
+  | AWS t2 | Not specified on AWS's current instance-type page (legacy family, predates the standardized doc template) | Unconfirmed | Haswell (best-effort, legacy secondary sources only — weakest-sourced mapping in this ledger) |
+  | Azure Standard_B, Standard_D*_v3 | Haswell, Broadwell, Skylake, Cascade Lake, Ice Lake, or Emerald Rapids, depending on physical host | No | Haswell (higher max-watts) |
+  | Azure Standard_D*_v4 | Emerald Rapids, Sapphire Rapids, Ice Lake, or Cascade Lake | No | Emerald Rapids (higher max-watts) |
+  | Azure Standard_F*_v2 | Emerald Rapids, Ice Lake, Cascade Lake, or Skylake | No | Emerald Rapids (higher max-watts) |
+  | Azure Standard_E*_v3 | Ice Lake, Cascade Lake, Skylake, or Broadwell | No | Skylake (higher max-watts) |
+  | GCP c2-standard-* | Cascade Lake ("Intel Xeon Gold 6253CL") | Yes | Cascade Lake |
+  | GCP n2-standard-* (<96 vCPU) | Cascade Lake or Ice Lake | No | Cascade Lake (higher max-watts) |
+  | GCP n2d-standard-*, t2d-standard-* | AMD EPYC Milan (Rome retired per current GCP docs) | Yes | EPYC 3rd Gen |
+  | GCP e2-standard-* | Broadwell, Skylake, or EPYC Milan; CPU platform "is selected for you," no override | No | Skylake (higher max-watts) |
+
+  **All ARM instance types removed, not re-derived — no real source exists.** AWS Graviton (all generations, `t4g.*`/`m6g.*`/`m7g.*`/`c6g.*`/`c7g.*`/`r6g.*`), Azure `Standard_D*ps_v5` (Ampere Altra), and GCP `t2a-standard-*` (Ampere Altra) have been removed from this ledger entirely rather than shipped with unsourced numbers. CCF's own current source code substitutes AMD EPYC 2nd Gen wattage for every Graviton generation, stating directly in a code comment: *"we don't know the values for the Graviton chips so assume they are the same spec as AMD EPYC Gen 2 but listed separately"* (`ccfcoef/aws/coefficients.py`). No Ampere Altra entry exists in CCF's coefficient data for any provider. The ARM-upgrade recommendation strategy has been removed accordingly (see [Recommendation Engine](#recommendation-engine)) — this is a real coverage regression, not a silent one, flagged in this release's notes. If a real, citable Graviton or Ampere Altra power source becomes available, both the ledger entries and the recommendation strategy can be restored.
 - **Partial GPU and managed AI/ML compute model.** AWS GPU instances (`g5.xlarge`, `p4d.24xlarge`, `p5.48xlarge`), Azure GPU instances (`Standard_NC4as_T4_v3`, `Standard_NC8as_T4_v3`, `Standard_NC16as_T4_v3`, `Standard_NC64as_T4_v3`, `Standard_ND96amsr_A100_v4`, `Standard_ND96isr_H100_v5`), AWS SageMaker endpoint configs, and GCP Vertex AI Workbench (NVIDIA T4 only) are modeled, Scope 2 only — see [GPU Instances](#gpu-instances-scope-2-only) and [Managed AI Services](#managed-ai-services) above. Azure ML, GCP Vertex AI prediction endpoints (the model-serving compute itself), and GPU embodied (Scope 3) carbon anywhere in the stack remain unmodeled. This is the largest open gap as of this writing.
 - **Scope 2 only for region recommendations.** Embodied carbon does not change when shifting regions, so it is correctly excluded from the region-shift scoring.
 - **Annual average grid intensity.** Real-time marginal emissions are not used. Annual averages are more stable and reproducible, consistent with CCF methodology. **Source under active re-verification** ([#24](https://github.com/omrdev1/greenops-cli/issues/24)): `factors.json` records the source as "electricity-maps-2024-avg" with no logged query date or exact zone mapping. A real discrepancy was confirmed for `us-east-1`: the ledger's 384.5 figure is suspiciously close to the 2024 US *national* average (384, per Ember), not a PJM-specific figure — the likely root cause is a national-average value being substituted for a regional grid-zone value somewhere upstream. Not yet corrected in the ledger, since no single PJM figure could be verified to high confidence from a reachable, current-year source (candidates ranged from 403 to ~535 depending on source and year). Treat all current grid intensity values as indicative, not audited, until re-derived from a live ElectricityMaps export or EPA eGRID pull.
