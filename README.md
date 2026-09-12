@@ -1,62 +1,36 @@
-# GreenOps CLI
-> Open-source carbon footprint linting for AWS, Azure, and GCP CI/CD pipelines.
+<div align="center">
 
-Analyses Terraform plans for **Scope 2 operational**, **Scope 3 embodied**, and **water consumption** impact across all three major cloud providers. Posts actionable recommendations directly on GitHub pull requests. Zero network, zero dependencies, MIT-licensed methodology.
+# 🌱 GreenOps CLI
 
----
+**Carbon footprint linting for Terraform, right in the pull request.**
 
-## 💬 Live PR Comment
+[![npm version](https://img.shields.io/npm/v/greenops-cli.svg?color=2E7D32)](https://www.npmjs.com/package/greenops-cli)
+[![License: MIT](https://img.shields.io/badge/License-MIT-2E7D32.svg)](./LICENSE)
+[![E2E Tests](https://github.com/omrdev1/greenops-cli/actions/workflows/greenops-e2e.yml/badge.svg)](https://github.com/omrdev1/greenops-cli/actions/workflows/greenops-e2e.yml)
+[![GitHub release](https://img.shields.io/github/v/release/omrdev1/greenops-cli?color=2E7D32)](https://github.com/omrdev1/greenops-cli/releases)
+[![AWS](https://img.shields.io/badge/AWS-supported-2E7D32?logo=amazonaws&logoColor=white)](#-provider-coverage)
+[![Azure](https://img.shields.io/badge/Azure-supported-2E7D32?logo=microsoftazure&logoColor=white)](#-provider-coverage)
+[![GCP](https://img.shields.io/badge/GCP-supported-2E7D32?logo=googlecloud&logoColor=white)](#-provider-coverage)
 
-> | Metric | Monthly Total |
-> |---|---|
-> | 🔋 Scope 2 (Operational CO2e) | **6.05kg** |
-> | 🏭 Scope 3 (Embodied CO2e) | **2.08kg** |
-> | 🌍 Total Lifecycle CO2e | **8.14kg** |
-> | 💧 Water Consumption | **2.5L** |
-> | 💰 Infrastructure Cost | **$162.06/month** |
+</div>
 
-> **Potential Scope 2 Savings:** -5.92kg CO2e/month (97.7%) | -$6.57/month
-> 💡 Found **2** optimization recommendations.
+Every Terraform plan changes your infrastructure's carbon footprint, water use, and cost — but that impact is invisible until the bill (and the emissions) already happened. GreenOps analyses **Scope 2 operational**, **Scope 3 embodied**, and **water consumption** impact across AWS, Azure, and GCP, right in the pull request, before anything is provisioned. Posts actionable, one-click recommendations directly on the PR.
 
-### Resource Breakdown
+**Zero network calls. Zero runtime dependencies. MIT-licensed methodology — every number traceable to a cited source.**
 
-| Resource | Type | Region | Scope 2 CO2e | Scope 3 CO2e | Water | Cost/mo | Action |
-|---|---|---|---|---|---|---|---|
-| `aws_instance.web` | `m5.large` | `us-east-1` | 2.53kg | 1.04kg | 1.0L | $70.08 | 💡 View Recommendation |
-| `aws_instance.worker` | `r5.large` | `us-east-1` | 3.52kg | 1.04kg | 1.5L | $91.98 | 💡 View Recommendation |
+## Contents
 
-### Recommendations
-
-#### `aws_instance.web`
-- **Current:** `m5.large` in `us-east-1`
-- **Suggested:** `m5.large` in `eu-north-1`
-- **Scope 2 Impact:** -2.47kg CO2e/month | +$2.92/month
-- **Rationale:** Moving m5.large from us-east-1 to Europe (Stockholm) (eu-north-1) reduces grid carbon intensity from 384.5g to 8.8g CO2e/kWh, saving 2472g CO2e/month (note: cost increases by $2.92/month).
-
-#### `aws_instance.worker`
-- **Current:** `r5.large` in `us-east-1`
-- **Suggested:** `r5.large` in `eu-north-1`
-- **Scope 2 Impact:** -3.44kg CO2e/month | +$3.65/month
-- **Rationale:** Moving r5.large from us-east-1 to Europe (Stockholm) (eu-north-1) reduces grid carbon intensity from 384.5g to 8.8g CO2e/kWh, saving 3444g CO2e/month (note: cost increases by $3.65/month).
-
----
-
-## ☁️ Provider Coverage
-
-| Provider | Regions | Instances | Resource Types |
-|---|---|---|---|
-| **AWS** | 14 | 29 | `aws_instance`, `aws_db_instance`, `aws_eks_node_group`, `aws_lambda_function`, `aws_sagemaker_endpoint_configuration` |
-| **Azure** | 17 | 19 | `azurerm_linux_virtual_machine`, `azurerm_windows_virtual_machine`, `azurerm_virtual_machine`, `azurerm_kubernetes_cluster`, `azurerm_kubernetes_cluster_node_pool`, `azurerm_function_app`, `azurerm_linux_function_app`, `azurerm_windows_function_app` |
-| **GCP** | 15 | 11 | `google_compute_instance`, `google_container_node_pool`, `google_cloud_run_service`, `google_cloudfunctions_function`, `google_cloudfunctions2_function`, `google_workbench_instance` |
-
-> [!note] ARM instance types removed in v2.1.0
-> AWS Graviton (all generations), Azure Ampere Dpsv5, and GCP T2A instances were removed from the ledger — no real, independently-sourced power data exists for any ARM cloud chip, from either CCF's archived or current coefficient data (see [METHODOLOGY.md](./METHODOLOGY.md#known-limitations)). The ARM-upgrade recommendation strategy was removed accordingly; region-shift recommendations are unaffected.
-
-Kubernetes node groups (EKS, AKS, GKE) resolve to the same instance ledger as standalone VMs. Node count scales the output, not the per-node calculation. See [Kubernetes Node Groups](#-kubernetes-node-groups) below.
-
-GPU instances (`g5.xlarge`, `p4d.24xlarge`, `p5.48xlarge`) and managed AI services (SageMaker, Vertex AI Workbench) are also supported, Scope 2 only — see [AI & GPU Workloads](#-ai--gpu-workloads) below.
-
-Run `greenops-cli --coverage` for the full instance and region list per provider.
+- [Quickstart](#-quickstart)
+- [Install](#-install)
+- [Live PR Comment example](#-live-pr-comment)
+- [Provider coverage](#-provider-coverage)
+- [How the maths works](#-how-the-maths-works)
+- [Kubernetes node groups](#-kubernetes-node-groups)
+- [AI & GPU workloads](#-ai--gpu-workloads)
+- [What it doesn't cover](#-what-it-doesnt-cover)
+- [E2E testing](#-e2e-testing)
+- [Documentation](#-documentation)
+- [Contributing](#-contributing)
 
 ---
 
@@ -141,10 +115,23 @@ All fields are optional. `fail_on_violation: true` exits with code 1, blocking m
 uses: omrdev1/greenops-cli@v0.14.0
 ```
 
-**npm:**
+**npm** (CLI, run locally or in any CI):
 ```bash
 npm install -g greenops-cli
 greenops-cli diff plan.json --format table
+```
+
+Other useful CLI flags:
+
+```bash
+# Machine-readable output, e.g. for piping into other tooling
+greenops-cli diff plan.json --format json
+
+# Pre-formatted markdown, the same content the GitHub Action posts as a PR comment
+greenops-cli diff plan.json --format markdown
+
+# List every supported instance type and region per provider
+greenops-cli --coverage
 ```
 
 **Binary** (no Node.js required):
@@ -154,6 +141,61 @@ curl -L https://github.com/omrdev1/greenops-cli/releases/latest/download/greenop
 chmod +x greenops-cli && ./greenops-cli --version
 ```
 Binaries available for `linux-x64`, `linux-arm64`, `darwin-arm64`, `darwin-x64`, `windows-x64`.
+
+---
+
+## 💬 Live PR Comment
+
+> | Metric | Monthly Total |
+> |---|---|
+> | 🔋 Scope 2 (Operational CO2e) | **6.05kg** |
+> | 🏭 Scope 3 (Embodied CO2e) | **2.08kg** |
+> | 🌍 Total Lifecycle CO2e | **8.14kg** |
+> | 💧 Water Consumption | **2.5L** |
+> | 💰 Infrastructure Cost | **$162.06/month** |
+
+> **Potential Scope 2 Savings:** -5.92kg CO2e/month (97.7%) | -$6.57/month
+> 💡 Found **2** optimization recommendations.
+
+### Resource Breakdown
+
+| Resource | Type | Region | Scope 2 CO2e | Scope 3 CO2e | Water | Cost/mo | Action |
+|---|---|---|---|---|---|---|---|
+| `aws_instance.web` | `m5.large` | `us-east-1` | 2.53kg | 1.04kg | 1.0L | $70.08 | 💡 View Recommendation |
+| `aws_instance.worker` | `r5.large` | `us-east-1` | 3.52kg | 1.04kg | 1.5L | $91.98 | 💡 View Recommendation |
+
+### Recommendations
+
+#### `aws_instance.web`
+- **Current:** `m5.large` in `us-east-1`
+- **Suggested:** `m5.large` in `eu-north-1`
+- **Scope 2 Impact:** -2.47kg CO2e/month | +$2.92/month
+- **Rationale:** Moving m5.large from us-east-1 to Europe (Stockholm) (eu-north-1) reduces grid carbon intensity from 384.5g to 8.8g CO2e/kWh, saving 2472g CO2e/month (note: cost increases by $2.92/month).
+
+#### `aws_instance.worker`
+- **Current:** `r5.large` in `us-east-1`
+- **Suggested:** `r5.large` in `eu-north-1`
+- **Scope 2 Impact:** -3.44kg CO2e/month | +$3.65/month
+- **Rationale:** Moving r5.large from us-east-1 to Europe (Stockholm) (eu-north-1) reduces grid carbon intensity from 384.5g to 8.8g CO2e/kWh, saving 3444g CO2e/month (note: cost increases by $3.65/month).
+
+---
+
+## ☁️ Provider Coverage
+
+| Provider | Regions | Instances | Resource Types |
+|---|---|---|---|
+| **AWS** | 14 | 29 | `aws_instance`, `aws_db_instance`, `aws_eks_node_group`, `aws_lambda_function`, `aws_sagemaker_endpoint_configuration` |
+| **Azure** | 17 | 19 | `azurerm_linux_virtual_machine`, `azurerm_windows_virtual_machine`, `azurerm_virtual_machine`, `azurerm_kubernetes_cluster`, `azurerm_kubernetes_cluster_node_pool`, `azurerm_function_app`, `azurerm_linux_function_app`, `azurerm_windows_function_app` |
+| **GCP** | 15 | 11 | `google_compute_instance`, `google_container_node_pool`, `google_cloud_run_service`, `google_cloudfunctions_function`, `google_cloudfunctions2_function`, `google_workbench_instance` |
+
+> [!note] ARM instance types removed in v2.1.0
+> AWS Graviton (all generations), Azure Ampere Dpsv5, and GCP T2A instances were removed from the ledger — no real, independently-sourced power data exists for any ARM cloud chip, from either CCF's archived or current coefficient data (see [METHODOLOGY.md](./METHODOLOGY.md#known-limitations)). The ARM-upgrade recommendation strategy was removed accordingly; region-shift recommendations are unaffected.
+
+Kubernetes node groups (EKS, AKS, GKE) resolve to the same instance ledger as standalone VMs. Node count scales the output, not the per-node calculation. See [Kubernetes Node Groups](#-kubernetes-node-groups) below.
+
+GPU instances (`g5.xlarge`, `p4d.24xlarge`, `p5.48xlarge`) and managed AI services (SageMaker, Vertex AI Workbench) are also supported, Scope 2 only — see [AI & GPU Workloads](#-ai--gpu-workloads) below.
+
+Run `greenops-cli --coverage` for the full instance and region list per provider.
 
 ---
 
@@ -255,6 +297,18 @@ node dist/index.cjs diff fixtures/tfplan.gcp.e2e.json --format table
 # AWS EKS node group
 node dist/index.cjs diff fixtures/tfplan.eks.e2e.json --format table
 ```
+
+---
+
+## 📚 Documentation
+
+| Doc | What's in it |
+|---|---|
+| [METHODOLOGY.md](./METHODOLOGY.md) | Full carbon/water/cost formulas with worked examples, data sources, and known limitations |
+| [CHANGELOG.md](./CHANGELOG.md) | Release history |
+| [CONTRIBUTING.md](./CONTRIBUTING.md) | How to add instance types, regions, or a new cloud provider |
+| [SECURITY.md](./SECURITY.md) | Reporting a vulnerability |
+| [CODE_OF_CONDUCT.md](./CODE_OF_CONDUCT.md) | Community guidelines |
 
 ---
 
