@@ -2,6 +2,21 @@
 
 All notable changes to this project are documented here. Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [0.15.0] - 2026-10-21
+
+### Added
+- Block storage: `aws_ebs_volume`, `azurerm_managed_disk` and `google_compute_disk`, modeled with CCF's storage coefficients (SSD 1.2, HDD 0.65 Wh per TB-hour) and replication factors (EBS 2, Azure disks 3, GCP zonal PD 1). Scope 2 only. Cost for AWS `us-east-1` (capacity charge only); elsewhere shown as `n/a` and named in the PR comment.
+- WRI Aqueduct 4.0 baseline water-stress band for every region (`baseline_water_stress`, `null` for Singapore and Taiwan). Shown in each region-shift rationale.
+- `greenops-cli estimate <provider> <region> <instance-type> [--hours N] [--count N]`: a what-if estimate with no plan file, table output by default, `--format json` available.
+
+- Each region carries a `jurisdiction` (country ISO3, or `EEA_UK` for UK and EU/EEA regions).
+
+### Changed (behaviour)
+- **Region shifts stay within one jurisdiction.** A US workload is no longer sent to Stockholm, and a UK/EU workload never leaves the UK/EEA. `us-east-1` now suggests `us-west-2` instead of `eu-north-1`; regions with no cleaner same-jurisdiction option (Sydney, Singapore, Tokyo, Mumbai, São Paulo, Canada, Taiwan, AWS London) get no suggestion. Expect fewer and smaller savings in PR comments.
+- Region shifts never suggest a region with a higher known water-stress band than the current one.
+- When a region shift does not change cost, the rationale says "at the same cost" instead of "saving $0.00/month".
+- Ledger version 2.2.0.
+
 ## [0.14.0] - 2026-09-09
 
 ### Fixed
