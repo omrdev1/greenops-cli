@@ -30,6 +30,9 @@ export function formatGrams(grams: number): string {
 export function formatInstanceTypeLabel(instanceType: string): string {
   if (instanceType.startsWith('serverless:')) return 'serverless';
 
+  const diskMatch = instanceType.match(/^disk:(.+):(\d+(?:\.\d+)?)$/);
+  if (diskMatch) return `${diskMatch[1]} ${diskMatch[2]}GB`;
+
   const managedAiMatch = instanceType.match(/^managed_ai:([a-z_]+):(.+)$/);
   if (managedAiMatch) {
     const [, service, baseType] = managedAiMatch;

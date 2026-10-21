@@ -8,12 +8,15 @@ import { postSuggestions } from './suggestions.js';
 import { formatMarkdown } from './formatters/markdown.js';
 import { formatTable } from './formatters/table.js';
 import { formatJson } from './formatters/json.js';
+import { buildEstimateInput } from './estimate.js';
 
 const { positionals, values } = parseArgs({
   args: process.argv.slice(2),
   allowPositionals: true,
   options: {
-    format: { type: 'string', default: 'markdown' },
+    format: { type: 'string' },
+    hours: { type: 'string' },
+    count: { type: 'string' },
     coverage: { type: 'boolean', default: false },
     help: { type: 'boolean', default: false },
     version: { type: 'boolean', default: false },
@@ -38,11 +41,14 @@ if (values.help) {
     ``,
     `Usage:`,
     `  greenops-cli diff <plan.json> [options]`,
+    `  greenops-cli estimate <aws|azure|gcp> <region> <instance-type> [--hours N] [--count N]`,
     `  greenops-cli --coverage [--format json]`,
     `  greenops-cli --version`,
     ``,
     `Options:`,
-    `  --format          Output format: markdown (default), table, json`,
+    `  --format          Output format: markdown (diff default), table (estimate default), json`,
+    `  --hours           estimate: hours running per month (default 730)`,
+    `  --count           estimate: number of identical instances (default 1)`,
     `  --coverage        List supported regions and instance types`,
     `  --github-token    GitHub token for posting suggestion comments`,
     `  --repo            Repository full name (e.g. owner/repo)`,
@@ -84,6 +90,29 @@ if (values.coverage) {
 
 const command = positionals[0];
 const planFile = positionals[1];
+const format = values.format ?? (command === 'estimate' ? 'table' : 'markdown');
+
+if (command === 'estimate') {
+  const { input, error } = buildEstimateInput(positionals.slice(1), values.hours, values.count);
+  if (!input) {
+    console.error(`Error: ${error}`);
+    process.exit(1);
+  }
+  const estimate = analysePlan([input], [], 'estimate');
+  const { baseline } = estimate.resources[0];
+  if (baseline.confidence === 'LOW_ASSUMED_DEFAULT' && baseline.totalCo2eGramsPerMonth === 0) {
+    console.error(`Error: ${baseline.unsupportedReason}`);
+    process.exit(1);
+  }
+  if (format === 'json') {
+    console.log(formatJson(estimate));
+  } else {
+    console.log(formatTable(estimate));
+    const { recommendation } = estimate.resources[0];
+    console.log(recommendation ? `\n${recommendation.rationale}` : '\nNo lower-carbon option found in the ledger.');
+  }
+  process.exit(0);
+}
 
 if (command !== 'diff' || !planFile) {
   console.error("Error: Missing 'diff' command or plan file parameter. Run --help for usage.");
@@ -112,7 +141,7 @@ try {
         `⛔ Policy violation [${v.constraint}]: ${v.message}`
       ).join('\n');
 
-      if (values.format === 'json') {
+      if (format === 'json') {
         // For JSON format, violations are included in the output object downstream
         // We write them to stderr so they don't corrupt the JSON pipe
         process.stderr.write(`\n${violationLines}\n`);
@@ -132,9 +161,9 @@ try {
 }
 
 // --- Format and output ---
-if (values.format === 'table') {
+if (format === 'table') {
   console.log(formatTable(result));
-} else if (values.format === 'json') {
+} else if (format === 'json') {
   console.log(formatJson(result));
 } else {
   console.log(formatMarkdown(result, { showUpgradePrompt }));

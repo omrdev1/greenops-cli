@@ -53,27 +53,21 @@ describe('generateRecommendation', () => {
     assert.equal(rec, null, 'Cannot recommend for unsupported resources');
   });
 
-  it('recommends region shift from a high-carbon region', () => {
-    // c5.large in ap-southeast-2 (Sydney, 650 gCO2e/kWh) — multiple regions are
-    // significantly cleaner. ARM-upgrade recommendations were removed in v2.1.0,
-    // so region shift is the only strategy; assert it fires here.
+  it('does not suggest leaving Australia, even though cleaner regions exist abroad', () => {
+    // c5.large in ap-southeast-2 (Sydney, 650 gCO2e/kWh). Every cleaner region in the
+    // ledger is in another jurisdiction, and v2.2.0 keeps region shifts within one.
     const input = {
       resourceId: 'test-sydney',
       region: 'ap-southeast-2',
       instanceType: 'c5.large',
     };
     const baseline = calculateBaseline(input);
-    const rec = generateRecommendation(input, baseline);
-
-    assert.ok(rec !== null, 'Should recommend region shift from high-carbon region');
-    assert.ok(rec!.suggestedRegion !== undefined, 'Should suggest a target region');
-    assert.ok(rec!.co2eDeltaGramsPerMonth < 0, 'Carbon should decrease');
+    assert.equal(generateRecommendation(input, baseline), null);
   });
 
   it('region-shift recommendation delivers a substantial carbon saving', () => {
-    // c5.large us-east-1 -> eu-north-1 region shift gives a very large CO2 saving
-    // (Stockholm's grid is close to zero-carbon). ARM-upgrade recommendations
-    // were removed in v2.1.0, so region shift is the only strategy in play.
+    // c5.large us-east-1 (384.5 g/kWh) -> us-west-2 (240.1 g/kWh): ~37.6% saving.
+    // Stays in the US (residency guard) and Oregon is a lower water-stress band than Virginia.
     const input = {
       resourceId: 'test-scoring',
       region: 'us-east-1',
@@ -83,10 +77,9 @@ describe('generateRecommendation', () => {
     const rec = generateRecommendation(input, baseline);
 
     assert.ok(rec !== null, 'Should produce a recommendation');
-    assert.ok(rec!.suggestedRegion !== undefined, 'Should be a region-shift recommendation');
+    assert.equal(rec!.suggestedRegion, 'us-west-2');
     assert.ok(rec!.co2eDeltaGramsPerMonth < 0, 'Carbon delta should be negative');
-    // Carbon saving should be substantial given eu-north-1's near-zero intensity
     const savingsPct = Math.abs(rec!.co2eDeltaGramsPerMonth) / baseline.totalCo2eGramsPerMonth;
-    assert.ok(savingsPct > 0.80, `Expected >80% carbon savings from region shift, got ${(savingsPct * 100).toFixed(1)}%`);
+    assert.ok(savingsPct > 0.35, `Expected >35% carbon savings from region shift, got ${(savingsPct * 100).toFixed(1)}%`);
   });
 });

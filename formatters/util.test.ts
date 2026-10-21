@@ -54,6 +54,11 @@ describe('formatInstanceTypeLabel', () => {
     assert.equal(formatInstanceTypeLabel('gpu_attached:n2-standard-2:70:2'), 'n2-standard-2 + 2x GPU');
   });
 
+  it('renders a disk: encoding as "<tier> <size>GB"', () => {
+    assert.equal(formatInstanceTypeLabel('disk:gp3:100'), 'gp3 100GB');
+    assert.equal(formatInstanceTypeLabel('disk:Premium_LRS:128'), 'Premium_LRS 128GB');
+  });
+
   it('passes through a plain instance type unchanged', () => {
     assert.equal(formatInstanceTypeLabel('m5.large'), 'm5.large');
     assert.equal(formatInstanceTypeLabel('p4d.24xlarge'), 'p4d.24xlarge');

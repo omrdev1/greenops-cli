@@ -423,3 +423,22 @@ describe('formatMarkdown', () => {
     assert.ok(md.includes('Embodied carbon gap:** 2 of 2'), 'Should report both resources as having the embodied-carbon gap');
   });
 });
+
+describe('formatMarkdown: disks without ledger pricing', () => {
+  const unpricedDisk = {
+    input: { resourceId: 'azurerm_managed_disk.data', instanceType: 'disk:Premium_LRS:256', region: 'uksouth', provider: 'azure' as const },
+    baseline: makeMockBaseline({ totalCo2eGramsPerMonth: 200, totalCostUsdPerMonth: 0, confidence: 'LOW_ASSUMED_DEFAULT', scope: 'SCOPE_2_OPERATIONAL' }),
+    recommendation: null,
+  };
+
+  it('shows n/a instead of $0.00 for a disk whose cost is not modelled', () => {
+    const out = formatMarkdown(makeMockResult({ resources: [unpricedDisk] }));
+    const row = out.split('\n').find(l => l.includes('azurerm_managed_disk.data'))!;
+    assert.ok(row.includes('| n/a |'), row);
+  });
+
+  it('names unpriced disks in a note so totals are not read as complete', () => {
+    const out = formatMarkdown(makeMockResult({ resources: [unpricedDisk] }));
+    assert.match(out, /Disk cost not yet in the ledger.*azurerm_managed_disk\.data/);
+  });
+});

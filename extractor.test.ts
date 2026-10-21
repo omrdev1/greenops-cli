@@ -776,3 +776,52 @@ describe('Node group extraction', () => {
     assert.ok(result.skipped[0].reason.includes('unsupported_accelerator'));
   });
 });
+
+describe('block storage extraction', () => {
+  test('aws_ebs_volume resolves type, size and region from the availability zone', () => {
+    const result = runFixtureTest({
+      resource_changes: [{
+        address: 'aws_ebs_volume.data', type: 'aws_ebs_volume',
+        change: { actions: ['create'], after: { type: 'gp3', size: 100, availability_zone: 'us-east-1a' } },
+      }],
+    });
+    assert.deepEqual(result.resources, [
+      { resourceId: 'aws_ebs_volume.data', instanceType: 'disk:gp3:100', region: 'us-east-1', provider: 'aws' },
+    ]);
+  });
+
+  test('azurerm_managed_disk resolves storage_account_type and disk_size_gb', () => {
+    const result = runFixtureTest({
+      resource_changes: [{
+        address: 'azurerm_managed_disk.data', type: 'azurerm_managed_disk',
+        change: { actions: ['create'], after: { storage_account_type: 'Premium_LRS', disk_size_gb: 128, location: 'East US' } },
+      }],
+    });
+    assert.deepEqual(result.resources, [
+      { resourceId: 'azurerm_managed_disk.data', instanceType: 'disk:Premium_LRS:128', region: 'eastus', provider: 'azure' },
+    ]);
+  });
+
+  test('google_compute_disk resolves type and size from a zone', () => {
+    const result = runFixtureTest({
+      resource_changes: [{
+        address: 'google_compute_disk.data', type: 'google_compute_disk',
+        change: { actions: ['create'], after: { type: 'pd-balanced', size: 200, zone: 'us-central1-a' } },
+      }],
+    });
+    assert.deepEqual(result.resources, [
+      { resourceId: 'google_compute_disk.data', instanceType: 'disk:pd-balanced:200', region: 'us-central1', provider: 'gcp' },
+    ]);
+  });
+
+  test('skips a disk whose type or size is only known after apply, rather than assuming a default', () => {
+    const result = runFixtureTest({
+      resource_changes: [{
+        address: 'aws_ebs_volume.unknown', type: 'aws_ebs_volume',
+        change: { actions: ['create'], after: { size: 100, availability_zone: 'us-east-1a' }, after_unknown: { type: true } },
+      }],
+    });
+    assert.equal(result.resources.length, 0);
+    assert.deepEqual(result.skipped, [{ resourceId: 'aws_ebs_volume.unknown', reason: 'known_after_apply' }]);
+  });
+});

@@ -1,7 +1,7 @@
 {
   "metadata": {
-    "ledger_version": "2.1.0",
-    "updated_at": "2026-09-09T23:00:00Z",
+    "ledger_version": "2.2.0",
+    "updated_at": "2026-10-21T19:00:00Z",
     "sources": {
       "grid": "electricity-maps-2024-avg",
       "hardware": "cloud-carbon-footprint-v3",
@@ -12,7 +12,11 @@
       "water": "aws-sustainability-2023-report-fleet-wide-wue-0.18-l-per-kwh",
       "gpu_tdp": "nvidia-aws-public-datasheets-2026-q2",
       "gpu_pricing_aws": "aws-public-pricing-2026-q2",
-      "managed_ai_pricing_aws": "aws-sagemaker-public-pricing-2026-q2"
+      "managed_ai_pricing_aws": "aws-sagemaker-public-pricing-2026-q2",
+      "storage_energy": "ccf-ssd-1.2-hdd-0.65-wh-per-tb-hour (cloud-carbon-footprint@f584c54, *FootprintEstimationConstants.ts)",
+      "storage_replication": "ccf-replication-factors aws-ebs-volume-2 azure-storage-disks-3 gcp-zonal-pd-default-1 (cloud-carbon-footprint@f584c54)",
+      "storage_pricing_aws": "aws-ebs-pricing-page-capacity-only-2026-10-21 (provisioned IOPS and throughput charges excluded)",
+      "water_stress": "wri-aqueduct-4.0-province-baseline-bws-total-demand (CC BY 4.0, release 2023-07-05)"
     },
     "assumptions": {
       "default_utilization": {
@@ -33,85 +37,113 @@
         "location": "US East (N. Virginia)",
         "grid_intensity_gco2e_per_kwh": 384.5,
         "pue": 1.13,
-        "water_intensity_litres_per_kwh": 0.18
+        "water_intensity_litres_per_kwh": 0.18,
+        "baseline_water_stress": 2,
+        "jurisdiction": "USA"
       },
       "us-east-2": {
         "location": "US East (Ohio)",
         "grid_intensity_gco2e_per_kwh": 410.0,
         "pue": 1.13,
-        "water_intensity_litres_per_kwh": 0.18
+        "water_intensity_litres_per_kwh": 0.18,
+        "baseline_water_stress": 1,
+        "jurisdiction": "USA"
       },
       "us-west-1": {
         "location": "US West (N. California)",
         "grid_intensity_gco2e_per_kwh": 220.0,
         "pue": 1.13,
-        "water_intensity_litres_per_kwh": 0.18
+        "water_intensity_litres_per_kwh": 0.18,
+        "baseline_water_stress": 4,
+        "jurisdiction": "USA"
       },
       "us-west-2": {
         "location": "US West (Oregon)",
         "grid_intensity_gco2e_per_kwh": 240.1,
         "pue": 1.13,
-        "water_intensity_litres_per_kwh": 0.18
+        "water_intensity_litres_per_kwh": 0.18,
+        "baseline_water_stress": 1,
+        "jurisdiction": "USA"
       },
       "eu-west-1": {
         "location": "Europe (Ireland)",
         "grid_intensity_gco2e_per_kwh": 334.0,
         "pue": 1.13,
-        "water_intensity_litres_per_kwh": 0.18
+        "water_intensity_litres_per_kwh": 0.18,
+        "baseline_water_stress": 1,
+        "jurisdiction": "EEA_UK"
       },
       "eu-west-2": {
         "location": "Europe (London)",
         "grid_intensity_gco2e_per_kwh": 268.0,
         "pue": 1.13,
-        "water_intensity_litres_per_kwh": 0.18
+        "water_intensity_litres_per_kwh": 0.18,
+        "baseline_water_stress": 1,
+        "jurisdiction": "EEA_UK"
       },
       "eu-central-1": {
         "location": "Europe (Frankfurt)",
         "grid_intensity_gco2e_per_kwh": 420.5,
         "pue": 1.13,
-        "water_intensity_litres_per_kwh": 0.18
+        "water_intensity_litres_per_kwh": 0.18,
+        "baseline_water_stress": 2,
+        "jurisdiction": "EEA_UK"
       },
       "eu-north-1": {
         "location": "Europe (Stockholm)",
         "grid_intensity_gco2e_per_kwh": 8.8,
         "pue": 1.13,
-        "water_intensity_litres_per_kwh": 0.18
+        "water_intensity_litres_per_kwh": 0.18,
+        "baseline_water_stress": 2,
+        "jurisdiction": "EEA_UK"
       },
       "ap-southeast-1": {
         "location": "Asia Pacific (Singapore)",
         "grid_intensity_gco2e_per_kwh": 408.0,
         "pue": 1.13,
-        "water_intensity_litres_per_kwh": 0.18
+        "water_intensity_litres_per_kwh": 0.18,
+        "baseline_water_stress": null,
+        "jurisdiction": "SGP"
       },
       "ap-southeast-2": {
         "location": "Asia Pacific (Sydney)",
         "grid_intensity_gco2e_per_kwh": 650.0,
         "pue": 1.13,
-        "water_intensity_litres_per_kwh": 0.18
+        "water_intensity_litres_per_kwh": 0.18,
+        "baseline_water_stress": 3,
+        "jurisdiction": "AUS"
       },
       "ap-northeast-1": {
         "location": "Asia Pacific (Tokyo)",
         "grid_intensity_gco2e_per_kwh": 506.0,
         "pue": 1.13,
-        "water_intensity_litres_per_kwh": 0.18
+        "water_intensity_litres_per_kwh": 0.18,
+        "baseline_water_stress": 2,
+        "jurisdiction": "JPN"
       },
       "ap-south-1": {
         "location": "Asia Pacific (Mumbai)",
         "grid_intensity_gco2e_per_kwh": 723.0,
         "pue": 1.13,
-        "water_intensity_litres_per_kwh": 0.18
+        "water_intensity_litres_per_kwh": 0.18,
+        "baseline_water_stress": 4,
+        "jurisdiction": "IND"
       },
       "ca-central-1": {
         "location": "Canada (Central)",
         "grid_intensity_gco2e_per_kwh": 130.0,
         "pue": 1.13,
-        "water_intensity_litres_per_kwh": 0.18
+        "water_intensity_litres_per_kwh": 0.18,
+        "baseline_water_stress": 0,
+        "jurisdiction": "CAN"
       },
       "sa-east-1": {
         "location": "South America (S\u00e3o Paulo)",
         "grid_intensity_gco2e_per_kwh": 74.0,
         "pue": 1.13,
-        "water_intensity_litres_per_kwh": 0.18
+        "water_intensity_litres_per_kwh": 0.18,
+        "baseline_water_stress": 1,
+        "jurisdiction": "BRA"
       }
     },
     "instances": {
@@ -757,6 +789,28 @@
           "p4d.24xlarge": 37.688
         }
       }
+    },
+    "storage": {
+      "replication_factor": 2,
+      "tiers": {
+        "gp2": "ssd",
+        "gp3": "ssd",
+        "io1": "ssd",
+        "io2": "ssd",
+        "st1": "hdd",
+        "sc1": "hdd",
+        "standard": "hdd"
+      },
+      "pricing_usd_per_gb_month": {
+        "us-east-1": {
+          "gp2": 0.1,
+          "gp3": 0.08,
+          "io1": 0.125,
+          "io2": 0.125,
+          "st1": 0.045,
+          "sc1": 0.015
+        }
+      }
     }
   },
   "azure": {
@@ -765,103 +819,137 @@
         "location": "East US (Virginia)",
         "grid_intensity_gco2e_per_kwh": 380.0,
         "pue": 1.125,
-        "water_intensity_litres_per_kwh": 0.43
+        "water_intensity_litres_per_kwh": 0.43,
+        "baseline_water_stress": 2,
+        "jurisdiction": "USA"
       },
       "eastus2": {
         "location": "East US 2 (Virginia)",
         "grid_intensity_gco2e_per_kwh": 380.0,
         "pue": 1.125,
-        "water_intensity_litres_per_kwh": 0.43
+        "water_intensity_litres_per_kwh": 0.43,
+        "baseline_water_stress": 2,
+        "jurisdiction": "USA"
       },
       "westus": {
         "location": "West US (California)",
         "grid_intensity_gco2e_per_kwh": 200.0,
         "pue": 1.125,
-        "water_intensity_litres_per_kwh": 0.35
+        "water_intensity_litres_per_kwh": 0.35,
+        "baseline_water_stress": 4,
+        "jurisdiction": "USA"
       },
       "westus2": {
         "location": "West US 2 (Washington)",
         "grid_intensity_gco2e_per_kwh": 235.0,
         "pue": 1.125,
-        "water_intensity_litres_per_kwh": 0.18
+        "water_intensity_litres_per_kwh": 0.18,
+        "baseline_water_stress": 1,
+        "jurisdiction": "USA"
       },
       "westus3": {
         "location": "West US 3 (Arizona)",
         "grid_intensity_gco2e_per_kwh": 350.0,
         "pue": 1.125,
-        "water_intensity_litres_per_kwh": 0.55
+        "water_intensity_litres_per_kwh": 0.55,
+        "baseline_water_stress": 4,
+        "jurisdiction": "USA"
       },
       "northeurope": {
         "location": "North Europe (Ireland)",
         "grid_intensity_gco2e_per_kwh": 334.0,
         "pue": 1.125,
-        "water_intensity_litres_per_kwh": 0.22
+        "water_intensity_litres_per_kwh": 0.22,
+        "baseline_water_stress": 1,
+        "jurisdiction": "EEA_UK"
       },
       "westeurope": {
         "location": "West Europe (Netherlands)",
         "grid_intensity_gco2e_per_kwh": 270.0,
         "pue": 1.125,
-        "water_intensity_litres_per_kwh": 0.2
+        "water_intensity_litres_per_kwh": 0.2,
+        "baseline_water_stress": 0,
+        "jurisdiction": "EEA_UK"
       },
       "uksouth": {
         "location": "UK South (London)",
         "grid_intensity_gco2e_per_kwh": 268.0,
         "pue": 1.125,
-        "water_intensity_litres_per_kwh": 0.25
+        "water_intensity_litres_per_kwh": 0.25,
+        "baseline_water_stress": 1,
+        "jurisdiction": "EEA_UK"
       },
       "ukwest": {
         "location": "UK West (Cardiff)",
         "grid_intensity_gco2e_per_kwh": 268.0,
         "pue": 1.125,
-        "water_intensity_litres_per_kwh": 0.25
+        "water_intensity_litres_per_kwh": 0.25,
+        "baseline_water_stress": 0,
+        "jurisdiction": "EEA_UK"
       },
       "swedencentral": {
         "location": "Sweden Central",
         "grid_intensity_gco2e_per_kwh": 8.8,
         "pue": 1.125,
-        "water_intensity_litres_per_kwh": 0.1
+        "water_intensity_litres_per_kwh": 0.1,
+        "baseline_water_stress": 0,
+        "jurisdiction": "EEA_UK"
       },
       "germanywestcentral": {
         "location": "Germany West Central",
         "grid_intensity_gco2e_per_kwh": 420.5,
         "pue": 1.125,
-        "water_intensity_litres_per_kwh": 0.28
+        "water_intensity_litres_per_kwh": 0.28,
+        "baseline_water_stress": 2,
+        "jurisdiction": "EEA_UK"
       },
       "southeastasia": {
         "location": "Southeast Asia (Singapore)",
         "grid_intensity_gco2e_per_kwh": 408.0,
         "pue": 1.125,
-        "water_intensity_litres_per_kwh": 0.58
+        "water_intensity_litres_per_kwh": 0.58,
+        "baseline_water_stress": null,
+        "jurisdiction": "SGP"
       },
       "australiaeast": {
         "location": "Australia East (NSW)",
         "grid_intensity_gco2e_per_kwh": 650.0,
         "pue": 1.125,
-        "water_intensity_litres_per_kwh": 0.45
+        "water_intensity_litres_per_kwh": 0.45,
+        "baseline_water_stress": 3,
+        "jurisdiction": "AUS"
       },
       "japaneast": {
         "location": "Japan East (Tokyo)",
         "grid_intensity_gco2e_per_kwh": 506.0,
         "pue": 1.125,
-        "water_intensity_litres_per_kwh": 0.5
+        "water_intensity_litres_per_kwh": 0.5,
+        "baseline_water_stress": 2,
+        "jurisdiction": "JPN"
       },
       "centralindia": {
         "location": "Central India (Pune)",
         "grid_intensity_gco2e_per_kwh": 723.0,
         "pue": 1.125,
-        "water_intensity_litres_per_kwh": 0.72
+        "water_intensity_litres_per_kwh": 0.72,
+        "baseline_water_stress": 4,
+        "jurisdiction": "IND"
       },
       "canadacentral": {
         "location": "Canada Central (Toronto)",
         "grid_intensity_gco2e_per_kwh": 130.0,
         "pue": 1.125,
-        "water_intensity_litres_per_kwh": 0.2
+        "water_intensity_litres_per_kwh": 0.2,
+        "baseline_water_stress": 1,
+        "jurisdiction": "CAN"
       },
       "brazilsouth": {
         "location": "Brazil South (Sao Paulo)",
         "grid_intensity_gco2e_per_kwh": 74.0,
         "pue": 1.125,
-        "water_intensity_litres_per_kwh": 0.35
+        "water_intensity_litres_per_kwh": 0.35,
+        "baseline_water_stress": 1,
+        "jurisdiction": "BRA"
       }
     },
     "instances": {
@@ -1264,6 +1352,19 @@
         "Standard_E2s_v3": 0.184,
         "Standard_E4s_v3": 0.368
       }
+    },
+    "storage": {
+      "replication_factor": 3,
+      "tiers": {
+        "Standard_LRS": "hdd",
+        "StandardSSD_LRS": "ssd",
+        "StandardSSD_ZRS": "ssd",
+        "Premium_LRS": "ssd",
+        "Premium_ZRS": "ssd",
+        "PremiumV2_LRS": "ssd",
+        "UltraSSD_LRS": "ssd"
+      },
+      "pricing_usd_per_gb_month": {}
     }
   },
   "gcp": {
@@ -1272,91 +1373,121 @@
         "location": "Iowa",
         "grid_intensity_gco2e_per_kwh": 340.0,
         "pue": 1.1,
-        "water_intensity_litres_per_kwh": 0.4
+        "water_intensity_litres_per_kwh": 0.4,
+        "baseline_water_stress": 1,
+        "jurisdiction": "USA"
       },
       "us-east1": {
         "location": "South Carolina",
         "grid_intensity_gco2e_per_kwh": 380.0,
         "pue": 1.1,
-        "water_intensity_litres_per_kwh": 0.43
+        "water_intensity_litres_per_kwh": 0.43,
+        "baseline_water_stress": 2,
+        "jurisdiction": "USA"
       },
       "us-east4": {
         "location": "Virginia",
         "grid_intensity_gco2e_per_kwh": 380.0,
         "pue": 1.1,
-        "water_intensity_litres_per_kwh": 0.43
+        "water_intensity_litres_per_kwh": 0.43,
+        "baseline_water_stress": 2,
+        "jurisdiction": "USA"
       },
       "us-west1": {
         "location": "Oregon",
         "grid_intensity_gco2e_per_kwh": 200.0,
         "pue": 1.1,
-        "water_intensity_litres_per_kwh": 0.18
+        "water_intensity_litres_per_kwh": 0.18,
+        "baseline_water_stress": 1,
+        "jurisdiction": "USA"
       },
       "us-west2": {
         "location": "Los Angeles",
         "grid_intensity_gco2e_per_kwh": 220.0,
         "pue": 1.1,
-        "water_intensity_litres_per_kwh": 0.35
+        "water_intensity_litres_per_kwh": 0.35,
+        "baseline_water_stress": 4,
+        "jurisdiction": "USA"
       },
       "europe-west1": {
         "location": "Belgium",
         "grid_intensity_gco2e_per_kwh": 144.0,
         "pue": 1.1,
-        "water_intensity_litres_per_kwh": 0.2
+        "water_intensity_litres_per_kwh": 0.2,
+        "baseline_water_stress": 4,
+        "jurisdiction": "EEA_UK"
       },
       "europe-west2": {
         "location": "London",
         "grid_intensity_gco2e_per_kwh": 268.0,
         "pue": 1.1,
-        "water_intensity_litres_per_kwh": 0.25
+        "water_intensity_litres_per_kwh": 0.25,
+        "baseline_water_stress": 1,
+        "jurisdiction": "EEA_UK"
       },
       "europe-west4": {
         "location": "Netherlands",
         "grid_intensity_gco2e_per_kwh": 270.0,
         "pue": 1.1,
-        "water_intensity_litres_per_kwh": 0.2
+        "water_intensity_litres_per_kwh": 0.2,
+        "baseline_water_stress": 1,
+        "jurisdiction": "EEA_UK"
       },
       "europe-north1": {
         "location": "Finland",
         "grid_intensity_gco2e_per_kwh": 18.0,
         "pue": 1.1,
-        "water_intensity_litres_per_kwh": 0.12
+        "water_intensity_litres_per_kwh": 0.12,
+        "baseline_water_stress": 1,
+        "jurisdiction": "EEA_UK"
       },
       "asia-southeast1": {
         "location": "Singapore",
         "grid_intensity_gco2e_per_kwh": 408.0,
         "pue": 1.1,
-        "water_intensity_litres_per_kwh": 0.58
+        "water_intensity_litres_per_kwh": 0.58,
+        "baseline_water_stress": null,
+        "jurisdiction": "SGP"
       },
       "asia-east1": {
         "location": "Taiwan",
         "grid_intensity_gco2e_per_kwh": 486.0,
         "pue": 1.1,
-        "water_intensity_litres_per_kwh": 0.45
+        "water_intensity_litres_per_kwh": 0.45,
+        "baseline_water_stress": null,
+        "jurisdiction": "TWN"
       },
       "asia-northeast1": {
         "location": "Tokyo",
         "grid_intensity_gco2e_per_kwh": 506.0,
         "pue": 1.1,
-        "water_intensity_litres_per_kwh": 0.5
+        "water_intensity_litres_per_kwh": 0.5,
+        "baseline_water_stress": 2,
+        "jurisdiction": "JPN"
       },
       "asia-south1": {
         "location": "Mumbai",
         "grid_intensity_gco2e_per_kwh": 723.0,
         "pue": 1.1,
-        "water_intensity_litres_per_kwh": 0.72
+        "water_intensity_litres_per_kwh": 0.72,
+        "baseline_water_stress": 4,
+        "jurisdiction": "IND"
       },
       "northamerica-northeast1": {
         "location": "Montreal",
         "grid_intensity_gco2e_per_kwh": 28.0,
         "pue": 1.1,
-        "water_intensity_litres_per_kwh": 0.2
+        "water_intensity_litres_per_kwh": 0.2,
+        "baseline_water_stress": 0,
+        "jurisdiction": "CAN"
       },
       "southamerica-east1": {
         "location": "Sao Paulo",
         "grid_intensity_gco2e_per_kwh": 74.0,
         "pue": 1.1,
-        "water_intensity_litres_per_kwh": 0.35
+        "water_intensity_litres_per_kwh": 0.35,
+        "baseline_water_stress": 1,
+        "jurisdiction": "BRA"
       }
     },
     "instances": {
@@ -1628,6 +1759,16 @@
         "t2d-standard-1": 0.053,
         "t2d-standard-2": 0.105
       }
+    },
+    "storage": {
+      "replication_factor": 1,
+      "tiers": {
+        "pd-standard": "hdd",
+        "pd-balanced": "ssd",
+        "pd-ssd": "ssd",
+        "pd-extreme": "ssd"
+      },
+      "pricing_usd_per_gb_month": {}
     }
   }
 }

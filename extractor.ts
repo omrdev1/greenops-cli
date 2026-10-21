@@ -85,6 +85,13 @@ const SUPPORTED_MANAGED_AI_TYPES: Record<CloudProvider, string[]> = {
   gcp:   ['google_workbench_instance'],
 };
 
+// Block storage: Terraform field names for the disk tier and provisioned size.
+const DISK_FIELDS: Record<string, { tier: string; sizeGb: string }> = {
+  aws_ebs_volume:       { tier: 'type', sizeGb: 'size' },
+  azurerm_managed_disk: { tier: 'storage_account_type', sizeGb: 'disk_size_gb' },
+  google_compute_disk:  { tier: 'type', sizeGb: 'size' },
+};
+
 // GPU accelerator TDP (watts), by NVIDIA model name as it appears in
 // Terraform's accelerator_configs[].type (Vertex AI Workbench) and the
 // equivalent EC2/GCE-side identifiers. Sourced from NVIDIA's published
@@ -388,6 +395,31 @@ function extractServerlessInput(
   };
 }
 
+function resolveRegion(
+  provider: CloudProvider,
+  change: TerraformResourceChange['change'],
+  providerRegions: Record<CloudProvider, string | null>
+): string | null {
+  if (provider === 'aws') return resolveAwsRegion(change, providerRegions.aws);
+  if (provider === 'azure') return resolveAzureRegion(change, providerRegions.azure);
+  return resolveGcpRegion(change, providerRegions.gcp);
+}
+
+function extractDiskInput(
+  res: TerraformResourceChange,
+  provider: CloudProvider,
+  providerRegions: Record<CloudProvider, string | null>
+): ResourceInput | null {
+  const fields = DISK_FIELDS[res.type];
+  if (isKnownAfterApply(res.change, fields.tier) || isKnownAfterApply(res.change, fields.sizeGb)) return null;
+  const tier = res.change?.after?.[fields.tier];
+  const sizeGb = res.change?.after?.[fields.sizeGb];
+  if (typeof tier !== 'string' || typeof sizeGb !== 'number') return null;
+  const region = resolveRegion(provider, res.change, providerRegions);
+  if (!region) return null;
+  return { resourceId: res.address, instanceType: `disk:${tier}:${sizeGb}`, region, provider };
+}
+
 export function extractResourceInputs(planFilePath: string): ExtractorResult {
   const result: ExtractorResult = { resources: [], skipped: [], unsupportedTypes: [] };
 
@@ -437,6 +469,13 @@ export function extractResourceInputs(planFilePath: string): ExtractorResult {
     }
 
     const provider = detectProvider(res.type);
+
+    if (DISK_FIELDS[res.type] && provider) {
+      const diskInput = extractDiskInput(res, provider, providerRegions);
+      if (diskInput) result.resources.push(diskInput);
+      else result.skipped.push({ resourceId: res.address, reason: 'known_after_apply' });
+      continue;
+    }
 
     // --- Serverless path ---
     if (allServerlessTypes.includes(res.type)) {

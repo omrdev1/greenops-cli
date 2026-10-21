@@ -1,8 +1,11 @@
-# GreenOps Methodology Ledger v2.1.0
+# GreenOps Methodology Ledger v2.2.0
 
 **Methodology transparency is the only defence against greenwashing.**
 
 All maths in GreenOps is open, auditable, and reproducible from `factors.json`. This document defines the exact formulas, assumptions, and data sources used in every calculation.
+
+> [!note] v2.2.0: block storage, water stress and data residency
+> Standalone disks (`aws_ebs_volume`, `azurerm_managed_disk`, `google_compute_disk`) are now modeled with CCF's storage coefficients, Scope 2 only — see [Block Storage](#block-storage-scope-2-only). Every region now carries its WRI Aqueduct 4.0 baseline water-stress band and a jurisdiction. Region-shift recommendations stay within the same jurisdiction and never move a workload to a region with a higher known water-stress band — see [Data Residency](#data-residency) and [Water Stress](#water-stress).
 
 > [!note] AWS/Azure/GCP CPU power figures re-derived against CCF's current source data, v2.1.0 ([#25](https://github.com/omrdev1/greenops-cli/issues/25))
 > A reader comparing `factors.json` against Cloud Carbon Footprint's `aws-instances.csv` surfaced a discrepancy that, on investigation, turned out to be ledger-wide. Further investigation found the comparison itself had been built against `cloud-carbon-coefficients`, a repo CCF has since **archived** in favour of the actively-maintained `ccf-coefficients`, which computes wattage at the CPU-architecture level (min/max watts per hardware thread) rather than per-instance-type. `power_watts.idle`/`power_watts.max` for every x86/AMD instance in this ledger have been re-derived directly from `ccf-coefficients`' current data, paired with each instance family's real, documented CPU architecture (sourced from AWS/Azure/GCP's own instance-type docs, not third-party summaries). For families where the provider itself doesn't guarantee a single chip (e.g. AWS t3/m5/c5/r5, several Azure D-series generations, GCP N2/E2), the documented option with the higher max-watts figure was used, disclosed per-family below rather than silently picked.
@@ -209,6 +212,40 @@ Azure ML (`azurerm_machine_learning_compute_instance`/`compute_cluster`) — not
 
 ---
 
+## Block Storage (Scope 2 only)
+
+```
+energy_kwh  = (size_gb / 1000) × coefficient_wh_per_tb_hour × hours × replication_factor / 1000
+scope2_gco2e = energy_kwh × PUE × grid_intensity
+water_litres = energy_kwh × WUE
+```
+
+| Constant | Value | Source |
+|---|---|---|
+| SSD coefficient | 1.2 Wh per TB-hour | CCF `*FootprintEstimationConstants.ts` (`SSDCOEFFICIENT`), from the 2016 US Data Center Usage Report |
+| HDD coefficient | 0.65 Wh per TB-hour | CCF `HDDCOEFFICIENT`, same source |
+| AWS EBS replication | 2 | CCF `EC2_EBS_VOLUME` |
+| Azure managed disk replication | 3 | CCF `STORAGE_DISKS` |
+| GCP zonal persistent disk replication | 1 | CCF Compute Engine default (non-regional disks) |
+
+CCF values read from `cloud-carbon-footprint` at commit `f584c54` (2026-04-23).
+
+| Provider | SSD tiers | HDD tiers |
+|---|---|---|
+| AWS | `gp2`, `gp3`, `io1`, `io2` | `st1`, `sc1`, `standard` |
+| Azure | `StandardSSD_LRS`, `StandardSSD_ZRS`, `Premium_LRS`, `Premium_ZRS`, `PremiumV2_LRS`, `UltraSSD_LRS` | `Standard_LRS` |
+| GCP | `pd-balanced`, `pd-ssd`, `pd-extreme` | `pd-standard` |
+
+**Cost:** AWS `us-east-1` only, capacity charge per GB-month from the AWS EBS pricing page (checked 2026-10-21): gp3 $0.08, gp2 $0.10, io1/io2 $0.125, st1 $0.045, sc1 $0.015. Provisioned IOPS and throughput charges are excluded. Disks anywhere else report carbon and water with cost shown as `n/a`, confidence `LOW_ASSUMED_DEFAULT`, and are named in the PR comment so the cost total is not read as complete.
+
+**Embodied carbon:** not modeled. CCF has no embodied-carbon model for storage, so disks are reported as `SCOPE_2_OPERATIONAL`.
+
+**Recommendations:** none. Moving data from SSD to HDD changes performance, so it is not a safe automated suggestion.
+
+A disk whose type or size is only known after apply is skipped, never given a default.
+
+---
+
 ## Water Consumption
 
 ```
@@ -239,7 +276,7 @@ WUE is applied to IT load (before PUE multiplication), matching the AWS/Azure/Go
 
 GreenOps evaluates one strategy per resource:
 
-**Region shift:** Move to the lowest grid-intensity region within the same provider that has pricing data for this instance. Only recommended if CO2e reduction exceeds 15% of baseline.
+**Region shift:** Move to the lowest grid-intensity region within the same provider and the same jurisdiction that has pricing data for this instance and no higher water-stress band. Only recommended if CO2e reduction exceeds 15% of baseline.
 
 **Scoring:**
 
@@ -249,6 +286,20 @@ score = (|co2e_delta| / baseline_co2e) × 0.60
 ```
 
 Carbon reduction is weighted at 60%, cost at 40%, both normalised to percentage-of-baseline.
+
+### Water Stress
+
+Each region carries `baseline_water_stress`: the WRI Aqueduct 4.0 baseline water-stress category (0 Low, 1 Low-Medium, 2 Medium-High, 3 High, 4 Extremely High) for the state or province the region sits in, weighted by total water demand. Source: Aqueduct 4.0 Current and Future Country Rankings, `province_baseline` sheet (release 2023-07-05, CC BY 4.0).
+
+**Rule:** a region shift is never suggested to a region whose band is higher than the current region's. If either band is unknown, the move is allowed and the rationale says the data is missing. The target's band is always shown in the rationale.
+
+Singapore (`ap-southeast-1`, `southeastasia`, `asia-southeast1`) is `null` (Aqueduct reports NoData) and Taiwan (`asia-east1`) is `null` (not in the dataset). Region-to-area mapping uses each provider's published data-centre location; London maps to England as a whole and Stockholm to Stockholm county, since Aqueduct ranks at that level.
+
+### Data Residency
+
+Each region carries `jurisdiction`: the ISO 3166 alpha-3 code of the country it sits in, except that UK and EU/EEA regions share `EEA_UK`, because the UK and EU each recognise the other's data protection as adequate. A region shift is only suggested within the same jurisdiction. Without this, the cleanest grids (Stockholm, Montreal, São Paulo) would be suggested for workloads in other countries, which can break data-protection, contract or latency requirements the plan cannot see.
+
+Result for the general-purpose sample instances (m5.large, Standard_D2s_v3, n2-standard-2): US regions move within the US (for example `us-east-1` to `us-west-2`), UK/EEA regions move within the UK/EEA where a cleaner region passes the water-stress rule (for example `eu-west-1` to `eu-west-2`, `uksouth` to `swedencentral`), and regions with no cleaner same-jurisdiction alternative in the ledger (Sydney, Singapore, Tokyo, Mumbai, São Paulo, Canada, Taiwan, and London for AWS) get no suggestion. Earlier versions proposed Stockholm (`eu-north-1`) from almost every AWS region.
 
 > [!warning] ARM upgrade recommendations removed ([#25](https://github.com/omrdev1/greenops-cli/issues/25))
 > Earlier versions of this engine recommended switching x86_64 instances to ARM64 equivalents (AWS Graviton, Azure Ampere Dpsv5, GCP T2A) as a carbon/cost-saving strategy. Removed because no AWS Graviton generation, Azure Ampere Altra instance, or GCP T2A instance has real, independently-sourced power data anywhere — not in the archived CCF repo, not in the current `ccf-coefficients` repo. CCF's own current source code substitutes AMD EPYC 2nd Gen wattage for every Graviton generation, with the comment *"we don't know the values for the Graviton chips so assume they are the same spec as AMD EPYC Gen 2"* (`ccfcoef/aws/coefficients.py`) — and no Ampere Altra entry exists in CCF's wattage data for Azure or GCP at all. Recommending an ARM switch on that basis would mean estimating a saving this ledger cannot actually stand behind. All ARM instance types have been removed from `factors.json` (see [AWS/Azure/GCP Instance Coverage](#cloud-provider-coverage)) rather than left in with unsupported numbers. If real Graviton/Ampere Altra power data becomes available from a citable source, both the ledger entries and this recommendation strategy can be restored.
@@ -275,6 +326,9 @@ Carbon reduction is weighted at 60%, cost at 40%, both normalised to percentage-
 | AWS pricing | AWS public pricing API | Q1 2026 |
 | Azure pricing | Azure public pricing API | Q1 2026 |
 | GCP pricing | GCP public pricing API | Q1 2026 |
+| Storage energy and replication | CCF source constants, commit `f584c54` | 2026-04 |
+| AWS EBS pricing (us-east-1, capacity only) | AWS EBS pricing page | 2026-10-21 |
+| Regional water stress | WRI Aqueduct 4.0 province baseline (CC BY 4.0) | 2023-07-05 |
 
 ---
 
@@ -341,6 +395,10 @@ All gaps are tracked as open issues. Coverage PRs are the fastest to merge.
 - **Annual average grid intensity.** Real-time marginal emissions are not used. Annual averages are more stable and reproducible, consistent with CCF methodology. **Source under active re-verification** ([#24](https://github.com/omrdev1/greenops-cli/issues/24)): `factors.json` records the source as "electricity-maps-2024-avg" with no logged query date or exact zone mapping. A real discrepancy was confirmed for `us-east-1`: the ledger's 384.5 figure is suspiciously close to the 2024 US *national* average (384, per Ember), not a PJM-specific figure — the likely root cause is a national-average value being substituted for a regional grid-zone value somewhere upstream. Not yet corrected in the ledger, since no single PJM figure could be verified to high confidence from a reachable, current-year source (candidates ranged from 403 to ~535 depending on source and year). Treat all current grid intensity values as indicative, not audited, until re-derived from a live ElectricityMaps export or EPA eGRID pull.
 - **WUE at data centre level.** Water figures cover direct data centre cooling withdrawal only. **AWS figure corrected and verified** ([#24](https://github.com/omrdev1/greenops-cli/issues/24)): AWS's per-region WUE table had no traceable source (the cited AWS 2023 Sustainability Report publishes only one fleet-wide figure) and has been replaced with that real figure (0.18 L/kWh), applied uniformly — see the Water Consumption section above. **Azure and GCP WUE values are still the original, unverified per-region figures** and have not yet been re-sourced.
 - **Azure and GCP coverage is smaller than AWS.** AWS has 50 instance types (47 general-purpose + 3 GPU); Azure has 19 (16 general-purpose + 3 GPU); GCP has 15 plus Vertex AI Workbench. Enterprise-scale instance families (M-series, X-series, A2 High Memory) are not yet in the ledger.
+- **Inline disks are not counted.** `root_block_device` and `ebs_block_device` blocks inside `aws_instance`, and OS disks declared inside Azure/GCP VM resources, are not yet extracted; only standalone disk resources are. GCP regional disks (`google_compute_region_disk`) and Hyperdisk tiers are not yet covered.
+- **Disk cost outside AWS us-east-1 is not modeled.** See [Block Storage](#block-storage-scope-2-only).
+- **Residency is country-level, not a compliance check.** Region shifts stay within one jurisdiction (see [Data Residency](#data-residency)), but sector rules, customer contracts or state-level requirements can be stricter than that. Latency is not considered.
+- **Water stress is a regional aggregate.** Aqueduct bands describe the state or province, not the data centre's own water source, and say nothing about how much water a given facility uses.
 - **Provider alias regions.** Multi-aliased provider configs may not resolve correctly. Standard single-provider configs are fully supported.
 - **Node group autoscaling is reported at minimum size.** EKS, AKS, and GKE node groups with autoscaling enabled report the minimum configured node count, not the desired or current count. Actual emissions at any given time may be higher if the autoscaler has scaled up.
 
