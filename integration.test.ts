@@ -13,16 +13,17 @@ describe('End-to-End Integration', () => {
   test('Full pipeline extract -> analyse', () => {
     // Fixture covering all paths:
     // 1. aws_instance.web    — m5.large in us-east-1
-    //    eu-north-1 (8.8 gCO2e/kWh) wins scoring: region shift saves ~2471.88g CO2e/month
+    //    Ledger v2.2.0 keeps shifts within one jurisdiction: us-west-2 (240.1 g/kWh) wins,
+    //    saves ~950g CO2e/month
     //
     // 2. aws_instance.worker — r5.large in us-west-2
     //    (v2.1.0: was m6g.large — AWS Graviton removed from the ledger, no real
-    //    ARM power data exists, see METHODOLOGY.md. Swapped for a real x86
-    //    instance to keep this fixture's 3-resource, all-recommended shape.)
-    //    us-west-2 (240.1g) → eu-north-1 (8.8g): region shift saves ~2120.16g CO2e/month
+    //    ARM power data exists, see METHODOLOGY.md. Swapped for a real x86 instance.)
+    //    Already the cleanest US region in the ledger: no recommendation.
     //
     // 3. aws_db_instance.db  — db.m5.xlarge in eu-west-1
-    //    Normalised to m5.xlarge. eu-north-1 wins: saves ~4277.90g CO2e/month
+    //    Normalised to m5.xlarge. eu-north-1 is excluded on water stress (2 > 1),
+    //    so eu-west-2 (London, same EEA_UK jurisdiction) wins: saves ~868g CO2e/month
     //
     // 4. aws_instance.unknown — known_after_apply (skip path)
     const fixture = {
@@ -96,19 +97,16 @@ describe('End-to-End Integration', () => {
       assert.ok(Math.abs(result.totals.currentCo2eGramsPerMonth - totalCo2e) < 0.01);
       assert.ok(Math.abs(result.totals.currentCostUsdPerMonth - totalCost) < 0.001);
 
-      // All three resources now have recommendations (eu-north-1 shift)
-      // Verify savings are substantial — >85% of total baseline CO2e
+      // Two in-jurisdiction region shifts; savings ~19.9% of baseline
       const savingsPct = result.totals.potentialCo2eSavingGramsPerMonth / result.totals.currentCo2eGramsPerMonth;
-      assert.ok(savingsPct > 0.85, `Expected >85% CO2e savings with 14-region ledger, got ${(savingsPct*100).toFixed(1)}%`);
+      assert.ok(savingsPct > 0.19, `Expected >19% CO2e savings, got ${(savingsPct*100).toFixed(1)}%`);
 
-      // All three resources should have a recommendation
-      const resourcesWithRecs = result.resources.filter(r => r.recommendation !== null);
-      assert.equal(resourcesWithRecs.length, 3, 'All 3 analysed resources should have a recommendation');
-
-      // Worker should now recommend eu-north-1 (no longer null — us-west-2 is not the cleanest)
-      const workerRes = result.resources.find(r => r.input.resourceId === 'aws_instance.worker');
-      assert.ok(workerRes?.recommendation !== null, 'Worker now has a region-shift recommendation to eu-north-1');
-      assert.equal(workerRes?.recommendation?.suggestedRegion, 'eu-north-1');
+      const suggested = Object.fromEntries(result.resources.map(r => [r.input.resourceId, r.recommendation?.suggestedRegion ?? null]));
+      assert.deepEqual(suggested, {
+        'aws_instance.web': 'us-west-2',
+        'aws_instance.worker': null,
+        'aws_db_instance.db': 'eu-west-2',
+      });
 
     } finally {
       unlinkSync(tmpFile);

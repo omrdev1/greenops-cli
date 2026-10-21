@@ -37,6 +37,10 @@ interface LedgerRegion {
   grid_intensity_gco2e_per_kwh: number;
   pue: number;
   water_intensity_litres_per_kwh: number;
+  /** WRI Aqueduct 4.0 baseline water stress category (0-4); null where Aqueduct has no data. */
+  baseline_water_stress: number | null;
+  /** Country ISO3, or EEA_UK for EU/EEA and UK regions (mutual data-protection adequacy). */
+  jurisdiction: string;
 }
 
 interface ProviderLedger {
@@ -51,7 +55,14 @@ interface ProviderLedger {
    * provider, never derived from the underlying instance's compute price.
    */
   managed_ai_pricing_usd_per_hour?: Record<string, Record<string, Record<string, number>>>;
+  storage: {
+    replication_factor: number;
+    tiers: Record<string, StorageMedia>;
+    pricing_usd_per_gb_month: Record<string, Record<string, number>>;
+  };
 }
+
+type StorageMedia = 'ssd' | 'hdd';
 
 interface Ledger {
   metadata: {
@@ -76,6 +87,14 @@ const GRAMS_PER_KWH = 1000;
  * Source: Cloud Carbon Footprint methodology v3.
  */
 const MEMORY_WATTS_PER_GB = 0.392;
+
+/** CCF storage coefficients, Wh per TB-hour of provisioned capacity. */
+const STORAGE_WH_PER_TB_HOUR: Record<StorageMedia, number> = { ssd: 1.2, hdd: 0.65 };
+const GB_PER_TB = 1000;
+
+const WATER_STRESS_LABELS = [
+  'Low (<10%)', 'Low - Medium (10-20%)', 'Medium - High (20-40%)', 'High (40-80%)', 'Extremely High (>80%)',
+];
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -109,11 +128,28 @@ function wattsToWater(watts: number, hours: number, wue: number): number {
   return (watts * hours / GRAMS_PER_KWH) * wue;
 }
 
+/** Unknown stress on either side never blocks a move; it only blocks a known increase. */
+function raisesWaterStress(from: LedgerRegion | undefined, to: LedgerRegion): boolean {
+  const current = from?.baseline_water_stress ?? null;
+  const target = to.baseline_water_stress;
+  return current !== null && target !== null && target > current;
+}
+
+function describeWaterStress(region: LedgerRegion): string {
+  const label = region.baseline_water_stress === null ? null : WATER_STRESS_LABELS[region.baseline_water_stress];
+  return label
+    ? ` Water stress at ${region.location}: ${label} (WRI Aqueduct 4.0).`
+    : ` WRI Aqueduct 4.0 has no water-stress data for ${region.location}.`;
+}
+
 function getCleanerRegion(currentRegion: string, instanceType: string, provider: CloudProvider, ledger: Ledger): string | null {
   const providerLedger = ledger[provider];
+  const current = providerLedger.regions[currentRegion];
   const regions = Object.entries(providerLedger.regions)
-    .filter(([regionId]) => {
+    .filter(([regionId, region]) => {
       if (regionId === currentRegion) return false;
+      if (region.jurisdiction !== current?.jurisdiction) return false;
+      if (raisesWaterStress(current, region)) return false;
       return !!providerLedger.pricing_usd_per_hour[regionId]?.[instanceType];
     })
     .sort(([, a], [, b]) => a.grid_intensity_gco2e_per_kwh - b.grid_intensity_gco2e_per_kwh);
@@ -217,6 +253,61 @@ function calculateServerlessBaseline(
       embodiedCo2ePerVcpuPerMonthApplied: EMBODIED_MONTHLY_SINGLE_SERVER_G,
       waterIntensityLitresPerKwhApplied: regionData.water_intensity_litres_per_kwh,
       memoryWattsApplied: memoryGb * MEMORY_WATTS_PER_GB,
+    },
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Block storage (EBS volumes, Azure managed disks, GCP persistent disks)
+// ---------------------------------------------------------------------------
+
+/** Format: "disk:{tier}:{sizeGb}" */
+function parseDiskInstanceType(instanceType: string): { tier: string; sizeGb: number } | null {
+  const match = instanceType.match(/^disk:([A-Za-z0-9_-]+):(\d+(?:\.\d+)?)$/);
+  if (!match) return null;
+  return { tier: match[1], sizeGb: parseFloat(match[2]) };
+}
+
+/**
+ * CCF storage model: provisioned TB × media coefficient × hours × replication.
+ * Scope 2 only — CCF has no embodied-carbon model for storage.
+ */
+function calculateDiskBaseline(
+  input: ResourceInput,
+  params: { tier: string; sizeGb: number },
+  providerLedger: ProviderLedger,
+  regionData: LedgerRegion,
+  hours: number,
+  zeroResult: (reason: string) => EmissionAndCostEstimate
+): EmissionAndCostEstimate {
+  const { tier, sizeGb } = params;
+  const { storage } = providerLedger;
+  const media = storage.tiers[tier];
+  if (!media) return zeroResult(`Disk type "${tier}" is not a known storage tier in the Open GreenOps Methodology Ledger.`);
+
+  const energyKwh = (sizeGb / GB_PER_TB) * STORAGE_WH_PER_TB_HOUR[media] * hours * storage.replication_factor / GRAMS_PER_KWH;
+  const totalCo2eGramsPerMonth = energyKwh * regionData.pue * regionData.grid_intensity_gco2e_per_kwh;
+  const pricePerGbMonth = storage.pricing_usd_per_gb_month[input.region]?.[tier];
+  const totalCostUsdPerMonth = pricePerGbMonth === undefined ? 0 : pricePerGbMonth * sizeGb * (hours / HOURS_PER_MONTH);
+
+  return {
+    totalCo2eGramsPerMonth,
+    embodiedCo2eGramsPerMonth: 0,
+    totalLifecycleCo2eGramsPerMonth: totalCo2eGramsPerMonth,
+    waterLitresPerMonth: energyKwh * regionData.water_intensity_litres_per_kwh,
+    totalCostUsdPerMonth,
+    confidence: pricePerGbMonth === undefined ? 'LOW_ASSUMED_DEFAULT' : 'MEDIUM',
+    scope: 'SCOPE_2_OPERATIONAL',
+    ...(pricePerGbMonth === undefined && {
+      unsupportedReason: `Disk cost for "${tier}" in "${input.region}" is not yet in the ledger, so it is reported as $0. Carbon and water use the CCF storage model (${media.toUpperCase()}, replication ×${storage.replication_factor}).`,
+    }),
+    assumptionsApplied: {
+      utilizationApplied: 1,
+      gridIntensityApplied: regionData.grid_intensity_gco2e_per_kwh,
+      powerModelUsed: 'STORAGE_CAPACITY',
+      embodiedCo2ePerVcpuPerMonthApplied: 0,
+      waterIntensityLitresPerKwhApplied: regionData.water_intensity_litres_per_kwh,
+      memoryWattsApplied: 0,
     },
   };
 }
@@ -496,6 +587,14 @@ export function calculateBaseline(
     return zeroResult(`Region "${input.region}" is not present in the ${provider.toUpperCase()} section of the Open GreenOps Methodology Ledger v${ledger.metadata.ledger_version}.`);
   }
 
+  const diskParams = parseDiskInstanceType(input.instanceType);
+  if (diskParams) {
+    return calculateDiskBaseline(
+      input, diskParams, providerLedger, regionData, hours,
+      (reason) => zeroResult(reason, regionData.grid_intensity_gco2e_per_kwh, 0, regionData.water_intensity_litres_per_kwh)
+    );
+  }
+
   // --- Serverless path ---
   const serverlessParams = parseServerlessInstanceType(input.instanceType);
   if (serverlessParams) {
@@ -611,9 +710,11 @@ export function generateRecommendation(
         ? Math.abs(co2Delta) / baseline.totalCo2eGramsPerMonth : 0;
       if (co2Delta < 0 && co2ReductionPct > 0.15) {
         const regionName = providerLedger.regions[cleanerRegion]?.location ?? cleanerRegion;
-        const costNote = costDelta > 0
-          ? ` (note: cost increases by $${costDelta.toFixed(2)}/month)`
-          : ` saving $${Math.abs(costDelta).toFixed(2)}/month`;
+        const costNote = Math.abs(costDelta) < 0.005
+          ? ' at the same cost'
+          : costDelta > 0
+            ? ` (note: cost increases by $${costDelta.toFixed(2)}/month)`
+            : ` saving $${Math.abs(costDelta).toFixed(2)}/month`;
         const waterDelta = regionEstimate.waterLitresPerMonth - baseline.waterLitresPerMonth;
         const waterNote = waterDelta < -0.1
           ? ` Water consumption also decreases by ${Math.abs(waterDelta).toFixed(1)}L/month.` : '';
@@ -621,7 +722,7 @@ export function generateRecommendation(
           suggestedRegion: cleanerRegion,
           co2eDeltaGramsPerMonth: co2Delta,
           costDeltaUsdPerMonth: costDelta,
-          rationale: `Moving ${input.instanceType} from ${input.region} to ${regionName} (${cleanerRegion}) reduces grid carbon intensity from ${providerLedger.regions[input.region]?.grid_intensity_gco2e_per_kwh}g to ${providerLedger.regions[cleanerRegion]?.grid_intensity_gco2e_per_kwh}g CO2e/kWh, saving ${Math.abs(Math.round(co2Delta))}g CO2e/month${costNote}.${waterNote}`,
+          rationale: `Moving ${input.instanceType} from ${input.region} to ${regionName} (${cleanerRegion}) reduces grid carbon intensity from ${providerLedger.regions[input.region]?.grid_intensity_gco2e_per_kwh}g to ${providerLedger.regions[cleanerRegion]?.grid_intensity_gco2e_per_kwh}g CO2e/kWh, saving ${Math.abs(Math.round(co2Delta))}g CO2e/month${costNote}.${waterNote}${describeWaterStress(providerLedger.regions[cleanerRegion])}`,
         });
       }
     }

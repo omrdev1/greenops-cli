@@ -14,7 +14,8 @@ export type ConfidenceLevel = "HIGH" | "MEDIUM" | "LOW_ASSUMED_DEFAULT";
 export type PowerModel =
   | "LINEAR_INTERPOLATION"     // W = idle + (max - idle) * util — standard CCF model
   | "SERVERLESS_INVOCATION"    // W derived from memory allocation × invocation count
-  | "STATIC_TDP";              // fallback when only max TDP is known
+  | "STATIC_TDP"               // fallback when only max TDP is known
+  | "STORAGE_CAPACITY";        // provisioned TB × CCF SSD/HDD coefficient × replication
 
 export type CloudProvider = 'aws' | 'azure' | 'gcp';
 

@@ -59,7 +59,7 @@ jobs:
           terraform show -json tfplan > plan.json
 
       - name: GreenOps Carbon Lint
-        uses: omrdev1/greenops-cli@v0.14.0
+        uses: omrdev1/greenops-cli@v0.15.0
         with:
           plan-file: plan.json
           github-token: ${{ secrets.GITHUB_TOKEN }}
@@ -71,7 +71,7 @@ Works with AWS, Azure, and GCP plans. Provider is detected automatically from re
 
 ```yaml
       - name: GreenOps Carbon Lint
-        uses: omrdev1/greenops-cli@v0.14.0
+        uses: omrdev1/greenops-cli@v0.15.0
         with:
           plan-file: plan.json
           github-token: ${{ secrets.GITHUB_TOKEN }}
@@ -112,7 +112,7 @@ All fields are optional. `fail_on_violation: true` exits with code 1, blocking m
 
 **GitHub Action** (recommended for CI):
 ```yaml
-uses: omrdev1/greenops-cli@v0.14.0
+uses: omrdev1/greenops-cli@v0.15.0
 ```
 
 **npm** (CLI, run locally or in any CI):
@@ -132,6 +132,10 @@ greenops-cli diff plan.json --format markdown
 
 # List every supported instance type and region per provider
 greenops-cli --coverage
+
+# What-if, no plan file needed: one instance, with a lower-carbon suggestion if there is one
+greenops-cli estimate aws us-east-1 m5.large
+greenops-cli estimate gcp us-central1 n2-standard-4 --count 3 --hours 200 --format json
 ```
 
 **Binary** (no Node.js required):
@@ -154,7 +158,7 @@ Binaries available for `linux-x64`, `linux-arm64`, `darwin-arm64`, `darwin-x64`,
 > | 💧 Water Consumption | **2.5L** |
 > | 💰 Infrastructure Cost | **$162.06/month** |
 
-> **Potential Scope 2 Savings:** -5.92kg CO2e/month (97.7%) | -$6.57/month
+> **Potential Scope 2 Savings:** -2.27kg CO2e/month (37.6%) | -$0.00/month
 > 💡 Found **2** optimization recommendations.
 
 ### Resource Breakdown
@@ -168,15 +172,15 @@ Binaries available for `linux-x64`, `linux-arm64`, `darwin-arm64`, `darwin-x64`,
 
 #### `aws_instance.web`
 - **Current:** `m5.large` in `us-east-1`
-- **Suggested:** `m5.large` in `eu-north-1`
-- **Scope 2 Impact:** -2.47kg CO2e/month | +$2.92/month
-- **Rationale:** Moving m5.large from us-east-1 to Europe (Stockholm) (eu-north-1) reduces grid carbon intensity from 384.5g to 8.8g CO2e/kWh, saving 2472g CO2e/month (note: cost increases by $2.92/month).
+- **Suggested:** `m5.large` in `us-west-2`
+- **Scope 2 Impact:** -0.95kg CO2e/month | +$0.00/month
+- **Rationale:** Moving m5.large from us-east-1 to US West (Oregon) (us-west-2) reduces grid carbon intensity from 384.5g to 240.1g CO2e/kWh, saving 950g CO2e/month at the same cost. Water stress at US West (Oregon): Low - Medium (10-20%) (WRI Aqueduct 4.0).
 
 #### `aws_instance.worker`
 - **Current:** `r5.large` in `us-east-1`
-- **Suggested:** `r5.large` in `eu-north-1`
-- **Scope 2 Impact:** -3.44kg CO2e/month | +$3.65/month
-- **Rationale:** Moving r5.large from us-east-1 to Europe (Stockholm) (eu-north-1) reduces grid carbon intensity from 384.5g to 8.8g CO2e/kWh, saving 3444g CO2e/month (note: cost increases by $3.65/month).
+- **Suggested:** `r5.large` in `us-west-2`
+- **Scope 2 Impact:** -1.32kg CO2e/month | +$0.00/month
+- **Rationale:** Moving r5.large from us-east-1 to US West (Oregon) (us-west-2) reduces grid carbon intensity from 384.5g to 240.1g CO2e/kWh, saving 1324g CO2e/month at the same cost. Water stress at US West (Oregon): Low - Medium (10-20%) (WRI Aqueduct 4.0).
 
 ---
 
@@ -184,9 +188,15 @@ Binaries available for `linux-x64`, `linux-arm64`, `darwin-arm64`, `darwin-x64`,
 
 | Provider | Regions | Instances | Resource Types |
 |---|---|---|---|
-| **AWS** | 14 | 29 | `aws_instance`, `aws_db_instance`, `aws_eks_node_group`, `aws_lambda_function`, `aws_sagemaker_endpoint_configuration` |
-| **Azure** | 17 | 19 | `azurerm_linux_virtual_machine`, `azurerm_windows_virtual_machine`, `azurerm_virtual_machine`, `azurerm_kubernetes_cluster`, `azurerm_kubernetes_cluster_node_pool`, `azurerm_function_app`, `azurerm_linux_function_app`, `azurerm_windows_function_app` |
-| **GCP** | 15 | 11 | `google_compute_instance`, `google_container_node_pool`, `google_cloud_run_service`, `google_cloudfunctions_function`, `google_cloudfunctions2_function`, `google_workbench_instance` |
+| **AWS** | 14 | 29 | `aws_instance`, `aws_db_instance`, `aws_eks_node_group`, `aws_lambda_function`, `aws_sagemaker_endpoint_configuration`, `aws_ebs_volume` |
+| **Azure** | 17 | 19 | `azurerm_linux_virtual_machine`, `azurerm_windows_virtual_machine`, `azurerm_virtual_machine`, `azurerm_kubernetes_cluster`, `azurerm_kubernetes_cluster_node_pool`, `azurerm_function_app`, `azurerm_linux_function_app`, `azurerm_windows_function_app`, `azurerm_managed_disk` |
+| **GCP** | 15 | 11 | `google_compute_instance`, `google_container_node_pool`, `google_cloud_run_service`, `google_cloudfunctions_function`, `google_cloudfunctions2_function`, `google_workbench_instance`, `google_compute_disk` |
+
+**Disks** (`aws_ebs_volume`, `azurerm_managed_disk`, `google_compute_disk`) use CCF's storage model: provisioned size × SSD or HDD coefficient × replication, Scope 2 only. Cost is modeled for AWS `us-east-1`; elsewhere it shows as `n/a` and the PR comment names those disks. See [METHODOLOGY.md](./METHODOLOGY.md#block-storage-scope-2-only).
+
+**Water stress:** every region carries its WRI Aqueduct 4.0 baseline water-stress band. Region shifts never move a workload somewhere with a higher known band, and the band is shown in each suggestion.
+
+**Data residency:** region shifts stay within the same jurisdiction: the same country, or the UK and EU/EEA treated as one (each recognises the other's data protection as adequate). A US workload is never sent to Europe, and a UK or EU workload never leaves the UK/EEA. Latency is not considered.
 
 > [!note] ARM instance types removed in v2.1.0
 > AWS Graviton (all generations), Azure Ampere Dpsv5, and GCP T2A instances were removed from the ledger — no real, independently-sourced power data exists for any ARM cloud chip, from either CCF's archived or current coefficient data (see [METHODOLOGY.md](./METHODOLOGY.md#known-limitations)). The ARM-upgrade recommendation strategy was removed accordingly; region-shift recommendations are unaffected.
@@ -271,6 +281,7 @@ Not yet supported: Azure ML, GCP Vertex AI prediction endpoints (the model-servi
 - `google_compute_instance_template`, `google_container_cluster` (flagged; use `google_container_node_pool` for GKE workloads, which is supported)
 - Azure ML and GCP Vertex AI prediction endpoints — see [AI & GPU Workloads](#-ai--gpu-workloads) above for what IS covered
 - Embodied (Scope 3) carbon for any GPU — explicit gap, not a measured zero, see above
+- Disks declared inline in a VM (`root_block_device`, `ebs_block_device`, Azure/GCP OS disks), GCP regional disks and Hyperdisk; disk cost outside AWS `us-east-1`; embodied carbon for any disk
 - Real-time marginal grid intensity (annual averages used)
 - Multi-aliased Terraform provider configs may skip with `known_after_apply`
 

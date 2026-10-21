@@ -32,6 +32,11 @@ function isAiResource(instanceType: string): boolean {
   );
 }
 
+/** A disk is only LOW_ASSUMED_DEFAULT with real carbon when its price is missing from the ledger. */
+function isUnpricedDisk(r: PlanAnalysisResult['resources'][number]): boolean {
+  return r.input.instanceType.startsWith('disk:') && r.baseline.confidence === 'LOW_ASSUMED_DEFAULT';
+}
+
 function aiResourceKind(instanceType: string): 'GPU' | 'SageMaker' | 'Vertex AI Workbench' {
   if (instanceType.startsWith('managed_ai:')) return 'SageMaker';
   if (instanceType.startsWith('gpu_attached:')) return 'Vertex AI Workbench';
@@ -94,9 +99,16 @@ export function formatMarkdown(result: PlanAnalysisResult, options: FormatterOpt
     const displayType = `\`${formatInstanceTypeLabel(r.input.instanceType)}\`${nodeCount > 1 ? ` × ${nodeCount}` : ''}`;
     const serverlessBadge = isServerless ? ' ⚡' : '';
     const action = r.recommendation ? `💡 [View Recommendation](#recommendations)` : `✅ Optimal`;
-    out += `| \`${r.input.resourceId}\`${serverlessBadge} | ${displayType} | \`${r.input.region}\` | ${formatGrams(r.baseline.totalCo2eGramsPerMonth)} | ${formatGrams(r.baseline.embodiedCo2eGramsPerMonth)} | ${formatWater(r.baseline.waterLitresPerMonth)} | ${r.baseline.totalCostUsdPerMonth.toFixed(2)} | ${action} |\n`;
+    const cost = isUnpricedDisk(r) ? 'n/a' : r.baseline.totalCostUsdPerMonth.toFixed(2);
+    out += `| \`${r.input.resourceId}\`${serverlessBadge} | ${displayType} | \`${r.input.region}\` | ${formatGrams(r.baseline.totalCo2eGramsPerMonth)} | ${formatGrams(r.baseline.embodiedCo2eGramsPerMonth)} | ${formatWater(r.baseline.waterLitresPerMonth)} | ${cost} | ${action} |\n`;
   }
   out += `\n`;
+
+  const unpricedDisks = analysed.filter(isUnpricedDisk);
+  if (unpricedDisks.length > 0) {
+    const names = unpricedDisks.map(r => `\`${r.input.resourceId}\``).join(', ');
+    out += `> 💾 **Disk cost not yet in the ledger** for ${names}. Carbon and water are included; the cost total excludes these disks. Disks are Scope 2 only (CCF has no embodied-carbon model for storage).\n\n`;
+  }
 
   // Serverless assumptions note
   const serverlessResources = analysed.filter(r => r.input.instanceType.startsWith('serverless:'));
