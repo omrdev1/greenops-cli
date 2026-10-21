@@ -7,8 +7,8 @@ var import_node_util = require("node:util");
 // factors.json
 var factors_default = {
   metadata: {
-    ledger_version: "2.1.0",
-    updated_at: "2026-09-09T23:00:00Z",
+    ledger_version: "2.2.0",
+    updated_at: "2026-10-21T19:00:00Z",
     sources: {
       grid: "electricity-maps-2024-avg",
       hardware: "cloud-carbon-footprint-v3",
@@ -19,7 +19,11 @@ var factors_default = {
       water: "aws-sustainability-2023-report-fleet-wide-wue-0.18-l-per-kwh",
       gpu_tdp: "nvidia-aws-public-datasheets-2026-q2",
       gpu_pricing_aws: "aws-public-pricing-2026-q2",
-      managed_ai_pricing_aws: "aws-sagemaker-public-pricing-2026-q2"
+      managed_ai_pricing_aws: "aws-sagemaker-public-pricing-2026-q2",
+      storage_energy: "ccf-ssd-1.2-hdd-0.65-wh-per-tb-hour (cloud-carbon-footprint@f584c54, *FootprintEstimationConstants.ts)",
+      storage_replication: "ccf-replication-factors aws-ebs-volume-2 azure-storage-disks-3 gcp-zonal-pd-default-1 (cloud-carbon-footprint@f584c54)",
+      storage_pricing_aws: "aws-ebs-pricing-page-capacity-only-2026-10-21 (provisioned IOPS and throughput charges excluded)",
+      water_stress: "wri-aqueduct-4.0-province-baseline-bws-total-demand (CC BY 4.0, release 2023-07-05)"
     },
     assumptions: {
       default_utilization: {
@@ -40,85 +44,113 @@ var factors_default = {
         location: "US East (N. Virginia)",
         grid_intensity_gco2e_per_kwh: 384.5,
         pue: 1.13,
-        water_intensity_litres_per_kwh: 0.18
+        water_intensity_litres_per_kwh: 0.18,
+        baseline_water_stress: 2,
+        jurisdiction: "USA"
       },
       "us-east-2": {
         location: "US East (Ohio)",
         grid_intensity_gco2e_per_kwh: 410,
         pue: 1.13,
-        water_intensity_litres_per_kwh: 0.18
+        water_intensity_litres_per_kwh: 0.18,
+        baseline_water_stress: 1,
+        jurisdiction: "USA"
       },
       "us-west-1": {
         location: "US West (N. California)",
         grid_intensity_gco2e_per_kwh: 220,
         pue: 1.13,
-        water_intensity_litres_per_kwh: 0.18
+        water_intensity_litres_per_kwh: 0.18,
+        baseline_water_stress: 4,
+        jurisdiction: "USA"
       },
       "us-west-2": {
         location: "US West (Oregon)",
         grid_intensity_gco2e_per_kwh: 240.1,
         pue: 1.13,
-        water_intensity_litres_per_kwh: 0.18
+        water_intensity_litres_per_kwh: 0.18,
+        baseline_water_stress: 1,
+        jurisdiction: "USA"
       },
       "eu-west-1": {
         location: "Europe (Ireland)",
         grid_intensity_gco2e_per_kwh: 334,
         pue: 1.13,
-        water_intensity_litres_per_kwh: 0.18
+        water_intensity_litres_per_kwh: 0.18,
+        baseline_water_stress: 1,
+        jurisdiction: "EEA_UK"
       },
       "eu-west-2": {
         location: "Europe (London)",
         grid_intensity_gco2e_per_kwh: 268,
         pue: 1.13,
-        water_intensity_litres_per_kwh: 0.18
+        water_intensity_litres_per_kwh: 0.18,
+        baseline_water_stress: 1,
+        jurisdiction: "EEA_UK"
       },
       "eu-central-1": {
         location: "Europe (Frankfurt)",
         grid_intensity_gco2e_per_kwh: 420.5,
         pue: 1.13,
-        water_intensity_litres_per_kwh: 0.18
+        water_intensity_litres_per_kwh: 0.18,
+        baseline_water_stress: 2,
+        jurisdiction: "EEA_UK"
       },
       "eu-north-1": {
         location: "Europe (Stockholm)",
         grid_intensity_gco2e_per_kwh: 8.8,
         pue: 1.13,
-        water_intensity_litres_per_kwh: 0.18
+        water_intensity_litres_per_kwh: 0.18,
+        baseline_water_stress: 2,
+        jurisdiction: "EEA_UK"
       },
       "ap-southeast-1": {
         location: "Asia Pacific (Singapore)",
         grid_intensity_gco2e_per_kwh: 408,
         pue: 1.13,
-        water_intensity_litres_per_kwh: 0.18
+        water_intensity_litres_per_kwh: 0.18,
+        baseline_water_stress: null,
+        jurisdiction: "SGP"
       },
       "ap-southeast-2": {
         location: "Asia Pacific (Sydney)",
         grid_intensity_gco2e_per_kwh: 650,
         pue: 1.13,
-        water_intensity_litres_per_kwh: 0.18
+        water_intensity_litres_per_kwh: 0.18,
+        baseline_water_stress: 3,
+        jurisdiction: "AUS"
       },
       "ap-northeast-1": {
         location: "Asia Pacific (Tokyo)",
         grid_intensity_gco2e_per_kwh: 506,
         pue: 1.13,
-        water_intensity_litres_per_kwh: 0.18
+        water_intensity_litres_per_kwh: 0.18,
+        baseline_water_stress: 2,
+        jurisdiction: "JPN"
       },
       "ap-south-1": {
         location: "Asia Pacific (Mumbai)",
         grid_intensity_gco2e_per_kwh: 723,
         pue: 1.13,
-        water_intensity_litres_per_kwh: 0.18
+        water_intensity_litres_per_kwh: 0.18,
+        baseline_water_stress: 4,
+        jurisdiction: "IND"
       },
       "ca-central-1": {
         location: "Canada (Central)",
         grid_intensity_gco2e_per_kwh: 130,
         pue: 1.13,
-        water_intensity_litres_per_kwh: 0.18
+        water_intensity_litres_per_kwh: 0.18,
+        baseline_water_stress: 0,
+        jurisdiction: "CAN"
       },
       "sa-east-1": {
         location: "South America (S\xE3o Paulo)",
         grid_intensity_gco2e_per_kwh: 74,
         pue: 1.13,
-        water_intensity_litres_per_kwh: 0.18
+        water_intensity_litres_per_kwh: 0.18,
+        baseline_water_stress: 1,
+        jurisdiction: "BRA"
       }
     },
     instances: {
@@ -764,6 +796,28 @@ var factors_default = {
           "p4d.24xlarge": 37.688
         }
       }
+    },
+    storage: {
+      replication_factor: 2,
+      tiers: {
+        gp2: "ssd",
+        gp3: "ssd",
+        io1: "ssd",
+        io2: "ssd",
+        st1: "hdd",
+        sc1: "hdd",
+        standard: "hdd"
+      },
+      pricing_usd_per_gb_month: {
+        "us-east-1": {
+          gp2: 0.1,
+          gp3: 0.08,
+          io1: 0.125,
+          io2: 0.125,
+          st1: 0.045,
+          sc1: 0.015
+        }
+      }
     }
   },
   azure: {
@@ -772,103 +826,137 @@ var factors_default = {
         location: "East US (Virginia)",
         grid_intensity_gco2e_per_kwh: 380,
         pue: 1.125,
-        water_intensity_litres_per_kwh: 0.43
+        water_intensity_litres_per_kwh: 0.43,
+        baseline_water_stress: 2,
+        jurisdiction: "USA"
       },
       eastus2: {
         location: "East US 2 (Virginia)",
         grid_intensity_gco2e_per_kwh: 380,
         pue: 1.125,
-        water_intensity_litres_per_kwh: 0.43
+        water_intensity_litres_per_kwh: 0.43,
+        baseline_water_stress: 2,
+        jurisdiction: "USA"
       },
       westus: {
         location: "West US (California)",
         grid_intensity_gco2e_per_kwh: 200,
         pue: 1.125,
-        water_intensity_litres_per_kwh: 0.35
+        water_intensity_litres_per_kwh: 0.35,
+        baseline_water_stress: 4,
+        jurisdiction: "USA"
       },
       westus2: {
         location: "West US 2 (Washington)",
         grid_intensity_gco2e_per_kwh: 235,
         pue: 1.125,
-        water_intensity_litres_per_kwh: 0.18
+        water_intensity_litres_per_kwh: 0.18,
+        baseline_water_stress: 1,
+        jurisdiction: "USA"
       },
       westus3: {
         location: "West US 3 (Arizona)",
         grid_intensity_gco2e_per_kwh: 350,
         pue: 1.125,
-        water_intensity_litres_per_kwh: 0.55
+        water_intensity_litres_per_kwh: 0.55,
+        baseline_water_stress: 4,
+        jurisdiction: "USA"
       },
       northeurope: {
         location: "North Europe (Ireland)",
         grid_intensity_gco2e_per_kwh: 334,
         pue: 1.125,
-        water_intensity_litres_per_kwh: 0.22
+        water_intensity_litres_per_kwh: 0.22,
+        baseline_water_stress: 1,
+        jurisdiction: "EEA_UK"
       },
       westeurope: {
         location: "West Europe (Netherlands)",
         grid_intensity_gco2e_per_kwh: 270,
         pue: 1.125,
-        water_intensity_litres_per_kwh: 0.2
+        water_intensity_litres_per_kwh: 0.2,
+        baseline_water_stress: 0,
+        jurisdiction: "EEA_UK"
       },
       uksouth: {
         location: "UK South (London)",
         grid_intensity_gco2e_per_kwh: 268,
         pue: 1.125,
-        water_intensity_litres_per_kwh: 0.25
+        water_intensity_litres_per_kwh: 0.25,
+        baseline_water_stress: 1,
+        jurisdiction: "EEA_UK"
       },
       ukwest: {
         location: "UK West (Cardiff)",
         grid_intensity_gco2e_per_kwh: 268,
         pue: 1.125,
-        water_intensity_litres_per_kwh: 0.25
+        water_intensity_litres_per_kwh: 0.25,
+        baseline_water_stress: 0,
+        jurisdiction: "EEA_UK"
       },
       swedencentral: {
         location: "Sweden Central",
         grid_intensity_gco2e_per_kwh: 8.8,
         pue: 1.125,
-        water_intensity_litres_per_kwh: 0.1
+        water_intensity_litres_per_kwh: 0.1,
+        baseline_water_stress: 0,
+        jurisdiction: "EEA_UK"
       },
       germanywestcentral: {
         location: "Germany West Central",
         grid_intensity_gco2e_per_kwh: 420.5,
         pue: 1.125,
-        water_intensity_litres_per_kwh: 0.28
+        water_intensity_litres_per_kwh: 0.28,
+        baseline_water_stress: 2,
+        jurisdiction: "EEA_UK"
       },
       southeastasia: {
         location: "Southeast Asia (Singapore)",
         grid_intensity_gco2e_per_kwh: 408,
         pue: 1.125,
-        water_intensity_litres_per_kwh: 0.58
+        water_intensity_litres_per_kwh: 0.58,
+        baseline_water_stress: null,
+        jurisdiction: "SGP"
       },
       australiaeast: {
         location: "Australia East (NSW)",
         grid_intensity_gco2e_per_kwh: 650,
         pue: 1.125,
-        water_intensity_litres_per_kwh: 0.45
+        water_intensity_litres_per_kwh: 0.45,
+        baseline_water_stress: 3,
+        jurisdiction: "AUS"
       },
       japaneast: {
         location: "Japan East (Tokyo)",
         grid_intensity_gco2e_per_kwh: 506,
         pue: 1.125,
-        water_intensity_litres_per_kwh: 0.5
+        water_intensity_litres_per_kwh: 0.5,
+        baseline_water_stress: 2,
+        jurisdiction: "JPN"
       },
       centralindia: {
         location: "Central India (Pune)",
         grid_intensity_gco2e_per_kwh: 723,
         pue: 1.125,
-        water_intensity_litres_per_kwh: 0.72
+        water_intensity_litres_per_kwh: 0.72,
+        baseline_water_stress: 4,
+        jurisdiction: "IND"
       },
       canadacentral: {
         location: "Canada Central (Toronto)",
         grid_intensity_gco2e_per_kwh: 130,
         pue: 1.125,
-        water_intensity_litres_per_kwh: 0.2
+        water_intensity_litres_per_kwh: 0.2,
+        baseline_water_stress: 1,
+        jurisdiction: "CAN"
       },
       brazilsouth: {
         location: "Brazil South (Sao Paulo)",
         grid_intensity_gco2e_per_kwh: 74,
         pue: 1.125,
-        water_intensity_litres_per_kwh: 0.35
+        water_intensity_litres_per_kwh: 0.35,
+        baseline_water_stress: 1,
+        jurisdiction: "BRA"
       }
     },
     instances: {
@@ -1271,6 +1359,19 @@ var factors_default = {
         Standard_E2s_v3: 0.184,
         Standard_E4s_v3: 0.368
       }
+    },
+    storage: {
+      replication_factor: 3,
+      tiers: {
+        Standard_LRS: "hdd",
+        StandardSSD_LRS: "ssd",
+        StandardSSD_ZRS: "ssd",
+        Premium_LRS: "ssd",
+        Premium_ZRS: "ssd",
+        PremiumV2_LRS: "ssd",
+        UltraSSD_LRS: "ssd"
+      },
+      pricing_usd_per_gb_month: {}
     }
   },
   gcp: {
@@ -1279,91 +1380,121 @@ var factors_default = {
         location: "Iowa",
         grid_intensity_gco2e_per_kwh: 340,
         pue: 1.1,
-        water_intensity_litres_per_kwh: 0.4
+        water_intensity_litres_per_kwh: 0.4,
+        baseline_water_stress: 1,
+        jurisdiction: "USA"
       },
       "us-east1": {
         location: "South Carolina",
         grid_intensity_gco2e_per_kwh: 380,
         pue: 1.1,
-        water_intensity_litres_per_kwh: 0.43
+        water_intensity_litres_per_kwh: 0.43,
+        baseline_water_stress: 2,
+        jurisdiction: "USA"
       },
       "us-east4": {
         location: "Virginia",
         grid_intensity_gco2e_per_kwh: 380,
         pue: 1.1,
-        water_intensity_litres_per_kwh: 0.43
+        water_intensity_litres_per_kwh: 0.43,
+        baseline_water_stress: 2,
+        jurisdiction: "USA"
       },
       "us-west1": {
         location: "Oregon",
         grid_intensity_gco2e_per_kwh: 200,
         pue: 1.1,
-        water_intensity_litres_per_kwh: 0.18
+        water_intensity_litres_per_kwh: 0.18,
+        baseline_water_stress: 1,
+        jurisdiction: "USA"
       },
       "us-west2": {
         location: "Los Angeles",
         grid_intensity_gco2e_per_kwh: 220,
         pue: 1.1,
-        water_intensity_litres_per_kwh: 0.35
+        water_intensity_litres_per_kwh: 0.35,
+        baseline_water_stress: 4,
+        jurisdiction: "USA"
       },
       "europe-west1": {
         location: "Belgium",
         grid_intensity_gco2e_per_kwh: 144,
         pue: 1.1,
-        water_intensity_litres_per_kwh: 0.2
+        water_intensity_litres_per_kwh: 0.2,
+        baseline_water_stress: 4,
+        jurisdiction: "EEA_UK"
       },
       "europe-west2": {
         location: "London",
         grid_intensity_gco2e_per_kwh: 268,
         pue: 1.1,
-        water_intensity_litres_per_kwh: 0.25
+        water_intensity_litres_per_kwh: 0.25,
+        baseline_water_stress: 1,
+        jurisdiction: "EEA_UK"
       },
       "europe-west4": {
         location: "Netherlands",
         grid_intensity_gco2e_per_kwh: 270,
         pue: 1.1,
-        water_intensity_litres_per_kwh: 0.2
+        water_intensity_litres_per_kwh: 0.2,
+        baseline_water_stress: 1,
+        jurisdiction: "EEA_UK"
       },
       "europe-north1": {
         location: "Finland",
         grid_intensity_gco2e_per_kwh: 18,
         pue: 1.1,
-        water_intensity_litres_per_kwh: 0.12
+        water_intensity_litres_per_kwh: 0.12,
+        baseline_water_stress: 1,
+        jurisdiction: "EEA_UK"
       },
       "asia-southeast1": {
         location: "Singapore",
         grid_intensity_gco2e_per_kwh: 408,
         pue: 1.1,
-        water_intensity_litres_per_kwh: 0.58
+        water_intensity_litres_per_kwh: 0.58,
+        baseline_water_stress: null,
+        jurisdiction: "SGP"
       },
       "asia-east1": {
         location: "Taiwan",
         grid_intensity_gco2e_per_kwh: 486,
         pue: 1.1,
-        water_intensity_litres_per_kwh: 0.45
+        water_intensity_litres_per_kwh: 0.45,
+        baseline_water_stress: null,
+        jurisdiction: "TWN"
       },
       "asia-northeast1": {
         location: "Tokyo",
         grid_intensity_gco2e_per_kwh: 506,
         pue: 1.1,
-        water_intensity_litres_per_kwh: 0.5
+        water_intensity_litres_per_kwh: 0.5,
+        baseline_water_stress: 2,
+        jurisdiction: "JPN"
       },
       "asia-south1": {
         location: "Mumbai",
         grid_intensity_gco2e_per_kwh: 723,
         pue: 1.1,
-        water_intensity_litres_per_kwh: 0.72
+        water_intensity_litres_per_kwh: 0.72,
+        baseline_water_stress: 4,
+        jurisdiction: "IND"
       },
       "northamerica-northeast1": {
         location: "Montreal",
         grid_intensity_gco2e_per_kwh: 28,
         pue: 1.1,
-        water_intensity_litres_per_kwh: 0.2
+        water_intensity_litres_per_kwh: 0.2,
+        baseline_water_stress: 0,
+        jurisdiction: "CAN"
       },
       "southamerica-east1": {
         location: "Sao Paulo",
         grid_intensity_gco2e_per_kwh: 74,
         pue: 1.1,
-        water_intensity_litres_per_kwh: 0.35
+        water_intensity_litres_per_kwh: 0.35,
+        baseline_water_stress: 1,
+        jurisdiction: "BRA"
       }
     },
     instances: {
@@ -1635,6 +1766,16 @@ var factors_default = {
         "t2d-standard-1": 0.053,
         "t2d-standard-2": 0.105
       }
+    },
+    storage: {
+      replication_factor: 1,
+      tiers: {
+        "pd-standard": "hdd",
+        "pd-balanced": "ssd",
+        "pd-ssd": "ssd",
+        "pd-extreme": "ssd"
+      },
+      pricing_usd_per_gb_month: {}
     }
   }
 };
@@ -1642,7 +1783,7 @@ var factors_default = {
 // package.json
 var package_default = {
   name: "greenops-cli",
-  version: "0.14.0",
+  version: "0.15.0",
   description: "Carbon footprint linting for Terraform plans: AWS, Azure, and GCP. Analyses infrastructure changes including Kubernetes node groups for Scope 2, Scope 3, and water impact. Posts recommendations directly on GitHub PRs.",
   main: "dist/index.cjs",
   bin: {
@@ -1717,6 +1858,11 @@ var SUPPORTED_MANAGED_AI_TYPES = {
   aws: ["aws_sagemaker_endpoint_configuration"],
   azure: [],
   gcp: ["google_workbench_instance"]
+};
+var DISK_FIELDS = {
+  aws_ebs_volume: { tier: "type", sizeGb: "size" },
+  azurerm_managed_disk: { tier: "storage_account_type", sizeGb: "disk_size_gb" },
+  google_compute_disk: { tier: "type", sizeGb: "size" }
 };
 var GPU_ACCELERATOR_TDP_WATTS = {
   NVIDIA_TESLA_T4: 70,
@@ -1928,6 +2074,21 @@ function extractServerlessInput(res, provider, providerRegions, plannedValuesMap
     }
   };
 }
+function resolveRegion(provider, change, providerRegions) {
+  if (provider === "aws") return resolveAwsRegion(change, providerRegions.aws);
+  if (provider === "azure") return resolveAzureRegion(change, providerRegions.azure);
+  return resolveGcpRegion(change, providerRegions.gcp);
+}
+function extractDiskInput(res, provider, providerRegions) {
+  const fields = DISK_FIELDS[res.type];
+  if (isKnownAfterApply(res.change, fields.tier) || isKnownAfterApply(res.change, fields.sizeGb)) return null;
+  const tier = res.change?.after?.[fields.tier];
+  const sizeGb = res.change?.after?.[fields.sizeGb];
+  if (typeof tier !== "string" || typeof sizeGb !== "number") return null;
+  const region = resolveRegion(provider, res.change, providerRegions);
+  if (!region) return null;
+  return { resourceId: res.address, instanceType: `disk:${tier}:${sizeGb}`, region, provider };
+}
 function extractResourceInputs(planFilePath) {
   const result2 = { resources: [], skipped: [], unsupportedTypes: [] };
   const resolvedPath = (0, import_node_path.isAbsolute)(planFilePath) ? planFilePath : (0, import_node_path.resolve)(process.cwd(), planFilePath);
@@ -1966,6 +2127,12 @@ function extractResourceInputs(planFilePath) {
       continue;
     }
     const provider = detectProvider(res.type);
+    if (DISK_FIELDS[res.type] && provider) {
+      const diskInput = extractDiskInput(res, provider, providerRegions);
+      if (diskInput) result2.resources.push(diskInput);
+      else result2.skipped.push({ resourceId: res.address, reason: "known_after_apply" });
+      continue;
+    }
     if (allServerlessTypes.includes(res.type)) {
       if (!provider) continue;
       const { resourceInput, skipReason: skipReason2 } = extractServerlessInput(
@@ -2054,6 +2221,15 @@ function extractResourceInputs(planFilePath) {
 var HOURS_PER_MONTH = 730;
 var GRAMS_PER_KWH = 1e3;
 var MEMORY_WATTS_PER_GB = 0.392;
+var STORAGE_WH_PER_TB_HOUR = { ssd: 1.2, hdd: 0.65 };
+var GB_PER_TB = 1e3;
+var WATER_STRESS_LABELS = [
+  "Low (<10%)",
+  "Low - Medium (10-20%)",
+  "Medium - High (20-40%)",
+  "High (40-80%)",
+  "Extremely High (>80%)"
+];
 function resolveUtilization(input, ledger) {
   if (input.avgUtilization !== void 0 && (input.avgUtilization < 0 || input.avgUtilization > 1)) {
     throw new RangeError(`avgUtilization must be between 0 and 1, got ${input.avgUtilization}`);
@@ -2074,10 +2250,22 @@ function wattsToScope2Carbon(watts, hours, pue, gridIntensity) {
 function wattsToWater(watts, hours, wue) {
   return watts * hours / GRAMS_PER_KWH * wue;
 }
+function raisesWaterStress(from, to) {
+  const current = from?.baseline_water_stress ?? null;
+  const target = to.baseline_water_stress;
+  return current !== null && target !== null && target > current;
+}
+function describeWaterStress(region) {
+  const label = region.baseline_water_stress === null ? null : WATER_STRESS_LABELS[region.baseline_water_stress];
+  return label ? ` Water stress at ${region.location}: ${label} (WRI Aqueduct 4.0).` : ` WRI Aqueduct 4.0 has no water-stress data for ${region.location}.`;
+}
 function getCleanerRegion(currentRegion, instanceType, provider, ledger) {
   const providerLedger = ledger[provider];
-  const regions = Object.entries(providerLedger.regions).filter(([regionId]) => {
+  const current = providerLedger.regions[currentRegion];
+  const regions = Object.entries(providerLedger.regions).filter(([regionId, region]) => {
     if (regionId === currentRegion) return false;
+    if (region.jurisdiction !== current?.jurisdiction) return false;
+    if (raisesWaterStress(current, region)) return false;
     return !!providerLedger.pricing_usd_per_hour[regionId]?.[instanceType];
   }).sort(([, a], [, b]) => a.grid_intensity_gco2e_per_kwh - b.grid_intensity_gco2e_per_kwh);
   if (regions.length === 0) return null;
@@ -2130,6 +2318,41 @@ function calculateServerlessBaseline(input, params, regionData) {
       embodiedCo2ePerVcpuPerMonthApplied: EMBODIED_MONTHLY_SINGLE_SERVER_G,
       waterIntensityLitresPerKwhApplied: regionData.water_intensity_litres_per_kwh,
       memoryWattsApplied: memoryGb * MEMORY_WATTS_PER_GB
+    }
+  };
+}
+function parseDiskInstanceType(instanceType) {
+  const match = instanceType.match(/^disk:([A-Za-z0-9_-]+):(\d+(?:\.\d+)?)$/);
+  if (!match) return null;
+  return { tier: match[1], sizeGb: parseFloat(match[2]) };
+}
+function calculateDiskBaseline(input, params, providerLedger, regionData, hours, zeroResult) {
+  const { tier, sizeGb } = params;
+  const { storage } = providerLedger;
+  const media = storage.tiers[tier];
+  if (!media) return zeroResult(`Disk type "${tier}" is not a known storage tier in the Open GreenOps Methodology Ledger.`);
+  const energyKwh = sizeGb / GB_PER_TB * STORAGE_WH_PER_TB_HOUR[media] * hours * storage.replication_factor / GRAMS_PER_KWH;
+  const totalCo2eGramsPerMonth = energyKwh * regionData.pue * regionData.grid_intensity_gco2e_per_kwh;
+  const pricePerGbMonth = storage.pricing_usd_per_gb_month[input.region]?.[tier];
+  const totalCostUsdPerMonth = pricePerGbMonth === void 0 ? 0 : pricePerGbMonth * sizeGb * (hours / HOURS_PER_MONTH);
+  return {
+    totalCo2eGramsPerMonth,
+    embodiedCo2eGramsPerMonth: 0,
+    totalLifecycleCo2eGramsPerMonth: totalCo2eGramsPerMonth,
+    waterLitresPerMonth: energyKwh * regionData.water_intensity_litres_per_kwh,
+    totalCostUsdPerMonth,
+    confidence: pricePerGbMonth === void 0 ? "LOW_ASSUMED_DEFAULT" : "MEDIUM",
+    scope: "SCOPE_2_OPERATIONAL",
+    ...pricePerGbMonth === void 0 && {
+      unsupportedReason: `Disk cost for "${tier}" in "${input.region}" is not yet in the ledger, so it is reported as $0. Carbon and water use the CCF storage model (${media.toUpperCase()}, replication \xD7${storage.replication_factor}).`
+    },
+    assumptionsApplied: {
+      utilizationApplied: 1,
+      gridIntensityApplied: regionData.grid_intensity_gco2e_per_kwh,
+      powerModelUsed: "STORAGE_CAPACITY",
+      embodiedCo2ePerVcpuPerMonthApplied: 0,
+      waterIntensityLitresPerKwhApplied: regionData.water_intensity_litres_per_kwh,
+      memoryWattsApplied: 0
     }
   };
 }
@@ -2320,6 +2543,17 @@ function calculateBaseline(input, ledger = factors_default) {
   if (!regionData) {
     return zeroResult(`Region "${input.region}" is not present in the ${provider.toUpperCase()} section of the Open GreenOps Methodology Ledger v${ledger.metadata.ledger_version}.`);
   }
+  const diskParams = parseDiskInstanceType(input.instanceType);
+  if (diskParams) {
+    return calculateDiskBaseline(
+      input,
+      diskParams,
+      providerLedger,
+      regionData,
+      hours,
+      (reason) => zeroResult(reason, regionData.grid_intensity_gco2e_per_kwh, 0, regionData.water_intensity_litres_per_kwh)
+    );
+  }
   const serverlessParams = parseServerlessInstanceType(input.instanceType);
   if (serverlessParams) {
     return calculateServerlessBaseline(input, serverlessParams, regionData);
@@ -2422,14 +2656,14 @@ function generateRecommendation(input, baseline, ledger = factors_default) {
       const co2ReductionPct = baseline.totalCo2eGramsPerMonth > 0 ? Math.abs(co2Delta) / baseline.totalCo2eGramsPerMonth : 0;
       if (co2Delta < 0 && co2ReductionPct > 0.15) {
         const regionName = providerLedger.regions[cleanerRegion]?.location ?? cleanerRegion;
-        const costNote = costDelta > 0 ? ` (note: cost increases by $${costDelta.toFixed(2)}/month)` : ` saving $${Math.abs(costDelta).toFixed(2)}/month`;
+        const costNote = Math.abs(costDelta) < 5e-3 ? " at the same cost" : costDelta > 0 ? ` (note: cost increases by $${costDelta.toFixed(2)}/month)` : ` saving $${Math.abs(costDelta).toFixed(2)}/month`;
         const waterDelta = regionEstimate.waterLitresPerMonth - baseline.waterLitresPerMonth;
         const waterNote = waterDelta < -0.1 ? ` Water consumption also decreases by ${Math.abs(waterDelta).toFixed(1)}L/month.` : "";
         candidates.push({
           suggestedRegion: cleanerRegion,
           co2eDeltaGramsPerMonth: co2Delta,
           costDeltaUsdPerMonth: costDelta,
-          rationale: `Moving ${input.instanceType} from ${input.region} to ${regionName} (${cleanerRegion}) reduces grid carbon intensity from ${providerLedger.regions[input.region]?.grid_intensity_gco2e_per_kwh}g to ${providerLedger.regions[cleanerRegion]?.grid_intensity_gco2e_per_kwh}g CO2e/kWh, saving ${Math.abs(Math.round(co2Delta))}g CO2e/month${costNote}.${waterNote}`
+          rationale: `Moving ${input.instanceType} from ${input.region} to ${regionName} (${cleanerRegion}) reduces grid carbon intensity from ${providerLedger.regions[input.region]?.grid_intensity_gco2e_per_kwh}g to ${providerLedger.regions[cleanerRegion]?.grid_intensity_gco2e_per_kwh}g CO2e/kWh, saving ${Math.abs(Math.round(co2Delta))}g CO2e/month${costNote}.${waterNote}${describeWaterStress(providerLedger.regions[cleanerRegion])}`
         });
       }
     }
@@ -2972,6 +3206,8 @@ function formatGrams(grams) {
 }
 function formatInstanceTypeLabel(instanceType) {
   if (instanceType.startsWith("serverless:")) return "serverless";
+  const diskMatch = instanceType.match(/^disk:(.+):(\d+(?:\.\d+)?)$/);
+  if (diskMatch) return `${diskMatch[1]} ${diskMatch[2]}GB`;
   const managedAiMatch = instanceType.match(/^managed_ai:([a-z_]+):(.+)$/);
   if (managedAiMatch) {
     const [, service, baseType] = managedAiMatch;
@@ -3005,6 +3241,9 @@ var RAW_GPU_INSTANCE_TYPES = /* @__PURE__ */ new Set([
 ]);
 function isAiResource(instanceType) {
   return RAW_GPU_INSTANCE_TYPES.has(instanceType) || instanceType.startsWith("managed_ai:") || instanceType.startsWith("gpu_attached:");
+}
+function isUnpricedDisk(r) {
+  return r.input.instanceType.startsWith("disk:") && r.baseline.confidence === "LOW_ASSUMED_DEFAULT";
 }
 function aiResourceKind(instanceType) {
   if (instanceType.startsWith("managed_ai:")) return "SageMaker";
@@ -3069,11 +3308,19 @@ function formatMarkdown(result2, options = {}) {
     const displayType = `\`${formatInstanceTypeLabel(r.input.instanceType)}\`${nodeCount > 1 ? ` \xD7 ${nodeCount}` : ""}`;
     const serverlessBadge = isServerless ? " \u26A1" : "";
     const action = r.recommendation ? `\u{1F4A1} [View Recommendation](#recommendations)` : `\u2705 Optimal`;
-    out += `| \`${r.input.resourceId}\`${serverlessBadge} | ${displayType} | \`${r.input.region}\` | ${formatGrams(r.baseline.totalCo2eGramsPerMonth)} | ${formatGrams(r.baseline.embodiedCo2eGramsPerMonth)} | ${formatWater(r.baseline.waterLitresPerMonth)} | ${r.baseline.totalCostUsdPerMonth.toFixed(2)} | ${action} |
+    const cost2 = isUnpricedDisk(r) ? "n/a" : r.baseline.totalCostUsdPerMonth.toFixed(2);
+    out += `| \`${r.input.resourceId}\`${serverlessBadge} | ${displayType} | \`${r.input.region}\` | ${formatGrams(r.baseline.totalCo2eGramsPerMonth)} | ${formatGrams(r.baseline.embodiedCo2eGramsPerMonth)} | ${formatWater(r.baseline.waterLitresPerMonth)} | ${cost2} | ${action} |
 `;
   }
   out += `
 `;
+  const unpricedDisks = analysed.filter(isUnpricedDisk);
+  if (unpricedDisks.length > 0) {
+    const names = unpricedDisks.map((r) => `\`${r.input.resourceId}\``).join(", ");
+    out += `> \u{1F4BE} **Disk cost not yet in the ledger** for ${names}. Carbon and water are included; the cost total excludes these disks. Disks are Scope 2 only (CCF has no embodied-carbon model for storage).
+
+`;
+  }
   const serverlessResources = analysed.filter((r) => r.input.instanceType.startsWith("serverless:"));
   if (serverlessResources.length > 0) {
     out += `> \u26A1 **Serverless resources** are estimated using assumed defaults (1M invocations/month, 200ms avg duration). Actual emissions depend on real invocation patterns. Values are marked \`LOW_ASSUMED_DEFAULT\`.
@@ -3281,12 +3528,37 @@ function formatJson(result2) {
   return JSON.stringify(envelope);
 }
 
+// estimate.ts
+var PROVIDERS = ["aws", "azure", "gcp"];
+var USAGE = "Usage: greenops-cli estimate <aws|azure|gcp> <region> <instance-type> [--hours N] [--count N]";
+function buildEstimateInput(positionals2, hours, count) {
+  const [provider, region, instanceType] = positionals2;
+  if (!provider || !region || !instanceType) return { error: USAGE };
+  if (!PROVIDERS.includes(provider)) {
+    return { error: `Unknown provider "${provider}". Use one of: ${PROVIDERS.join(", ")}.` };
+  }
+  const input = { resourceId: "estimate", provider, region, instanceType };
+  if (hours !== void 0) {
+    const hoursPerMonth = Number(hours);
+    if (!(hoursPerMonth > 0)) return { error: `--hours must be a positive number, got "${hours}".` };
+    input.hoursPerMonth = hoursPerMonth;
+  }
+  if (count !== void 0) {
+    const nodeCount = Number(count);
+    if (!Number.isInteger(nodeCount) || nodeCount < 1) return { error: `--count must be a whole number of 1 or more, got "${count}".` };
+    input.nodeCount = nodeCount;
+  }
+  return { input };
+}
+
 // cli.ts
 var { positionals, values } = (0, import_node_util.parseArgs)({
   args: process.argv.slice(2),
   allowPositionals: true,
   options: {
-    format: { type: "string", default: "markdown" },
+    format: { type: "string" },
+    hours: { type: "string" },
+    count: { type: "string" },
     coverage: { type: "boolean", default: false },
     help: { type: "boolean", default: false },
     version: { type: "boolean", default: false },
@@ -3309,11 +3581,14 @@ if (values.help) {
     ``,
     `Usage:`,
     `  greenops-cli diff <plan.json> [options]`,
+    `  greenops-cli estimate <aws|azure|gcp> <region> <instance-type> [--hours N] [--count N]`,
     `  greenops-cli --coverage [--format json]`,
     `  greenops-cli --version`,
     ``,
     `Options:`,
-    `  --format          Output format: markdown (default), table, json`,
+    `  --format          Output format: markdown (diff default), table (estimate default), json`,
+    `  --hours           estimate: hours running per month (default 730)`,
+    `  --count           estimate: number of identical instances (default 1)`,
     `  --coverage        List supported regions and instance types`,
     `  --github-token    GitHub token for posting suggestion comments`,
     `  --repo            Repository full name (e.g. owner/repo)`,
@@ -3353,6 +3628,29 @@ if (values.coverage) {
 }
 var command = positionals[0];
 var planFile = positionals[1];
+var format = values.format ?? (command === "estimate" ? "table" : "markdown");
+if (command === "estimate") {
+  const { input, error } = buildEstimateInput(positionals.slice(1), values.hours, values.count);
+  if (!input) {
+    console.error(`Error: ${error}`);
+    process.exit(1);
+  }
+  const estimate = analysePlan([input], [], "estimate");
+  const { baseline } = estimate.resources[0];
+  if (baseline.confidence === "LOW_ASSUMED_DEFAULT" && baseline.totalCo2eGramsPerMonth === 0) {
+    console.error(`Error: ${baseline.unsupportedReason}`);
+    process.exit(1);
+  }
+  if (format === "json") {
+    console.log(formatJson(estimate));
+  } else {
+    console.log(formatTable(estimate));
+    const { recommendation } = estimate.resources[0];
+    console.log(recommendation ? `
+${recommendation.rationale}` : "\nNo lower-carbon option found in the ledger.");
+  }
+  process.exit(0);
+}
 if (command !== "diff" || !planFile) {
   console.error("Error: Missing 'diff' command or plan file parameter. Run --help for usage.");
   process.exit(1);
@@ -3373,7 +3671,7 @@ try {
       const violationLines = evaluation.violations.map(
         (v) => `\u26D4 Policy violation [${v.constraint}]: ${v.message}`
       ).join("\n");
-      if (values.format === "json") {
+      if (format === "json") {
         process.stderr.write(`
 ${violationLines}
 `);
@@ -3391,9 +3689,9 @@ ${violationLines}
   process.stderr.write(`[WARN] .greenops.yml parse error: ${err instanceof Error ? err.message : String(err)}
 `);
 }
-if (values.format === "table") {
+if (format === "table") {
   console.log(formatTable(result));
-} else if (values.format === "json") {
+} else if (format === "json") {
   console.log(formatJson(result));
 } else {
   console.log(formatMarkdown(result, { showUpgradePrompt }));
